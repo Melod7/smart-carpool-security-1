@@ -1,0 +1,50 @@
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.user
+
+# Env / secrets
+.env
+.env.local
+**/.env
+!**/.env.example
+
+# Node
+node_modules/
+web/dist/
+web/coverage/
+*.log
+npm-debug.log*
+
+# .NET
+**/bin/
+**/obj/
+**/out/
+*.user
+*.suo
+TestResults/
+*.DotSettings.user
+
+# Flutter
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/build/
+mobile/.pub-cache/
+mobile/.pub/
+mobile/ios/Pods/
+mobile/android/.gradle/
+mobile/android/local.properties
+**/*.iml
+
+# QA / local results
+qa/results/*
+!qa/results/.gitkeep
+
+# Docker
+pgdata/
+web/node_modules/
+web/dist/

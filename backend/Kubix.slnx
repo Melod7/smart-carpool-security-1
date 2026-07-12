@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Kubix.Api/Kubix.Api.csproj" />
+    <Project Path="src/Kubix.Application/Kubix.Application.csproj" />
+    <Project Path="src/Kubix.Domain/Kubix.Domain.csproj" />
+    <Project Path="src/Kubix.Infrastructure/Kubix.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Kubix.Tests/Kubix.Tests.csproj" />
+  </Folder>
+</Solution>

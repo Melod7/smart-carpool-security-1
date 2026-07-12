@@ -1,0 +1,51 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: kubix-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kubix}
+      POSTGRES_USER: ${POSTGRES_USER:-kubix}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kubix}
+    ports:
+      - "${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - kubix_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kubix} -d ${POSTGRES_DB:-kubix}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/src/Kubix.Api/Dockerfile
+    container_name: kubix-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:-kubix};Username=${POSTGRES_USER:-kubix};Password=${POSTGRES_PASSWORD:-kubix}
+      Cors__WebOrigin: ${WEB_ORIGIN:-http://localhost:5173}
+      Database__MigrateOnStartup: ${MIGRATE_ON_STARTUP:-false}
+      Swagger__Enabled: "true"
+    ports:
+      - "${API_PORT:-8080}:8080"
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: kubix-pgadmin
+    profiles: ["tools"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@kubix.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+
+volumes:
+  kubix_pgdata:
