@@ -1,4 +1,5 @@
 using Kubix.Infrastructure.Persistence;
+using Kubix.Infrastructure.Seeding;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -18,17 +19,18 @@ try
         options.SwaggerDoc("v1", new() { Title = "Kubix UTN API", Version = "v1" });
     });
 
-    var connectionString = builder.Configuration.GetConnectionString("Default")
+    var cadenaConexion = builder.Configuration.GetConnectionString("Default")
         ?? "Host=localhost;Port=5432;Database=kubix;Username=kubix;Password=kubix";
 
-    builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(connectionString));
+    builder.Services.AddDbContext<ContextoApp>(options =>
+        options.UseNpgsql(cadenaConexion));
+    builder.Services.AddScoped<SembradorBaseDatos>();
 
-    var webOrigin = builder.Configuration["Cors:WebOrigin"] ?? "http://localhost:5173";
+    var origenWeb = builder.Configuration["Cors:WebOrigin"] ?? "http://localhost:5173";
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("WebApp", policy =>
-            policy.WithOrigins(webOrigin)
+            policy.WithOrigins(origenWeb)
                 .AllowAnyHeader()
                 .AllowAnyMethod());
     });
@@ -47,30 +49,43 @@ try
 
     app.MapControllers();
 
-    app.MapGet("/health", async (AppDbContext db, CancellationToken ct) =>
+    app.MapGet("/health", async (ContextoApp db, CancellationToken ct) =>
     {
-        var canConnect = await db.Database.CanConnectAsync(ct);
+        var puedeConectar = await db.Database.CanConnectAsync(ct);
         return Results.Ok(new
         {
-            status = canConnect ? "healthy" : "degraded",
+            status = puedeConectar ? "healthy" : "degraded",
             service = "kubix-api",
-            database = canConnect ? "up" : "down",
+            database = puedeConectar ? "up" : "down",
             utc = DateTime.UtcNow
         });
     });
 
     app.MapGet("/api/v1/health", () => Results.Ok(new { status = "ok", version = "0.1.0" }));
 
-    var runMigrations = string.Equals(
+    var ejecutarMigraciones = string.Equals(
         app.Configuration["Database:MigrateOnStartup"],
         "true",
         StringComparison.OrdinalIgnoreCase);
+    var ejecutarSeed = string.Equals(
+        app.Configuration["Database:SeedOnStartup"],
+        "true",
+        StringComparison.OrdinalIgnoreCase);
 
-    if (runMigrations)
+    if (ejecutarMigraciones || ejecutarSeed)
     {
-        using var scope = app.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.MigrateAsync();
+        using var ambito = app.Services.CreateScope();
+        if (ejecutarMigraciones)
+        {
+            var db = ambito.ServiceProvider.GetRequiredService<ContextoApp>();
+            await db.Database.MigrateAsync();
+        }
+
+        if (ejecutarSeed)
+        {
+            var sembrador = ambito.ServiceProvider.GetRequiredService<SembradorBaseDatos>();
+            await sembrador.SembrarAsync();
+        }
     }
 
     Log.Information("Kubix API iniciando en {Urls}", string.Join(", ", app.Urls));

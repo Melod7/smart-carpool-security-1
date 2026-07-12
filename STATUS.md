@@ -19,15 +19,16 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | Plan v2.3 (los 13 findings de la auditoría delta incorporados) | Hecho |
 | Plan v2.4 (renombre de rol: university_admin → coordinador) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | En curso — Fase 1 (KBX-1) |
+| Implementación | En curso — Fase 1 (KBX-3) |
 | KBX-1 entorno local (compose + health + scaffolds) | Hecho |
+| KBX-2 esquema DB, migraciones y seed | Hecho |
 
 ## Tablero de tickets (desde PLAN.md sección 10)
 
 | Ticket | Título | Estado |
 |---|---|---|
 | KBX-1 | Scaffolding del monorepo y entorno local | hecho |
-| KBX-2 | Esquema de base de datos, migraciones y datos seed | pendiente |
+| KBX-2 | Esquema de base de datos, migraciones y datos seed | hecho |
 | KBX-3 | Auth: login, JWT, refresh tokens, revocación, cambio de contraseña | pendiente |
 | KBX-4 | Infraestructura de tenancy | pendiente |
 | KBX-5 | API super admin: universidades, campuses, coordinadores, stats | pendiente |
@@ -68,7 +69,7 @@ Orden de ejecución sugerido: KBX-1→4 (fundación) → 5→10, 31, 11→13 (ba
 - Solo polling (sin websockets); intervalos fijos en PLAN.md sección 3
 - Google Maps: Directions server-side al publicar; fallback null-polyline = línea recta discontinua
 - AWS: App Runner + ECR, RDS Postgres t4g.micro, S3 + CloudFront; local-first vía docker-compose; teardown documentado
-- Enums en inglés en DB/API, labels en español en los clients (excepción: param `period`)
+- Enums/valores en inglés en DB/API; **identificadores C# en español** mapeados a columnas EN (KBX-2)
 - Roles: exactamente 4 (super_admin seedeado, coordinador creado por super admin, driver/passenger auto-registro + aprobación); un rol por cuenta; matriz de permisos en PLAN.md sección 2
 - EcoTokens FUNCIONALES en v1 (ledger + engine idempotente, KBX-31): driver +8 / passenger +4 por viaje completado, +2 por rating, +10 racha semanal (5 viajes en la semana lun–dom del timezone de la universidad, una vez por semana vía unicidad de week-key ISO), cancelación tardía del driver −min(5, balance) clamped para que la suma del ledger = balance; niveles Bronce 0 / Plata 100 / Oro 500 / Platino 2000 sobre eco_lifetime; canje fuera de alcance; toggle gamification_enabled por universidad (default true, expuesto a mobile vía GET /me/eco); widget admin XP-por-carrera con datos reales (montos positivos de la semana actual)
 - Estático en v1: pagos, subida de docs, chat (solo email de soporte), feed de notificaciones mobile, canje de ECT

@@ -88,6 +88,18 @@ Definidas en `.env.example` — seedeadas tras el ticket de schema:
 
 - Super admin: `superadmin@kubix.local` / `ChangeMe123!`
 
-## Alcance de la Fase 1 (KBX-1)
+## Alcance de la Fase 1 (KBX-1 / KBX-2)
 
-Scaffolding del monorepo, docker-compose, endpoint de health, shell web apuntando a la API, stub del proyecto Flutter. El schema de dominio y auth llegan en KBX-2+.
+Scaffolding del monorepo, docker-compose, endpoint de health, shell web apuntando a la API, stub del proyecto Flutter, esquema EF Core + migración `InitialCreate` y seed idempotente (KBX-2). Auth JWT llega en KBX-3.
+
+Con Docker Desktop corriendo:
+
+```bash
+cp .env.example .env   # MIGRATE_ON_STARTUP=true y SEED_ON_STARTUP=true
+docker compose up -d --build
+# o solo API local contra Postgres:
+docker compose up -d postgres
+cd backend && dotnet run --project src/Kubix.Api
+```
+
+Cuentas seed (password `ChangeMe123!` salvo que cambies env): `superadmin@kubix.local`, `coordinador@utn.local`, `driver1@utn.local`, `pax1@utn.local`.

@@ -23,13 +23,13 @@ class KubixApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const BootstrapScreen(),
+      home: const PantallaArranque(),
     );
   }
 }
 
-class BootstrapScreen extends StatelessWidget {
-  const BootstrapScreen({super.key});
+class PantallaArranque extends StatelessWidget {
+  const PantallaArranque({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +51,7 @@ class BootstrapScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Smart Carpool Security — esqueleto mobile (KBX-1)',
+                'Carpooling seguro — esqueleto mobile (KBX-1)',
                 style: TextStyle(color: Color(0xFF5A6A8A)),
               ),
               const SizedBox(height: 24),
@@ -61,7 +61,7 @@ class BootstrapScreen extends StatelessWidget {
               ),
               const Spacer(),
               const Text(
-                'Auth, roles y flujos de viaje llegan en tickets posteriores.',
+                'Autenticación, roles y flujos de viaje llegan en tickets posteriores.',
                 style: TextStyle(color: Color(0xFF5A6A8A)),
               ),
             ],
