@@ -1,6 +1,4 @@
-using Kubix.Application.EcoTokens;
 using Kubix.Application.Viajes;
-using Kubix.Infrastructure.EcoTokens;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,7 +24,6 @@ public static class ExtensionesViajes
             client.Timeout = TimeSpan.FromSeconds(10);
         });
 
-        services.AddScoped<IMotorEcoTokens, MotorEcoTokensStub>();
         services.AddScoped<IServicioViajes, ServicioViajes>();
         services.AddScoped<IServicioSolicitudesViaje, ServicioSolicitudesViaje>();
         return services;

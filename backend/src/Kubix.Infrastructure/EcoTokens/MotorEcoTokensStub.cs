@@ -3,8 +3,7 @@ using Kubix.Application.EcoTokens;
 namespace Kubix.Infrastructure.EcoTokens;
 
 /// <summary>
-/// Stub no-op hasta KBX-31. Los hooks de complete / late-cancel / rating
-/// quedan cableados para que el motor real los reemplace sin tocar cicloviaje.
+/// Stub no-op para pruebas que no ejercen accrual. Producción usa <see cref="MotorEcoTokens"/>.
 /// </summary>
 public sealed class MotorEcoTokensStub : IMotorEcoTokens
 {

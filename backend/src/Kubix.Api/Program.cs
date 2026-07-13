@@ -2,6 +2,7 @@ using System.Text;
 using Kubix.Api.Middleware;
 using Kubix.Infrastructure.Auth;
 using Kubix.Infrastructure.Calificaciones;
+using Kubix.Infrastructure.EcoTokens;
 using Kubix.Infrastructure.Persistence;
 using Kubix.Infrastructure.Seeding;
 using Kubix.Infrastructure.SuperAdmin;
@@ -55,6 +56,7 @@ try
     builder.Services.AgregarRegistroUsuarios();
     builder.Services.AgregarViajes(builder.Configuration);
     builder.Services.AgregarCalificaciones();
+    builder.Services.AgregarEcoTokens();
 
     var jwt = builder.Configuration.GetSection(OpcionesJwt.Seccion).Get<OpcionesJwt>() ?? new OpcionesJwt();
     builder.Services

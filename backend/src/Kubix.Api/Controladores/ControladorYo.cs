@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Kubix.Application.Auth;
+using Kubix.Application.EcoTokens;
 using Kubix.Application.Tenancy;
 using Kubix.Application.Usuarios;
 using Kubix.Application.Viajes;
@@ -14,7 +15,8 @@ namespace Kubix.Api.Controladores;
 public sealed class ControladorYo(
     IServicioAutenticacion autenticacion,
     IServicioRegistroUsuarios registro,
-    IServicioViajes viajes) : ControllerBase
+    IServicioViajes viajes,
+    IServicioEcoTokens ecoTokens) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(ResumenUsuarioDto), StatusCodes.Status200OK)]
@@ -141,6 +143,32 @@ public sealed class ControladorYo(
         }
     }
 
+    [HttpGet("eco")]
+    [Authorize(Policy = NombresPoliticas.UsuarioMobile)]
+    [ProducesResponseType(typeof(ResumenEcoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ObtenerEco(
+        [FromQuery(Name = "page")] int pagina = 1,
+        [FromQuery(Name = "pageSize")] int tamanoPagina = 20,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var resumen = await ecoTokens.ObtenerResumenAsync(ObtenerUsuarioId(), pagina, tamanoPagina, ct);
+            return Ok(resumen);
+        }
+        catch (ExcepcionEcoTokens ex)
+        {
+            return ProblemEco(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
     [HttpGet("vehicle")]
     [Authorize(Policy = NombresPoliticas.SoloConductor)]
     [ProducesResponseType(typeof(VehiculoDto), StatusCodes.Status200OK)]
@@ -218,6 +246,14 @@ public sealed class ControladorYo(
             extensions: new Dictionary<string, object?> { ["code"] = ex.Codigo });
 
     private ObjectResult ProblemViajes(ExcepcionViajes ex) =>
+        Problem(
+            detail: ex.Message,
+            statusCode: ex.CodigoEstado,
+            title: ex.Titulo,
+            type: $"https://httpstatuses.com/{ex.CodigoEstado}",
+            extensions: new Dictionary<string, object?> { ["code"] = ex.Codigo });
+
+    private ObjectResult ProblemEco(ExcepcionEcoTokens ex) =>
         Problem(
             detail: ex.Message,
             statusCode: ex.CodigoEstado,
