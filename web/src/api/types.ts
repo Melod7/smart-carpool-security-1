@@ -249,3 +249,33 @@ export type ReportExportResult = {
   blob: Blob
   filename: string | null
 }
+
+export type AuditEventType = 'sos' | 'auth' | 'admin' | 'system'
+
+export type AuditSeverity = 'high' | 'medium' | 'low'
+
+export type AuditEvent = {
+  id: string
+  action: string
+  type: AuditEventType | string
+  severity: AuditSeverity | string
+  userId?: string | null
+  userName?: string | null
+  ip?: string | null
+  device?: string | null
+  createdAt: string
+}
+
+export type AuditLogFilter = {
+  type?: string
+  severity?: string
+  page?: number
+  pageSize?: number
+}
+
+export type AuditLogPage = {
+  items: AuditEvent[]
+  totalCount: number
+  page: number
+  pageSize: number
+}

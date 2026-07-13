@@ -19,7 +19,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | Plan v2.3 (los 13 findings de la auditoría delta incorporados) | Hecho |
 | Plan v2.4 (renombre de rol: university_admin → coordinador) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | KBX-18 hecho — siguiente: KBX-19 (Auditoría de Seguridad) |
+| Implementación | KBX-19 hecho — siguiente: KBX-20 (Configuración) |
 | KBX-1 entorno local (compose + health + scaffolds) | Hecho |
 | KBX-2 esquema DB, migraciones y seed | Hecho |
 | KBX-3 Auth JWT (login, refresh, logout, change-password, /me) | Hecho |
@@ -58,7 +58,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | KBX-16 | Web: Panel de Control | hecho |
 | KBX-17 | Web: Gestión de Usuarios | hecho |
 | KBX-18 | Web: Reportes de Viajes | hecho |
-| KBX-19 | Web: Auditoría de Seguridad | pendiente |
+| KBX-19 | Web: Auditoría de Seguridad | hecho |
 | KBX-20 | Web: Configuración | pendiente |
 | KBX-21 | Web: mapa de tracking en vivo | pendiente |
 | KBX-22 | Scaffolding mobile, auth y registro | pendiente |

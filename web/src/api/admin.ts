@@ -5,6 +5,8 @@ import type {
   AdminUsersFilter,
   AdminUsersPage,
   AlertaSosAdmin,
+  AuditLogFilter,
+  AuditLogPage,
   PublicUniversity,
   RegistrationRequest,
   ReportExportFormat,
@@ -118,5 +120,15 @@ export const adminApi = {
       blob: data,
       filename: filenameFromContentDisposition(disposition),
     }
+  },
+
+  getAuditLog: async (filters: AuditLogFilter = {}): Promise<AuditLogPage> => {
+    const params: Record<string, string | number> = {}
+    if (filters.type) params.type = filters.type
+    if (filters.severity) params.severity = filters.severity
+    if (filters.page != null) params.page = filters.page
+    if (filters.pageSize != null) params.pageSize = filters.pageSize
+    const { data } = await api.get<AuditLogPage>('/admin/audit-log', { params })
+    return data
   },
 }

@@ -84,6 +84,8 @@ export function AppShell() {
                 type="button"
                 className="relative rounded-md border px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
                 aria-label="Notificaciones"
+                title="Ver auditoría de seguridad"
+                onClick={() => navigate('/admin/auditoria')}
               >
                 Notificaciones
                 {unreadCount > 0 && (
