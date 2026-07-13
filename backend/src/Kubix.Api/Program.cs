@@ -1,5 +1,6 @@
 using System.Text;
 using Kubix.Api.Middleware;
+using Kubix.Infrastructure.Admin;
 using Kubix.Infrastructure.Auth;
 using Kubix.Infrastructure.Calificaciones;
 using Kubix.Infrastructure.EcoTokens;
@@ -61,6 +62,7 @@ try
     builder.Services.AgregarEcoTokens();
     builder.Services.AgregarSos();
     builder.Services.AgregarTracking();
+    builder.Services.AgregarAdminOps();
 
     var jwt = builder.Configuration.GetSection(OpcionesJwt.Seccion).Get<OpcionesJwt>() ?? new OpcionesJwt();
     builder.Services
