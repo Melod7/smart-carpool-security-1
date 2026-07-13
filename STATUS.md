@@ -19,7 +19,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | Plan v2.3 (los 13 findings de la auditoría delta incorporados) | Hecho |
 | Plan v2.4 (renombre de rol: university_admin → coordinador) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | En curso — Fase 1 (KBX-8) |
+| Implementación | En curso — Fase 1 (KBX-9) |
 | KBX-1 entorno local (compose + health + scaffolds) | Hecho |
 | KBX-2 esquema DB, migraciones y seed | Hecho |
 | KBX-3 Auth JWT (login, refresh, logout, change-password, /me) | Hecho |
@@ -27,6 +27,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | KBX-5 API super admin (universidades, campuses, coordinadores, stats) | Hecho |
 | KBX-6 API registro, usuarios, perfil y contactos | Hecho |
 | KBX-7 API vehículos y publicación de viajes | Hecho |
+| KBX-8 API solicitudes de viaje | Hecho |
 
 ## Tablero de tickets (desde PLAN.md sección 10)
 
@@ -39,7 +40,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | KBX-5 | API super admin: universidades, campuses, coordinadores, stats | hecho |
 | KBX-6 | API de registro, gestión de usuarios, perfil y contactos de emergencia | hecho |
 | KBX-7 | API de vehículos y publicación de viajes | hecho |
-| KBX-8 | API de solicitudes de viaje | pendiente |
+| KBX-8 | API de solicitudes de viaje | hecho |
 | KBX-9 | API de ciclo de vida, cancelación e historial de viajes | pendiente |
 | KBX-10 | API de ratings y enforcement de rating mínimo | pendiente |
 | KBX-11 | API de alertas SOS | pendiente |

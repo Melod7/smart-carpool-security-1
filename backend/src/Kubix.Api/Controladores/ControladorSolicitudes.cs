@@ -9,71 +9,21 @@ namespace Kubix.Api.Controladores;
 
 [ApiController]
 [Authorize]
-[Route("trips")]
-public sealed class ControladorViajes(
-    IServicioViajes viajes,
-    IServicioSolicitudesViaje solicitudes) : ControllerBase
+[Route("requests")]
+public sealed class ControladorSolicitudes(IServicioSolicitudesViaje solicitudes) : ControllerBase
 {
-    [HttpPost]
+    [HttpPost("{id:guid}/accept")]
     [Authorize(Policy = NombresPoliticas.SoloConductor)]
-    [ProducesResponseType(typeof(ViajeDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> Publicar(
-        [FromBody] SolicitudPublicarViaje solicitud,
-        CancellationToken ct)
-    {
-        try
-        {
-            var viaje = await viajes.PublicarViajeAsync(ObtenerUsuarioId(), solicitud, ct);
-            return Created($"/trips/{viaje.Id}", viaje);
-        }
-        catch (ExcepcionViajes ex)
-        {
-            return ProblemViajes(ex);
-        }
-        catch (ExcepcionAutenticacion ex)
-        {
-            return ProblemAuth(ex);
-        }
-    }
-
-    [HttpGet("available")]
-    [Authorize(Policy = NombresPoliticas.SoloPasajero)]
-    [ProducesResponseType(typeof(IReadOnlyList<ViajeDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> ListarDisponibles(CancellationToken ct)
-    {
-        try
-        {
-            var lista = await solicitudes.ListarDisponiblesAsync(ObtenerUsuarioId(), ct);
-            return Ok(lista);
-        }
-        catch (ExcepcionViajes ex)
-        {
-            return ProblemViajes(ex);
-        }
-        catch (ExcepcionAutenticacion ex)
-        {
-            return ProblemAuth(ex);
-        }
-    }
-
-    [HttpPost("{id:guid}/requests")]
-    [Authorize(Policy = NombresPoliticas.SoloPasajero)]
-    [ProducesResponseType(typeof(SolicitudViajeDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(SolicitudViajeDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> CrearSolicitud(
-        Guid id,
-        [FromBody] SolicitudCrearSolicitudViaje solicitud,
-        CancellationToken ct)
+    public async Task<IActionResult> Aceptar(Guid id, CancellationToken ct)
     {
         try
         {
-            var creada = await solicitudes.CrearSolicitudAsync(ObtenerUsuarioId(), id, solicitud, ct);
-            return Created($"/requests/{creada.Id}", creada);
+            var resultado = await solicitudes.AceptarAsync(ObtenerUsuarioId(), id, ct);
+            return Ok(resultado);
         }
         catch (ExcepcionViajes ex)
         {
@@ -85,17 +35,39 @@ public sealed class ControladorViajes(
         }
     }
 
-    [HttpGet("{id:guid}/requests")]
+    [HttpPost("{id:guid}/reject")]
     [Authorize(Policy = NombresPoliticas.SoloConductor)]
-    [ProducesResponseType(typeof(IReadOnlyList<SolicitudViajeDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(SolicitudViajeDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ListarSolicitudes(Guid id, CancellationToken ct)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> Rechazar(Guid id, CancellationToken ct)
     {
         try
         {
-            var lista = await solicitudes.ListarPorViajeAsync(ObtenerUsuarioId(), id, ct);
-            return Ok(lista);
+            var resultado = await solicitudes.RechazarAsync(ObtenerUsuarioId(), id, ct);
+            return Ok(resultado);
+        }
+        catch (ExcepcionViajes ex)
+        {
+            return ProblemViajes(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
+    [HttpPost("{id:guid}/cancel")]
+    [Authorize(Policy = NombresPoliticas.SoloPasajero)]
+    [ProducesResponseType(typeof(SolicitudViajeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> Cancelar(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            var resultado = await solicitudes.CancelarAsync(ObtenerUsuarioId(), id, ct);
+            return Ok(resultado);
         }
         catch (ExcepcionViajes ex)
         {

@@ -97,3 +97,42 @@ public sealed class ViajeDto
     [JsonPropertyName("universityId")]
     public Guid UniversidadId { get; set; }
 }
+
+public sealed class SolicitudCrearSolicitudViaje
+{
+    [JsonPropertyName("pickupText")]
+    public string RecogidaTexto { get; set; } = string.Empty;
+
+    [JsonPropertyName("pickupLat")]
+    public double RecogidaLat { get; set; }
+
+    [JsonPropertyName("pickupLng")]
+    public double RecogidaLng { get; set; }
+}
+
+public sealed class SolicitudViajeDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("tripId")]
+    public Guid ViajeId { get; set; }
+
+    [JsonPropertyName("passengerId")]
+    public Guid PasajeroId { get; set; }
+
+    [JsonPropertyName("pickupText")]
+    public string RecogidaTexto { get; set; } = string.Empty;
+
+    [JsonPropertyName("pickupLat")]
+    public double RecogidaLat { get; set; }
+
+    [JsonPropertyName("pickupLng")]
+    public double RecogidaLng { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Estado { get; set; } = string.Empty;
+
+    [JsonPropertyName("universityId")]
+    public Guid UniversidadId { get; set; }
+}

@@ -25,6 +25,7 @@ public static class ExtensionesViajes
         });
 
         services.AddScoped<IServicioViajes, ServicioViajes>();
+        services.AddScoped<IServicioSolicitudesViaje, ServicioSolicitudesViaje>();
         return services;
     }
 }
