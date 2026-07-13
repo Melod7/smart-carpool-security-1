@@ -279,3 +279,17 @@ export type AuditLogPage = {
   page: number
   pageSize: number
 }
+
+export type AdminSettings = {
+  timezone: string
+  supportEmail: string
+  allowedEmailDomain?: string | null
+  maxDailyTrips: number
+  minDriverRating: number
+  co2FactorKgKm: number
+  gamificationEnabled: boolean
+  co2TrackingEnabled: boolean
+  notifySos: boolean
+  notifyBlock: boolean
+  notifyWeeklyReport: boolean
+}

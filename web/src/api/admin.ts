@@ -2,6 +2,7 @@ import { api } from './cliente'
 import type {
   AdminDashboard,
   AdminReport,
+  AdminSettings,
   AdminUsersFilter,
   AdminUsersPage,
   AlertaSosAdmin,
@@ -129,6 +130,16 @@ export const adminApi = {
     if (filters.page != null) params.page = filters.page
     if (filters.pageSize != null) params.pageSize = filters.pageSize
     const { data } = await api.get<AuditLogPage>('/admin/audit-log', { params })
+    return data
+  },
+
+  getSettings: async () => {
+    const { data } = await api.get<AdminSettings>('/admin/settings')
+    return data
+  },
+
+  updateSettings: async (payload: AdminSettings) => {
+    const { data } = await api.put<AdminSettings>('/admin/settings', payload)
     return data
   },
 }

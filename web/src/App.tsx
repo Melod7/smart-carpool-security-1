@@ -7,6 +7,7 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { RoleHomeRedirect } from './pages/RoleHomeRedirect'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 import { AuditoriaPage } from './pages/admin/AuditoriaPage'
+import { ConfiguracionPage } from './pages/admin/ConfiguracionPage'
 import { DashboardPage } from './pages/admin/DashboardPage'
 import { ReportesPage } from './pages/admin/ReportesPage'
 import { UsuariosPage } from './pages/admin/UsuariosPage'
@@ -31,10 +32,7 @@ export default function App() {
               <Route path="usuarios" element={<UsuariosPage />} />
               <Route path="reportes" element={<ReportesPage />} />
               <Route path="auditoria" element={<AuditoriaPage />} />
-              <Route
-                path="configuracion"
-                element={<ComingSoonPage title="Configuración" description="Próximamente en KBX-20." />}
-              />
+              <Route path="configuracion" element={<ConfiguracionPage />} />
               <Route
                 path="tracking"
                 element={<ComingSoonPage title="Tracking en vivo" description="Próximamente en KBX-21." />}
