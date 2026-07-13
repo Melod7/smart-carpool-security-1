@@ -1,6 +1,6 @@
 # Kubix UTN — Smart Carpool Security · STATUS
 
-Última actualización: 2026-07-12
+Última actualización: 2026-07-13
 Plan: [PLAN.md](PLAN.md) (v2.5, multi-tenant + buckets Planner §10.1) · Auditorías: [docs/audit-report-v2.md](docs/audit-report-v2.md) (71/100) → [docs/audit-report-v3.md](docs/audit-report-v3.md) (93/100 en v2.1) → [docs/audit-report-v4-delta.md](docs/audit-report-v4-delta.md) (delta incorporado en v2.3); **v2.4** renombra `university_admin` → `coordinador`; **v2.5** buckets Planner B1–B7
 
 ## Fase
@@ -20,7 +20,7 @@ Plan: [PLAN.md](PLAN.md) (v2.5, multi-tenant + buckets Planner §10.1) · Audito
 | Plan v2.4 (renombre de rol: university_admin → coordinador) | Hecho |
 | Plan v2.5 (buckets Planner B1–B7 ~2 semanas c/u) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | Bucket B5 Mobile — siguiente: KBX-22 |
+| Implementación | Bucket B5 Mobile — en progreso; siguiente: KBX-23 |
 | KBX-1 entorno local (compose + health + scaffolds) | Hecho |
 | KBX-2 esquema DB, migraciones y seed | Hecho |
 | KBX-3 Auth JWT (login, refresh, logout, change-password, /me) | Hecho |
@@ -62,7 +62,7 @@ Plan: [PLAN.md](PLAN.md) (v2.5, multi-tenant + buckets Planner §10.1) · Audito
 | KBX-19 | Web: Auditoría de Seguridad | hecho |
 | KBX-20 | Web: Configuración | hecho |
 | KBX-21 | Web: mapa de tracking en vivo | hecho |
-| KBX-22 | Scaffolding mobile, auth y registro | pendiente |
+| KBX-22 | Scaffolding mobile, auth y registro | hecho |
 | KBX-23 | Mobile: flujos de pasajero | pendiente |
 | KBX-24 | Mobile: flujos de conductor | pendiente |
 | KBX-25 | Mobile: flujo SOS | pendiente |
@@ -83,7 +83,7 @@ Orden de ejecución (buckets Planner §10.1): **B1** KBX-1→4 → **B2** 5→10
 | B2 Backend dominio | KBX-5→10 | hecho |
 | B3 Backend ops + Eco | KBX-31,11→13 | hecho |
 | B4 Web admin | KBX-14→21 | hecho |
-| B5 Mobile | KBX-22→26 | **siguiente** |
+| B5 Mobile | KBX-22→26 | **en curso** (KBX-22 listo → commit; siguiente KBX-23) |
 | B6 QA | KBX-27→29 | pendiente |
 | B7 Deploy | KBX-30 | pendiente |
 

@@ -1,7 +1,7 @@
 # Kubix UTN — Plan de la plataforma Smart Carpool Security
 
-Versión: 2.5 (agrupación Planner en buckets de ~2 semanas)
-Estado: Auditado. Auditoría completa en v2.1: 93/100 (`docs/audit-report-v3.md`). v2.2–2.3: matriz de roles + EcoTokens (auditoría delta incorporada). v2.4: rol renombrado `university_admin` → `coordinador` (policy `CoordinadorOnly`, label UI Coordinador). v2.5: buckets de Planner (§10.1) desde KBX-1.
+Versión: 2.5 (agrupación Planner: 7 buckets × 2 semanas desde KBX-1)
+Estado: Auditado. Auditoría completa en v2.1: 93/100 (`docs/audit-report-v3.md`). v2.2–2.3: matriz de roles + EcoTokens (auditoría delta incorporada). v2.4: rol renombrado `university_admin` → `coordinador` (policy `CoordinadorOnly`, label UI Coordinador). v2.5: buckets Planner B1–B7 (§10.1), 2 semanas c/u.
 Workspace: `/Users/patriciochachalo/jer/fern/smart-carpool-security`
 
 ---
@@ -447,25 +447,31 @@ Plataforma multi-tenant de seguridad para carpooling (super admin → universida
 
 Cada ticket abajo tiene Título / Descripción / QA (criterios de aceptación).
 
-### 10.1 Agrupación Planner (buckets ~2 semanas)
+### 10.1 Agrupación Planner (cada bucket = **2 semanas**)
 
-Usar estos buckets como epics/sprints en Microsoft Planner (o tablero equivalente). Cada bucket apunta a ~10 días hábiles; ajustar con buffer según capacidad. El orden respeta dependencias: fundación → backend → web → **mobile** → QA → deploy.
+Crear en Microsoft Planner **un bucket/plan por fila**. Duración fija: **2 semanas calendario** por bucket. Cerrar el bucket solo cuando todos sus tickets estén hechos (o explícitamente aplazados). Orden estricto por dependencias.
 
-| Bucket | Semanas (relativas) | Tickets | Enfoque | Estado plan |
-|---|---|---|---|---|
-| **B1 — Fundación** | 1–2 | KBX-1, KBX-2, KBX-3, KBX-4 | Monorepo, DB/seed, JWT, tenancy | Hecho |
-| **B2 — Backend dominio** | 3–4 | KBX-5, KBX-6, KBX-7, KBX-8, KBX-9, KBX-10 | Super admin API, registro/usuarios, viajes, solicitudes, ciclo de vida, ratings | Hecho |
-| **B3 — Backend ops + Eco** | 5–6 | KBX-31, KBX-11, KBX-12, KBX-13 | EcoTokens, SOS, tracking, dashboard/reportes/settings | Hecho |
-| **B4 — Web admin** | 7–8 | KBX-14 → KBX-21 | Shell auth, super admin UI, panel, usuarios, reportes, auditoría, config, mapa | Hecho |
-| **B5 — Mobile** | 9–10 | KBX-22 → KBX-26 | Scaffolding+auth+registro, pasajero, conductor, SOS, mapa/pings | **Siguiente** |
-| **B6 — QA** | 11–12 | KBX-27, KBX-28, KBX-29 | Coverage gates, Postman/Newman/JMeter, Selenium/TestLink/Sonar/Mantis/SAST | Pendiente |
-| **B7 — Deploy** | 13–14 | KBX-30 | ECR + App Runner, RDS, S3/CloudFront, GitHub Actions, teardown | Pendiente |
+| # | Nombre en Planner | Duración | Tickets (checklist) | Entregable | Estado |
+|---|---|---|---|---|---|
+| **B1** | Fundación | 2 semanas | KBX-1 · KBX-2 · KBX-3 · KBX-4 | Compose + schema + JWT + tenancy | Hecho |
+| **B2** | Backend dominio | 2 semanas | KBX-5 · KBX-6 · KBX-7 · KBX-8 · KBX-9 · KBX-10 | APIs universidad → viajes → ratings | Hecho |
+| **B3** | Backend ops + Eco | 2 semanas | KBX-31 · KBX-11 · KBX-12 · KBX-13 | EcoTokens, SOS, tracking, admin ops | Hecho |
+| **B4** | Web admin | 2 semanas | KBX-14 · KBX-15 · KBX-16 · KBX-17 · KBX-18 · KBX-19 · KBX-20 · KBX-21 | Consola React completa | Hecho |
+| **B5** | Mobile | 2 semanas | KBX-22 · KBX-23 · KBX-24 · KBX-25 · KBX-26 | App Flutter driver/passenger | **En curso** |
+| **B6** | QA | 2 semanas | KBX-27 · KBX-28 · KBX-29 | Coverage, Postman/JMeter, Selenium/Sonar/SAST | Pendiente |
+| **B7** | Deploy | 2 semanas | KBX-30 | AWS App Runner + S3/CloudFront + CI/CD | Pendiente |
 
-**Notas Planner**
-- B5 se puede partir en dos sprints de 1 semana si hace falta: **B5a** = KBX-22+23; **B5b** = KBX-24+25+26.
-- B6 puede adelantar trabajo de coverage BE/web en paralelo a B5 (mobile no bloquea Newman/Sonar del API); los umbrales mobile de KBX-27 y casos Selenium quedan al cierre de B5.
-- Seed de arranque (post B1): solo `super_admin`; la data demo de tests vive en `SembrarDemoAsync`, no en el arranque de la API.
-- Sincronizar el tablero con [STATUS.md](STATUS.md) tras cerrar cada ticket.
+**Cómo usar en Planner**
+1. Crear 7 buckets con los nombres de la columna «Nombre en Planner».
+2. En cada bucket, una tarea por ticket KBX-* (copiar Título / Descripción / QA de §10).
+3. Fecha: bucket N empieza el día siguiente al cierre del bucket N−1; duración 14 días.
+4. B5 (mobile) admite subtareas semanales si hace falta: **semana 1** = KBX-22+23; **semana 2** = KBX-24+25+26.
+5. Commits: un commit (y push) por ticket KBX dentro del bucket activo.
+6. Tras cada ticket cerrado → actualizar [STATUS.md](STATUS.md).
+
+**Notas**
+- Seed de arranque (post B1): solo `super_admin`; fixture demo de tests = `SembrarDemoAsync` (no corre al levantar la API).
+- B6 puede iniciar coverage/Newman BE+web en paralelo a B5; umbrales mobile y Selenium quedan al cerrar B5.
 
 ### KBX-1 — Scaffolding del monorepo y entorno local
 **Descripción:** Crear `smart-carpool-security/` con `backend/` (solución .NET 8: Api, Application, Domain, Infrastructure, Tests), `web/` (Vite + React + TS + Tailwind + base shadcn copiada del export de Figma), `mobile/` (app Flutter con Riverpod, dio, flavors), `qa/`, `deploy/`, root `docker-compose.yml` (postgres:16, backend, pgadmin), `.env.example`, README con instrucciones de ejecución.
