@@ -1,0 +1,25 @@
+# Desarrollo con hot reload de la API.
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Postgres sigue en Docker; el backend monta ./backend y corre `dotnet watch`.
+# Cambios en archivos .cs del host reinician la API automáticamente.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/src/Kubix.Api/Dockerfile.dev
+    volumes:
+      - ./backend:/src
+      # Evita pelear bin/obj del host con los del contenedor
+      - kubix_api_obj:/src/src/Kubix.Api/obj
+      - kubix_api_bin:/src/src/Kubix.Api/bin
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      DOTNET_WATCH_SUPPRESS_BROWSER_REFRESH: "1"
+
+volumes:
+  kubix_api_obj:
+  kubix_api_bin:

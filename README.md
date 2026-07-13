@@ -14,61 +14,97 @@ Ver [PLAN.md](./PLAN.md) y [STATUS.md](./STATUS.md).
 
 - Docker Desktop
 - Node.js 20+
-- .NET SDK 10
-- Flutter 3.x (solo mobile — no hace falta para smoke local de API/web)
-
-## Inicio rápido (local)
+- .NET SDK 10 (solo si corres la API en el host)
+- Flutter 3.x (solo mobile)
 
 ```bash
 cp .env.example .env
+```
 
-# Postgres + API (el puerto host de Postgres por defecto es 55432 para evitar conflictos locales)
+## Cómo levantar (elige un modo)
+
+### A) Desarrollo diario — hot reload (recomendado)
+
+Postgres en Docker; API y web en el host con recarga automática al guardar.
+
+```bash
+# 1) Solo base de datos
+docker compose up -d postgres
+
+# 2) API con hot reload (.NET)
+cd backend
+dotnet watch run --project src/Kubix.Api
+# → http://localhost:8080  ·  Swagger: /swagger
+
+# 3) Web con hot reload (otra terminal)
+cd web
+npm install
+npm run dev
+# → http://localhost:5173
+```
+
+| Servicio | Hot reload |
+|---|---|
+| Web (`npm run dev`) | Sí |
+| API (`dotnet watch`) | Sí |
+| API imagen Release de Docker | No |
+
+Connection string local: `localhost:55432` (ya en `appsettings.Development.json`).
+
+### B) Todo en Docker con hot reload de la API
+
+Monta `./backend` en el contenedor y corre `dotnet watch` (útil si no quieres SDK en el host):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# → API http://localhost:8080 (recarga al editar .cs en ./backend)
+```
+
+Web sigue aparte:
+
+```bash
+cd web && npm run dev
+```
+
+### C) Todo en Docker (sin hot reload — smoke / CI local)
+
+Imagen Release publicada. **Hay que rebuild** tras cada cambio de código:
+
+```bash
 docker compose up -d --build
+curl http://localhost:8080/health
+```
 
+Si también tenías `dotnet run` / `dotnet watch` en el host, detenlo antes (`Ctrl+C`): el puerto `8080` no puede compartirse.
+
+### Utilidades
+
+```bash
 # Health
 curl http://localhost:8080/health
-# → {"status":"healthy","database":"up",...}
 
 # Swagger
 open http://localhost:8080/swagger
 
-# Web (otra terminal)
-cd web && npm install && npm run dev
-# → http://localhost:5173
-# Tracking en vivo (/admin/tracking) requiere VITE_GOOGLE_MAPS_API_KEY en web/.env
-# (ver web/.env.example). Sin clave, la lista de viajes sigue visible.
-
-# API contra Postgres local desde el host (no en Docker)
-# La connection string usa localhost:55432 (ver appsettings / .env)
-```
-
-pgAdmin opcional:
-
-```bash
+# pgAdmin (opcional)
 docker compose --profile tools up -d
 # → http://localhost:5050  (admin@kubix.local / admin)
+
+# Parar API Docker / stack
+docker compose down
+# (postgres+datos se conservan en el volume kubix_pgdata)
 ```
 
-### Ejecutar la API sin Docker (Postgres sigue por Compose)
-
-```bash
-docker compose up -d postgres
-cd backend
-dotnet run --project src/Kubix.Api
-```
+Tracking en vivo (`/admin/tracking`) requiere `VITE_GOOGLE_MAPS_API_KEY` en `web/.env` (ver `web/.env.example`).
 
 ### Mobile
 
-Instalar Flutter 3.x y luego ver [mobile/README.md](./mobile/README.md) para la guía completa de iOS/Android (firmado, CocoaPods, deployment target). Inicio rápido:
+Instalar Flutter 3.x y luego ver [mobile/README.md](./mobile/README.md). Inicio rápido:
 
 ```bash
 cd mobile
 flutter pub get
-
-# Id de dispositivo = segunda columna de:
 flutter devices
-# Ejemplo:  Fernando’s iPhone • 00008110-000A7D020140401E • ios • ...
-#           emulator-5554     • emulator-5554              • android-arm64 • ...
 
 # Emulador Android (10.0.2.2 → máquina host)
 flutter run -d <android-id> --dart-define=API_URL=http://10.0.2.2:8080
@@ -76,13 +112,11 @@ flutter run -d <android-id> --dart-define=API_URL=http://10.0.2.2:8080
 # Simulador iOS
 flutter run -d <simulator-id> --dart-define=API_URL=http://127.0.0.1:8080
 
-# Teléfono físico (misma Wi‑Fi): usar IP LAN del Mac — ipconfig getifaddr en0
+# Teléfono físico (misma Wi‑Fi): IP LAN del Mac — ipconfig getifaddr en0
 flutter run -d <device-id> --dart-define=API_URL=http://192.168.x.x:8080
 ```
 
-Si no aparece emulador/simulador: `flutter emulators` / `flutter emulators --launch <id>`, o instalar un runtime iOS en Xcode → Settings → Platforms y luego `open -a Simulator`.
-
-Notas iOS: el deployment target mínimo es **14.0**; los dispositivos físicos necesitan un Development Team en Xcode; CocoaPods es obligatorio (`brew install cocoapods`).
+Notas iOS: deployment target mínimo **14.0**; dispositivos físicos necesitan Development Team en Xcode; CocoaPods (`brew install cocoapods`).
 
 ## Credenciales locales por defecto
 
@@ -92,23 +126,7 @@ El seed de arranque (`SEED_ON_STARTUP=true`) **solo** crea el super admin (sin u
 
 El resto (universidades, campuses, coordinadores, drivers/passengers) se crea por API.
 
-## Alcance de la Fase 1 (KBX-1 → KBX-3)
-
-Scaffolding del monorepo, docker-compose, health, shell web, stub Flutter, esquema EF Core + seed (KBX-2), y Auth JWT: `POST /auth/login|refresh|logout|change-password`, `GET /me` (KBX-3).
-
-Con Docker Desktop corriendo:
-
-```bash
-cp .env.example .env   # MIGRATE_ON_STARTUP=true y SEED_ON_STARTUP=true
-docker compose up -d --build
-# o solo API local contra Postgres:
-docker compose up -d postgres
-cd backend && dotnet run --project src/Kubix.Api
-```
-
-### Auth (KBX-3)
-
-En Swagger (`http://localhost:8080/swagger`) o curl:
+### Auth
 
 ```bash
 curl -s http://localhost:8080/auth/login -H 'Content-Type: application/json' \
