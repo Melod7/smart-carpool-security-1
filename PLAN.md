@@ -1,7 +1,7 @@
 # Kubix UTN — Plan de la plataforma Smart Carpool Security
 
-Versión: 2.4 (renombre de rol: university_admin → coordinador)
-Estado: Auditado. Auditoría completa en v2.1: 93/100 (`docs/audit-report-v3.md`). v2.2–2.3: matriz de roles + EcoTokens (auditoría delta incorporada). v2.4: rol renombrado `university_admin` → `coordinador` (policy `CoordinadorOnly`, label UI Coordinador).
+Versión: 2.5 (agrupación Planner en buckets de ~2 semanas)
+Estado: Auditado. Auditoría completa en v2.1: 93/100 (`docs/audit-report-v3.md`). v2.2–2.3: matriz de roles + EcoTokens (auditoría delta incorporada). v2.4: rol renombrado `university_admin` → `coordinador` (policy `CoordinadorOnly`, label UI Coordinador). v2.5: buckets de Planner (§10.1) desde KBX-1.
 Workspace: `/Users/patriciochachalo/jer/fern/smart-carpool-security`
 
 ---
@@ -446,6 +446,26 @@ Cloud (AWS, cuenta de prueba, todo friendly con free-tier):
 Plataforma multi-tenant de seguridad para carpooling (super admin → universidades → campuses) con React admin web, .NET 8 API, Flutter mobile, PostgreSQL, tracking en vivo de trips con Google Maps, alertas SOS, tooling completo de QA, deployment AWS.
 
 Cada ticket abajo tiene Título / Descripción / QA (criterios de aceptación).
+
+### 10.1 Agrupación Planner (buckets ~2 semanas)
+
+Usar estos buckets como epics/sprints en Microsoft Planner (o tablero equivalente). Cada bucket apunta a ~10 días hábiles; ajustar con buffer según capacidad. El orden respeta dependencias: fundación → backend → web → **mobile** → QA → deploy.
+
+| Bucket | Semanas (relativas) | Tickets | Enfoque | Estado plan |
+|---|---|---|---|---|
+| **B1 — Fundación** | 1–2 | KBX-1, KBX-2, KBX-3, KBX-4 | Monorepo, DB/seed, JWT, tenancy | Hecho |
+| **B2 — Backend dominio** | 3–4 | KBX-5, KBX-6, KBX-7, KBX-8, KBX-9, KBX-10 | Super admin API, registro/usuarios, viajes, solicitudes, ciclo de vida, ratings | Hecho |
+| **B3 — Backend ops + Eco** | 5–6 | KBX-31, KBX-11, KBX-12, KBX-13 | EcoTokens, SOS, tracking, dashboard/reportes/settings | Hecho |
+| **B4 — Web admin** | 7–8 | KBX-14 → KBX-21 | Shell auth, super admin UI, panel, usuarios, reportes, auditoría, config, mapa | Hecho |
+| **B5 — Mobile** | 9–10 | KBX-22 → KBX-26 | Scaffolding+auth+registro, pasajero, conductor, SOS, mapa/pings | **Siguiente** |
+| **B6 — QA** | 11–12 | KBX-27, KBX-28, KBX-29 | Coverage gates, Postman/Newman/JMeter, Selenium/TestLink/Sonar/Mantis/SAST | Pendiente |
+| **B7 — Deploy** | 13–14 | KBX-30 | ECR + App Runner, RDS, S3/CloudFront, GitHub Actions, teardown | Pendiente |
+
+**Notas Planner**
+- B5 se puede partir en dos sprints de 1 semana si hace falta: **B5a** = KBX-22+23; **B5b** = KBX-24+25+26.
+- B6 puede adelantar trabajo de coverage BE/web en paralelo a B5 (mobile no bloquea Newman/Sonar del API); los umbrales mobile de KBX-27 y casos Selenium quedan al cierre de B5.
+- Seed de arranque (post B1): solo `super_admin`; la data demo de tests vive en `SembrarDemoAsync`, no en el arranque de la API.
+- Sincronizar el tablero con [STATUS.md](STATUS.md) tras cerrar cada ticket.
 
 ### KBX-1 — Scaffolding del monorepo y entorno local
 **Descripción:** Crear `smart-carpool-security/` con `backend/` (solución .NET 8: Api, Application, Domain, Infrastructure, Tests), `web/` (Vite + React + TS + Tailwind + base shadcn copiada del export de Figma), `mobile/` (app Flutter con Riverpod, dio, flavors), `qa/`, `deploy/`, root `docker-compose.yml` (postgres:16, backend, pgadmin), `.env.example`, README con instrucciones de ejecución.

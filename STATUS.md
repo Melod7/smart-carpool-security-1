@@ -1,7 +1,7 @@
 # Kubix UTN — Smart Carpool Security · STATUS
 
 Última actualización: 2026-07-12
-Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report-v2.md](docs/audit-report-v2.md) (71/100) → [docs/audit-report-v3.md](docs/audit-report-v3.md) (93/100 en v2.1) → [docs/audit-report-v4-delta.md](docs/audit-report-v4-delta.md) (delta incorporado en v2.3); **v2.4** renombra `university_admin` → `coordinador`
+Plan: [PLAN.md](PLAN.md) (v2.5, multi-tenant + buckets Planner §10.1) · Auditorías: [docs/audit-report-v2.md](docs/audit-report-v2.md) (71/100) → [docs/audit-report-v3.md](docs/audit-report-v3.md) (93/100 en v2.1) → [docs/audit-report-v4-delta.md](docs/audit-report-v4-delta.md) (delta incorporado en v2.3); **v2.4** renombra `university_admin` → `coordinador`; **v2.5** buckets Planner B1–B7
 
 ## Fase
 
@@ -18,8 +18,9 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | Auditoría delta de v2.2 (2 blockers, 8 gaps, 3 inconsistencias) | Hecho |
 | Plan v2.3 (los 13 findings de la auditoría delta incorporados) | Hecho |
 | Plan v2.4 (renombre de rol: university_admin → coordinador) | Hecho |
+| Plan v2.5 (buckets Planner B1–B7 ~2 semanas c/u) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | KBX-21 hecho — siguiente: KBX-22 (Scaffolding mobile) |
+| Implementación | Bucket B5 Mobile — siguiente: KBX-22 |
 | KBX-1 entorno local (compose + health + scaffolds) | Hecho |
 | KBX-2 esquema DB, migraciones y seed | Hecho |
 | KBX-3 Auth JWT (login, refresh, logout, change-password, /me) | Hecho |
@@ -72,7 +73,19 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | KBX-30 | Despliegue: infraestructura AWS y CI/CD | pendiente |
 | KBX-31 | Motor EcoTokens y API (track backend: después de KBX-10, antes de KBX-13) | hecho |
 
-Orden de ejecución sugerido: KBX-1→4 (fundación) → 5→10, 31, 11→13 (backend) → 14→21 (web) → 22→26 (mobile) → 27→29 (QA) → 30 (deploy). Los tracks web y mobile pueden ir en paralelo una vez que aterrice KBX-13.
+Orden de ejecución (buckets Planner §10.1): **B1** KBX-1→4 → **B2** 5→10 → **B3** 31,11→13 → **B4** 14→21 → **B5** 22→26 (mobile, activo) → **B6** 27→29 (QA) → **B7** 30 (deploy).
+
+### Buckets Planner (resumen)
+
+| Bucket | Tickets | Estado |
+|---|---|---|
+| B1 Fundación | KBX-1→4 | hecho |
+| B2 Backend dominio | KBX-5→10 | hecho |
+| B3 Backend ops + Eco | KBX-31,11→13 | hecho |
+| B4 Web admin | KBX-14→21 | hecho |
+| B5 Mobile | KBX-22→26 | **siguiente** |
+| B6 QA | KBX-27→29 | pendiente |
+| B7 Deploy | KBX-30 | pendiente |
 
 ## Log de decisiones clave
 
