@@ -4,6 +4,7 @@ using Kubix.Domain.Enums;
 using Kubix.Infrastructure.Auth;
 using Kubix.Infrastructure.Persistence;
 using Kubix.Infrastructure.Seeding;
+using Kubix.Infrastructure.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -198,7 +199,7 @@ public class PruebasAutenticacion
         var opciones = new DbContextOptionsBuilder<ContextoApp>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        return new ContextoApp(opciones);
+        return new ContextoApp(opciones, new ContextoInquilino { OmitirFiltros = true });
     }
 
     private static IServicioAutenticacion CrearAuth(ContextoApp db)

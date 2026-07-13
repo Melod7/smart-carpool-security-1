@@ -2,6 +2,7 @@ using Kubix.Domain;
 using Kubix.Domain.Enums;
 using Kubix.Infrastructure.Persistence;
 using Kubix.Infrastructure.Seeding;
+using Kubix.Infrastructure.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -66,6 +67,6 @@ public class PruebasEsquemaYSeed
         var opciones = new DbContextOptionsBuilder<ContextoApp>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        return new ContextoApp(opciones);
+        return new ContextoApp(opciones, new ContextoInquilino { OmitirFiltros = true });
     }
 }

@@ -1,13 +1,23 @@
+using Kubix.Application.Tenancy;
 using Kubix.Domain;
 using Kubix.Domain.Entities;
 using Kubix.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Kubix.Infrastructure.Persistence;
 
-public class ContextoApp(DbContextOptions<ContextoApp> options) : DbContext(options)
+public class ContextoApp : DbContext
 {
+    private readonly IContextoInquilino _inquilino;
+
+    public ContextoApp(DbContextOptions<ContextoApp> options, IContextoInquilino inquilino)
+        : base(options)
+    {
+        _inquilino = inquilino;
+    }
+
     public DbSet<Universidad> Universidades => Set<Universidad>();
     public DbSet<Campus> Sedes => Set<Campus>();
     public DbSet<ConfiguracionUniversidad> ConfiguracionesUniversidad => Set<ConfiguracionUniversidad>();
@@ -24,6 +34,92 @@ public class ContextoApp(DbContextOptions<ContextoApp> options) : DbContext(opti
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
     public DbSet<ContactoEmergencia> ContactosEmergencia => Set<ContactoEmergencia>();
     public DbSet<TransaccionEcoToken> TransaccionesEcoToken => Set<TransaccionEcoToken>();
+
+    public override int SaveChanges()
+    {
+        EstamparUniversidadEnAgregados();
+        return base.SaveChanges();
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        EstamparUniversidadEnAgregados();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        EstamparUniversidadEnAgregados();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        EstamparUniversidadEnAgregados();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void EstamparUniversidadEnAgregados()
+    {
+        if (_inquilino.UniversidadId is not Guid universidadId || universidadId == Guid.Empty)
+        {
+            return;
+        }
+
+        foreach (var entry in ChangeTracker.Entries().Where(e => e.State == EntityState.Added))
+        {
+            EstamparSiVacio(entry, universidadId);
+        }
+    }
+
+    private static void EstamparSiVacio(EntityEntry entry, Guid universidadId)
+    {
+        switch (entry.Entity)
+        {
+            case Campus e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case ConfiguracionUniversidad e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case Usuario e when e.UniversidadId is null || e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case SolicitudRegistro e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case Vehiculo e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case Viaje e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case SolicitudViaje e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case Calificacion e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case AlertaSos e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case PingUbicacion e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case EventoAuditoria e when e.UniversidadId is null || e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case Notificacion e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case ContactoEmergencia e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+            case TransaccionEcoToken e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +141,56 @@ public class ContextoApp(DbContextOptions<ContextoApp> options) : DbContext(opti
         ConfigurarNotificacion(modelBuilder);
         ConfigurarContactoEmergencia(modelBuilder);
         ConfigurarTransaccionEcoToken(modelBuilder);
+
+        AplicarFiltrosInquilino(modelBuilder);
+    }
+
+    private void AplicarFiltrosInquilino(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Universidad>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.Id == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<Campus>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<ConfiguracionUniversidad>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<Usuario>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<SolicitudRegistro>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<Vehiculo>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<Viaje>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<SolicitudViaje>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<Calificacion>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<AlertaSos>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<PingUbicacion>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<EventoAuditoria>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<Notificacion>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<ContactoEmergencia>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<TransaccionEcoToken>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
     }
 
     private static ValueConverter<TEnum, string> ConversorEnum<TEnum>()

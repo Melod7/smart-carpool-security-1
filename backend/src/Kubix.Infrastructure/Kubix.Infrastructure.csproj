@@ -1,6 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Kubix.Application\Kubix.Application.csproj" />
     <ProjectReference Include="..\Kubix.Domain\Kubix.Domain.csproj" />
   </ItemGroup>

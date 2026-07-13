@@ -3,6 +3,7 @@ using Kubix.Api.Middleware;
 using Kubix.Infrastructure.Auth;
 using Kubix.Infrastructure.Persistence;
 using Kubix.Infrastructure.Seeding;
+using Kubix.Infrastructure.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -45,6 +46,7 @@ try
         options.UseNpgsql(cadenaConexion));
     builder.Services.AddScoped<SembradorBaseDatos>();
     builder.Services.AgregarServiciosAuth(builder.Configuration);
+    builder.Services.AgregarTenancy();
 
     var jwt = builder.Configuration.GetSection(OpcionesJwt.Seccion).Get<OpcionesJwt>() ?? new OpcionesJwt();
     builder.Services
@@ -66,7 +68,6 @@ try
                 RoleClaimType = "role"
             };
         });
-    builder.Services.AddAuthorization();
 
     var origenWeb = builder.Configuration["Cors:WebOrigin"] ?? "http://localhost:5173";
     builder.Services.AddCors(options =>
@@ -90,6 +91,7 @@ try
     }
 
     app.UseAuthentication();
+    app.UseMiddleware<MiddlewareInquilino>();
     app.UseAuthorization();
     app.UseMiddleware<MiddlewareEstadoSesion>();
 

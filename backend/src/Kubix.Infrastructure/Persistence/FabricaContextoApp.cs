@@ -1,3 +1,4 @@
+using Kubix.Infrastructure.Tenancy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
@@ -28,6 +29,6 @@ public class FabricaContextoApp : IDesignTimeDbContextFactory<ContextoApp>
             .UseNpgsql(cadenaConexion)
             .Options;
 
-        return new ContextoApp(opciones);
+        return new ContextoApp(opciones, new ContextoInquilino { OmitirFiltros = true });
     }
 }
