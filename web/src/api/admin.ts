@@ -1,13 +1,31 @@
 import { api } from './cliente'
 import type {
   AdminDashboard,
+  AdminReport,
   AdminUsersFilter,
   AdminUsersPage,
   AlertaSosAdmin,
   PublicUniversity,
   RegistrationRequest,
+  ReportExportFormat,
+  ReportExportResult,
+  ReportPeriod,
   UsuarioAdmin,
 } from './types'
+
+function filenameFromContentDisposition(header?: string | null): string | null {
+  if (!header) return null
+  const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(header)
+  if (utf8?.[1]) {
+    try {
+      return decodeURIComponent(utf8[1].trim())
+    } catch {
+      return utf8[1].trim()
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(header)
+  return plain?.[1]?.trim() || null
+}
 
 function usersQueryParams(filters: AdminUsersFilter = {}) {
   const params: Record<string, string | number> = {}
@@ -76,5 +94,29 @@ export const adminApi = {
   listPublicUniversities: async () => {
     const { data } = await api.get<PublicUniversity[]>('/public/universities')
     return data
+  },
+
+  getReports: async (period: ReportPeriod = 'semanal') => {
+    const { data } = await api.get<AdminReport>('/admin/reports', {
+      params: { period },
+    })
+    return data
+  },
+
+  exportReports: async (
+    period: ReportPeriod,
+    format: ReportExportFormat,
+  ): Promise<ReportExportResult> => {
+    const { data, headers } = await api.get<Blob>('/admin/reports/export', {
+      params: { period, format },
+      responseType: 'blob',
+    })
+    const disposition =
+      (headers['content-disposition'] as string | undefined) ??
+      (headers['Content-Disposition'] as string | undefined)
+    return {
+      blob: data,
+      filename: filenameFromContentDisposition(disposition),
+    }
   },
 }

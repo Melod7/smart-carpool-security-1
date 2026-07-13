@@ -206,3 +206,46 @@ export type VehicleJson = {
   color?: string
   seatsTotal?: number
 }
+
+export type ReportPeriod = 'diario' | 'semanal' | 'mensual' | 'trimestral' | 'anual'
+
+export type ReportExportFormat = 'csv' | 'xlsx' | 'pdf'
+
+export type ReportKpis = {
+  trips: number
+  km: number
+  co2Saved: number
+  blockedUsers: number
+  adoptionRate: number
+}
+
+export type ReportTrip = {
+  id: string
+  status: string
+  originText: string
+  departureAt: string
+  completedAt?: string | null
+  distanceKm: number
+  co2SavedKg: number
+  driverName: string
+}
+
+export type WeeklyChartPoint = {
+  label: string
+  trips: number
+  km: number
+}
+
+export type AdminReport = {
+  period: ReportPeriod | string
+  from: string
+  to: string
+  kpis: ReportKpis
+  trips: ReportTrip[]
+  weeklyChart: WeeklyChartPoint[]
+}
+
+export type ReportExportResult = {
+  blob: Blob
+  filename: string | null
+}
