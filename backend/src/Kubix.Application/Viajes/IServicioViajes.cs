@@ -13,4 +13,24 @@ public interface IServicioViajes
         Guid usuarioId,
         SolicitudPublicarViaje solicitud,
         CancellationToken ct = default);
+
+    Task<ViajeDto> IniciarViajeAsync(
+        Guid usuarioId,
+        Guid viajeId,
+        CancellationToken ct = default);
+
+    Task<ViajeDto> CompletarViajeAsync(
+        Guid usuarioId,
+        Guid viajeId,
+        CancellationToken ct = default);
+
+    Task<ViajeDto> CancelarViajeAsync(
+        Guid usuarioId,
+        Guid viajeId,
+        CancellationToken ct = default);
+
+    Task<MisViajesDto> ListarMisViajesAsync(
+        Guid usuarioId,
+        string? periodo = null,
+        CancellationToken ct = default);
 }

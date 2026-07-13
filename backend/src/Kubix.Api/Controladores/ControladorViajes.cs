@@ -59,6 +59,99 @@ public sealed class ControladorViajes(
         }
     }
 
+    [HttpGet("mine")]
+    [Authorize(Policy = NombresPoliticas.UsuarioMobile)]
+    [ProducesResponseType(typeof(MisViajesDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ListarMios(
+        [FromQuery] string? period,
+        CancellationToken ct)
+    {
+        try
+        {
+            var resultado = await viajes.ListarMisViajesAsync(ObtenerUsuarioId(), period, ct);
+            return Ok(resultado);
+        }
+        catch (ExcepcionViajes ex)
+        {
+            return ProblemViajes(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
+    [HttpPost("{id:guid}/start")]
+    [Authorize(Policy = NombresPoliticas.SoloConductor)]
+    [ProducesResponseType(typeof(ViajeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Iniciar(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            var viaje = await viajes.IniciarViajeAsync(ObtenerUsuarioId(), id, ct);
+            return Ok(viaje);
+        }
+        catch (ExcepcionViajes ex)
+        {
+            return ProblemViajes(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
+    [HttpPost("{id:guid}/complete")]
+    [Authorize(Policy = NombresPoliticas.SoloConductor)]
+    [ProducesResponseType(typeof(ViajeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Completar(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            var viaje = await viajes.CompletarViajeAsync(ObtenerUsuarioId(), id, ct);
+            return Ok(viaje);
+        }
+        catch (ExcepcionViajes ex)
+        {
+            return ProblemViajes(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
+    [HttpPost("{id:guid}/cancel")]
+    [Authorize(Policy = NombresPoliticas.SoloConductor)]
+    [ProducesResponseType(typeof(ViajeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Cancelar(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            var viaje = await viajes.CancelarViajeAsync(ObtenerUsuarioId(), id, ct);
+            return Ok(viaje);
+        }
+        catch (ExcepcionViajes ex)
+        {
+            return ProblemViajes(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
     [HttpPost("{id:guid}/requests")]
     [Authorize(Policy = NombresPoliticas.SoloPasajero)]
     [ProducesResponseType(typeof(SolicitudViajeDto), StatusCodes.Status201Created)]

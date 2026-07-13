@@ -1,6 +1,7 @@
 using Kubix.Application.Tenancy;
 using Kubix.Application.Viajes;
 using Kubix.Domain.Enums;
+using Kubix.Infrastructure.EcoTokens;
 using Kubix.Infrastructure.Persistence;
 using Kubix.Infrastructure.Seeding;
 using Kubix.Infrastructure.Tenancy;
@@ -221,7 +222,7 @@ public class PruebasViajes
             Rol = usuario.Rol
         };
         var auditoria = new EscritorAuditoria(db, inquilino);
-        return new ServicioViajes(db, directions, auditoria);
+        return new ServicioViajes(db, directions, auditoria, new MotorEcoTokensStub());
     }
 
     private static async Task<ContextoApp> CrearDbConSeedAsync()

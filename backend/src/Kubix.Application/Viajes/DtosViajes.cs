@@ -91,11 +91,68 @@ public sealed class ViajeDto
     [JsonPropertyName("distanceKm")]
     public decimal DistanciaKm { get; set; }
 
+    [JsonPropertyName("co2SavedKg")]
+    public decimal Co2AhorradoKg { get; set; }
+
     [JsonPropertyName("driverId")]
     public Guid ConductorId { get; set; }
 
     [JsonPropertyName("universityId")]
     public Guid UniversidadId { get; set; }
+}
+
+public sealed class MisViajesDto
+{
+    [JsonPropertyName("trips")]
+    public IReadOnlyList<ViajeMioDto> Viajes { get; set; } = Array.Empty<ViajeMioDto>();
+
+    [JsonPropertyName("stats")]
+    public EstadisticasViajesDto Estadisticas { get; set; } = new();
+}
+
+public sealed class ViajeMioDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Estado { get; set; } = string.Empty;
+
+    [JsonPropertyName("role")]
+    public string Rol { get; set; } = string.Empty;
+
+    [JsonPropertyName("requestStatus")]
+    public string? EstadoSolicitud { get; set; }
+
+    [JsonPropertyName("departureAt")]
+    public DateTimeOffset SaleEn { get; set; }
+
+    [JsonPropertyName("originText")]
+    public string OrigenTexto { get; set; } = string.Empty;
+
+    [JsonPropertyName("destinationCampusName")]
+    public string NombreCampusDestino { get; set; } = string.Empty;
+
+    [JsonPropertyName("distanceKm")]
+    public decimal DistanciaKm { get; set; }
+
+    [JsonPropertyName("co2SavedKg")]
+    public decimal Co2AhorradoKg { get; set; }
+}
+
+public sealed class EstadisticasViajesDto
+{
+    [JsonPropertyName("period")]
+    public string Periodo { get; set; } = "total";
+
+    [JsonPropertyName("trips")]
+    public int Viajes { get; set; }
+
+    [JsonPropertyName("km")]
+    public decimal Km { get; set; }
+
+    [JsonPropertyName("co2Kg")]
+    public decimal Co2Kg { get; set; }
 }
 
 public sealed class SolicitudCrearSolicitudViaje

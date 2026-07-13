@@ -1,3 +1,4 @@
+using Kubix.Application.EcoTokens;
 using Kubix.Application.Tenancy;
 using Kubix.Application.Viajes;
 using Kubix.Domain;
@@ -11,8 +12,11 @@ namespace Kubix.Infrastructure.Viajes;
 public sealed class ServicioViajes(
     ContextoApp db,
     IServicioDirections directions,
-    IEscritorAuditoria auditoria) : IServicioViajes
+    IEscritorAuditoria auditoria,
+    IMotorEcoTokens motorEcoTokens) : IServicioViajes
 {
+    private static readonly TimeSpan VentanaCancelacionTardia = TimeSpan.FromMinutes(30);
+
     public async Task<VehiculoDto> ObtenerVehiculoAsync(Guid usuarioId, CancellationToken ct = default)
     {
         var usuario = await ObtenerUsuarioAsync(usuarioId, ct);
@@ -253,6 +257,231 @@ public sealed class ServicioViajes(
         return MapearViaje(viaje);
     }
 
+    public async Task<ViajeDto> IniciarViajeAsync(
+        Guid usuarioId,
+        Guid viajeId,
+        CancellationToken ct = default)
+    {
+        var usuario = await ObtenerUsuarioAsync(usuarioId, ct);
+        AsegurarConductor(usuario);
+
+        var viaje = await ObtenerViajePropioAsync(usuarioId, viajeId, ct);
+
+        if (viaje.Estado != EstadoViaje.Programado)
+        {
+            throw ExcepcionViajes.Conflicto(
+                "Only scheduled trips can be started.",
+                "invalid_trip_status");
+        }
+
+        var ahora = DateTimeOffset.UtcNow;
+        viaje.Estado = EstadoViaje.EnCurso;
+        viaje.IniciadoEn = ahora;
+        viaje.ActualizadoEn = ahora;
+
+        await db.SaveChangesAsync(ct);
+        return MapearViaje(viaje);
+    }
+
+    public async Task<ViajeDto> CompletarViajeAsync(
+        Guid usuarioId,
+        Guid viajeId,
+        CancellationToken ct = default)
+    {
+        var usuario = await ObtenerUsuarioAsync(usuarioId, ct);
+        AsegurarConductor(usuario);
+
+        var viaje = await ObtenerViajePropioAsync(usuarioId, viajeId, ct);
+
+        if (viaje.Estado != EstadoViaje.EnCurso)
+        {
+            throw ExcepcionViajes.Conflicto(
+                "Only in-progress trips can be completed.",
+                "invalid_trip_status");
+        }
+
+        var configuracion = await db.ConfiguracionesUniversidad.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.UniversidadId == viaje.UniversidadId, ct);
+
+        var ahora = DateTimeOffset.UtcNow;
+        viaje.Estado = EstadoViaje.Completado;
+        viaje.CompletadoEn = ahora;
+        viaje.ActualizadoEn = ahora;
+        viaje.Co2AhorradoKg = configuracion is { SeguimientoCo2Habilitado: true }
+            ? decimal.Round(viaje.DistanciaKm * configuracion.FactorCo2KgKm, 3)
+            : 0m;
+
+        await db.SaveChangesAsync(ct);
+        await motorEcoTokens.AlCompletarViajeAsync(viaje.Id, ct);
+        return MapearViaje(viaje);
+    }
+
+    public async Task<ViajeDto> CancelarViajeAsync(
+        Guid usuarioId,
+        Guid viajeId,
+        CancellationToken ct = default)
+    {
+        var usuario = await ObtenerUsuarioAsync(usuarioId, ct);
+        AsegurarConductor(usuario);
+
+        var viaje = await ObtenerViajePropioAsync(usuarioId, viajeId, ct);
+
+        if (viaje.Estado == EstadoViaje.EnCurso)
+        {
+            throw ExcepcionViajes.Conflicto(
+                "In-progress trips cannot be cancelled.",
+                "invalid_trip_status");
+        }
+
+        if (viaje.Estado != EstadoViaje.Programado)
+        {
+            throw ExcepcionViajes.Conflicto(
+                "Only scheduled trips can be cancelled.",
+                "invalid_trip_status");
+        }
+
+        var ahora = DateTimeOffset.UtcNow;
+        var esTardia = viaje.SaleEn - ahora < VentanaCancelacionTardia;
+
+        viaje.Estado = EstadoViaje.Cancelado;
+        viaje.ActualizadoEn = ahora;
+
+        var solicitudes = await db.SolicitudesViaje
+            .Where(s => s.ViajeId == viaje.Id
+                        && (s.Estado == EstadoSolicitudViaje.Pendiente
+                            || s.Estado == EstadoSolicitudViaje.Aceptada))
+            .ToListAsync(ct);
+
+        foreach (var solicitud in solicitudes)
+        {
+            solicitud.Estado = EstadoSolicitudViaje.CanceladaPorConductor;
+            solicitud.ActualizadoEn = ahora;
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        if (esTardia)
+        {
+            try
+            {
+                await auditoria.EscribirAsync(
+                    $"trip.late_cancel:{viaje.Id}",
+                    TipoEventoAuditoria.Sistema,
+                    SeveridadAuditoria.Media,
+                    viaje.UniversidadId,
+                    usuarioId,
+                    ct: ct);
+            }
+            catch
+            {
+                // Auditoría no debe tumbar la cancelación.
+            }
+
+            await motorEcoTokens.AlCancelacionTardiaAsync(viaje.Id, usuarioId, ct);
+        }
+
+        return MapearViaje(viaje);
+    }
+
+    public async Task<MisViajesDto> ListarMisViajesAsync(
+        Guid usuarioId,
+        string? periodo = null,
+        CancellationToken ct = default)
+    {
+        var usuario = await ObtenerUsuarioAsync(usuarioId, ct);
+        var periodoNormalizado = NormalizarPeriodo(periodo);
+        var ahora = DateTimeOffset.UtcNow;
+        var desde = CalcularDesdePeriodo(periodoNormalizado, ahora);
+
+        if (usuario.Rol == RolUsuario.Conductor)
+        {
+            var viajes = await db.Viajes.AsNoTracking()
+                .Include(v => v.CampusDestino)
+                .Where(v => v.ConductorId == usuarioId)
+                .OrderByDescending(v => v.SaleEn)
+                .ToListAsync(ct);
+
+            var items = viajes.Select(v => MapearViajeMio(v, "driver", null)).ToList();
+
+            var completados = viajes
+                .Where(v => v.Estado == EstadoViaje.Completado
+                            && v.CompletadoEn is DateTimeOffset c
+                            && (desde is null || c >= desde.Value))
+                .ToList();
+
+            return new MisViajesDto
+            {
+                Viajes = items,
+                Estadisticas = new EstadisticasViajesDto
+                {
+                    Periodo = periodoNormalizado,
+                    Viajes = completados.Count,
+                    Km = completados.Sum(v => v.DistanciaKm),
+                    Co2Kg = completados.Sum(v => v.Co2AhorradoKg)
+                }
+            };
+        }
+
+        if (usuario.Rol == RolUsuario.Pasajero)
+        {
+            var solicitudes = await db.SolicitudesViaje.AsNoTracking()
+                .Include(s => s.Viaje)
+                .ThenInclude(v => v.CampusDestino)
+                .Where(s => s.PasajeroId == usuarioId)
+                .OrderByDescending(s => s.Viaje.SaleEn)
+                .ToListAsync(ct);
+
+            var items = solicitudes
+                .Select(s => MapearViajeMio(
+                    s.Viaje,
+                    "passenger",
+                    ConversorEnumDominio.ACadenaDb(s.Estado)))
+                .ToList();
+
+            var participacion = solicitudes
+                .Where(s => s.Estado == EstadoSolicitudViaje.Aceptada
+                            && s.Viaje.Estado == EstadoViaje.Completado
+                            && s.Viaje.CompletadoEn is DateTimeOffset c
+                            && (desde is null || c >= desde.Value))
+                .Select(s => s.Viaje)
+                .ToList();
+
+            return new MisViajesDto
+            {
+                Viajes = items,
+                Estadisticas = new EstadisticasViajesDto
+                {
+                    Periodo = periodoNormalizado,
+                    Viajes = participacion.Count,
+                    Km = participacion.Sum(v => v.DistanciaKm),
+                    Co2Kg = participacion.Sum(v => v.Co2AhorradoKg)
+                }
+            };
+        }
+
+        throw ExcepcionViajes.Prohibido(
+            "Only drivers and passengers can list their trips.",
+            "mobile_only");
+    }
+
+    private async Task<Viaje> ObtenerViajePropioAsync(
+        Guid conductorId,
+        Guid viajeId,
+        CancellationToken ct)
+    {
+        var viaje = await db.Viajes.FirstOrDefaultAsync(v => v.Id == viajeId, ct)
+            ?? throw ExcepcionViajes.NoEncontrado("Trip not found.", "trip_not_found");
+
+        if (viaje.ConductorId != conductorId)
+        {
+            throw ExcepcionViajes.Prohibido(
+                "You can only manage your own trips.",
+                "not_trip_owner");
+        }
+
+        return viaje;
+    }
+
     private async Task<Usuario> ObtenerUsuarioAsync(Guid usuarioId, CancellationToken ct)
     {
         return await db.Usuarios.AsNoTracking()
@@ -280,6 +509,26 @@ public sealed class ServicioViajes(
         }
     }
 
+    private static string NormalizarPeriodo(string? periodo)
+    {
+        var valor = (periodo ?? "total").Trim().ToLowerInvariant();
+        return valor switch
+        {
+            "week" or "month" or "total" => valor,
+            _ => throw ExcepcionViajes.Validacion(
+                "period must be week, month, or total.",
+                "invalid_period")
+        };
+    }
+
+    private static DateTimeOffset? CalcularDesdePeriodo(string periodo, DateTimeOffset ahora) =>
+        periodo switch
+        {
+            "week" => ahora.AddDays(-7),
+            "month" => ahora.AddDays(-30),
+            _ => null
+        };
+
     private static VehiculoDto MapearVehiculo(Vehiculo v) => new()
     {
         Id = v.Id,
@@ -302,7 +551,24 @@ public sealed class ServicioViajes(
         AsientosDisponibles = v.AsientosDisponibles,
         Polilinea = v.Polilinea,
         DistanciaKm = v.DistanciaKm,
+        Co2AhorradoKg = v.Co2AhorradoKg,
         ConductorId = v.ConductorId,
         UniversidadId = v.UniversidadId
+    };
+
+    private static ViajeMioDto MapearViajeMio(
+        Viaje v,
+        string rol,
+        string? estadoSolicitud) => new()
+    {
+        Id = v.Id,
+        Estado = ConversorEnumDominio.ACadenaDb(v.Estado),
+        Rol = rol,
+        EstadoSolicitud = estadoSolicitud,
+        SaleEn = v.SaleEn,
+        OrigenTexto = v.OrigenTexto,
+        NombreCampusDestino = v.CampusDestino?.Nombre ?? string.Empty,
+        DistanciaKm = v.DistanciaKm,
+        Co2AhorradoKg = v.Co2AhorradoKg
     };
 }
