@@ -85,5 +85,19 @@ public sealed class CacheEstadoUsuario(
 
     public void Invalidar(Guid usuarioId) => cache.Remove(Clave(usuarioId));
 
+    public async Task InvalidarUniversidadAsync(Guid universidadId, CancellationToken ct = default)
+    {
+        var ids = await db.Usuarios
+            .AsNoTracking()
+            .Where(u => u.UniversidadId == universidadId)
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+
+        foreach (var id in ids)
+        {
+            Invalidar(id);
+        }
+    }
+
     private static string Clave(Guid usuarioId) => $"auth:estado:{usuarioId:D}";
 }

@@ -3,6 +3,7 @@ using Kubix.Api.Middleware;
 using Kubix.Infrastructure.Auth;
 using Kubix.Infrastructure.Persistence;
 using Kubix.Infrastructure.Seeding;
+using Kubix.Infrastructure.SuperAdmin;
 using Kubix.Infrastructure.Tenancy;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +48,7 @@ try
     builder.Services.AddScoped<SembradorBaseDatos>();
     builder.Services.AgregarServiciosAuth(builder.Configuration);
     builder.Services.AgregarTenancy();
+    builder.Services.AgregarSuperAdmin();
 
     var jwt = builder.Configuration.GetSection(OpcionesJwt.Seccion).Get<OpcionesJwt>() ?? new OpcionesJwt();
     builder.Services
