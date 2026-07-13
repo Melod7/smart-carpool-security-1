@@ -1,6 +1,12 @@
+using System.Text;
+using Kubix.Api.Middleware;
+using Kubix.Infrastructure.Auth;
 using Kubix.Infrastructure.Persistence;
 using Kubix.Infrastructure.Seeding;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -17,6 +23,19 @@ try
     builder.Services.AddSwaggerGen(options =>
     {
         options.SwaggerDoc("v1", new() { Title = "Kubix UTN API", Version = "v1" });
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "JWT Bearer. Ejemplo: Bearer {token}"
+        });
+        options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+        {
+            [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+        });
     });
 
     var cadenaConexion = builder.Configuration.GetConnectionString("Default")
@@ -25,6 +44,29 @@ try
     builder.Services.AddDbContext<ContextoApp>(options =>
         options.UseNpgsql(cadenaConexion));
     builder.Services.AddScoped<SembradorBaseDatos>();
+    builder.Services.AgregarServiciosAuth(builder.Configuration);
+
+    var jwt = builder.Configuration.GetSection(OpcionesJwt.Seccion).Get<OpcionesJwt>() ?? new OpcionesJwt();
+    builder.Services
+        .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.MapInboundClaims = false;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwt.Issuer,
+                ValidAudience = jwt.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
+                ClockSkew = TimeSpan.FromMinutes(1),
+                NameClaimType = "sub",
+                RoleClaimType = "role"
+            };
+        });
+    builder.Services.AddAuthorization();
 
     var origenWeb = builder.Configuration["Cors:WebOrigin"] ?? "http://localhost:5173";
     builder.Services.AddCors(options =>
@@ -46,6 +88,10 @@ try
         app.UseSwagger();
         app.UseSwaggerUI();
     }
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.UseMiddleware<MiddlewareEstadoSesion>();
 
     app.MapControllers();
 

@@ -19,9 +19,10 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | Plan v2.3 (los 13 findings de la auditoría delta incorporados) | Hecho |
 | Plan v2.4 (renombre de rol: university_admin → coordinador) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | En curso — Fase 1 (KBX-3) |
+| Implementación | En curso — Fase 1 (KBX-4) |
 | KBX-1 entorno local (compose + health + scaffolds) | Hecho |
 | KBX-2 esquema DB, migraciones y seed | Hecho |
+| KBX-3 Auth JWT (login, refresh, logout, change-password, /me) | Hecho |
 
 ## Tablero de tickets (desde PLAN.md sección 10)
 
@@ -29,7 +30,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 |---|---|---|
 | KBX-1 | Scaffolding del monorepo y entorno local | hecho |
 | KBX-2 | Esquema de base de datos, migraciones y datos seed | hecho |
-| KBX-3 | Auth: login, JWT, refresh tokens, revocación, cambio de contraseña | pendiente |
+| KBX-3 | Auth: login, JWT, refresh tokens, revocación, cambio de contraseña | hecho |
 | KBX-4 | Infraestructura de tenancy | pendiente |
 | KBX-5 | API super admin: universidades, campuses, coordinadores, stats | pendiente |
 | KBX-6 | API de registro, gestión de usuarios, perfil y contactos de emergencia | pendiente |

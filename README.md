@@ -88,9 +88,9 @@ Definidas en `.env.example` — seedeadas tras el ticket de schema:
 
 - Super admin: `superadmin@kubix.local` / `ChangeMe123!`
 
-## Alcance de la Fase 1 (KBX-1 / KBX-2)
+## Alcance de la Fase 1 (KBX-1 → KBX-3)
 
-Scaffolding del monorepo, docker-compose, endpoint de health, shell web apuntando a la API, stub del proyecto Flutter, esquema EF Core + migración `InitialCreate` y seed idempotente (KBX-2). Auth JWT llega en KBX-3.
+Scaffolding del monorepo, docker-compose, health, shell web, stub Flutter, esquema EF Core + seed (KBX-2), y Auth JWT: `POST /auth/login|refresh|logout|change-password`, `GET /me` (KBX-3).
 
 Con Docker Desktop corriendo:
 
@@ -103,3 +103,14 @@ cd backend && dotnet run --project src/Kubix.Api
 ```
 
 Cuentas seed (password `ChangeMe123!` salvo que cambies env): `superadmin@kubix.local`, `coordinador@utn.local`, `driver1@utn.local`, `pax1@utn.local`.
+
+### Auth (KBX-3)
+
+En Swagger (`http://localhost:8080/swagger`) o curl:
+
+```bash
+curl -s http://localhost:8080/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"driver1@utn.local","password":"ChangeMe123!"}'
+```
+
+Endpoints: `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `POST /auth/change-password`, `GET /me` (Bearer JWT).
