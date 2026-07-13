@@ -4,12 +4,26 @@
   --kubix-blue: #1d4ed8;
   --kubix-navy: #0f172a;
   --kubix-bg: #f0f2f5;
+  --kubix-surface: #ffffff;
+  --kubix-text: #111827;
+  --kubix-muted: #64748b;
+  --kubix-danger: #dc2626;
+  --kubix-success: #059669;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: Inter, "DM Sans", system-ui, sans-serif;
   background: var(--kubix-bg);
-  color: #111827;
+  color: var(--kubix-text);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
 }

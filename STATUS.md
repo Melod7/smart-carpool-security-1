@@ -19,7 +19,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | Plan v2.3 (los 13 findings de la auditoría delta incorporados) | Hecho |
 | Plan v2.4 (renombre de rol: university_admin → coordinador) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | Backend completo — siguiente: Fase web KBX-14 |
+| Implementación | KBX-14 hecho — siguiente: KBX-15 (consola super admin) |
 | KBX-1 entorno local (compose + health + scaffolds) | Hecho |
 | KBX-2 esquema DB, migraciones y seed | Hecho |
 | KBX-3 Auth JWT (login, refresh, logout, change-password, /me) | Hecho |
@@ -34,6 +34,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | KBX-11 API de alertas SOS | Hecho |
 | KBX-12 API del servicio de tracking | Hecho |
 | KBX-13 APIs operativas de admin | Hecho |
+| KBX-14 Scaffolding web, auth y shell | Hecho |
 
 ## Tablero de tickets (desde PLAN.md sección 10)
 
@@ -52,7 +53,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | KBX-11 | API de alertas SOS | hecho |
 | KBX-12 | API del servicio de tracking | hecho |
 | KBX-13 | APIs operativas de admin (dashboard, reportes, auditoría, notificaciones, settings) | hecho |
-| KBX-14 | Scaffolding web, auth y shell de la app | pendiente |
+| KBX-14 | Scaffolding web, auth y shell de la app | hecho |
 | KBX-15 | Web: consola de super admin | pendiente |
 | KBX-16 | Web: Panel de Control | pendiente |
 | KBX-17 | Web: Gestión de Usuarios | pendiente |
