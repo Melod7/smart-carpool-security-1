@@ -573,6 +573,52 @@ class RatingResult {
   }
 }
 
+/// Alerta SOS (POST /sos, POST /sos/{id}/close).
+class SosAlert {
+  const SosAlert({
+    required this.id,
+    required this.status,
+    required this.lat,
+    required this.lng,
+    required this.firedAt,
+    required this.universityId,
+    required this.userId,
+    this.tripId,
+    this.resolvedBy,
+    this.resolvedAt,
+  });
+
+  final String id;
+  final String status;
+  final double lat;
+  final double lng;
+  final String? tripId;
+  final DateTime firedAt;
+  final String? resolvedBy;
+  final DateTime? resolvedAt;
+  final String universityId;
+  final String userId;
+
+  bool get isActive => status == 'active';
+
+  factory SosAlert.fromJson(Map<String, dynamic> json) {
+    return SosAlert(
+      id: json['id'] as String,
+      status: json['status'] as String? ?? 'active',
+      lat: _asDouble(json['lat']),
+      lng: _asDouble(json['lng']),
+      tripId: json['tripId'] as String?,
+      firedAt: _asDateTime(json['firedAt']),
+      resolvedBy: json['resolvedBy'] as String?,
+      resolvedAt: json['resolvedAt'] == null
+          ? null
+          : _asDateTime(json['resolvedAt']),
+      universityId: json['universityId'] as String? ?? '',
+      userId: json['userId'] as String? ?? '',
+    );
+  }
+}
+
 /// Vehículo del conductor (GET/PUT /me/vehicle).
 class Vehicle {
   const Vehicle({

@@ -77,6 +77,15 @@ abstract final class TripLabels {
     );
   }
 
+  /// Viaje a adjuntar en SOS: prioriza `in_progress`, luego upcoming confirmado.
+  static MyTrip? activeTripForSos(List<MyTrip> trips, {required bool asDriver}) {
+    final inProgress = trips.where((t) => t.status == 'in_progress').toList()
+      ..sort((a, b) => a.departureAt.compareTo(b.departureAt));
+    if (inProgress.isNotEmpty) return inProgress.first;
+    if (asDriver) return activeDriverTrip(trips);
+    return nextAcceptedTrip(trips);
+  }
+
   /// Ruta activa del conductor: prioriza `in_progress`, luego el próximo `scheduled`.
   static MyTrip? activeDriverTrip(List<MyTrip> trips) {
     final active = trips.where((t) => t.isUpcoming).toList()

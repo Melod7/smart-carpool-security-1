@@ -5,6 +5,8 @@ import '../../api/models.dart';
 import '../../auth/auth_state.dart';
 import '../../theme/kubix_theme.dart';
 import '../passenger/trip_labels.dart';
+import '../sos/sos_button.dart';
+import '../sos/sos_overlay.dart';
 import 'driver_providers.dart';
 
 class DrvHomePage extends ConsumerWidget {
@@ -40,6 +42,17 @@ class DrvHomePage extends ConsumerWidget {
           const Text(
             'Gestiona tu ruta y las solicitudes de pasajeros.',
             style: TextStyle(color: KubixColors.muted),
+          ),
+          const SizedBox(height: 16),
+          SosButton(
+            onPressed: () {
+              final trips =
+                  ref.read(driverMyTripsProvider('total')).asData?.value.trips;
+              final active = trips == null
+                  ? null
+                  : TripLabels.activeTripForSos(trips, asDriver: true);
+              showSosOverlay(context, tripId: active?.id);
+            },
           ),
           const SizedBox(height: 16),
           mine.when(

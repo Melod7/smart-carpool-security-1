@@ -6,6 +6,7 @@ import '../api/driver_api.dart';
 import '../api/models.dart';
 import '../api/passenger_api.dart';
 import '../api/public_api.dart';
+import '../api/sos_api.dart';
 import 'auth_repository.dart';
 import 'token_storage.dart';
 
@@ -79,6 +80,10 @@ final passengerApiProvider = Provider<PassengerApi>((ref) {
 
 final driverApiProvider = Provider<DriverApi>((ref) {
   return DriverApi(ref.watch(apiClientProvider));
+});
+
+final sosApiProvider = Provider<SosApi>((ref) {
+  return SosApi(ref.watch(apiClientProvider));
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/models.dart';
 import '../../auth/auth_state.dart';
 import '../../theme/kubix_theme.dart';
+import '../sos/sos_button.dart';
+import '../sos/sos_overlay.dart';
 import 'passenger_providers.dart';
 import 'trip_labels.dart';
 import 'widgets/eco_widget.dart';
@@ -44,6 +46,16 @@ class PaxHomePage extends ConsumerWidget {
           const Text(
             'Encuentra tu próximo viaje al campus.',
             style: TextStyle(color: KubixColors.muted),
+          ),
+          const SizedBox(height: 16),
+          SosButton(
+            onPressed: () {
+              final trips = ref.read(myTripsProvider('total')).asData?.value.trips;
+              final active = trips == null
+                  ? null
+                  : TripLabels.activeTripForSos(trips, asDriver: false);
+              showSosOverlay(context, tripId: active?.id);
+            },
           ),
           const SizedBox(height: 16),
           mine.when(
