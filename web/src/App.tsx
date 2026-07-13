@@ -7,7 +7,9 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { RoleHomeRedirect } from './pages/RoleHomeRedirect'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 import { DashboardPlaceholder } from './pages/admin/DashboardPlaceholder'
-import { StatsPlaceholder } from './pages/super/StatsPlaceholder'
+import { StatsPage } from './pages/super/StatsPage'
+import { UniversidadesPage } from './pages/super/UniversidadesPage'
+import { UniversidadDetallePage } from './pages/super/UniversidadDetallePage'
 
 export default function App() {
   return (
@@ -48,11 +50,9 @@ export default function App() {
 
           <Route element={<RequireAuth roles={['super_admin']} />}>
             <Route path="/super" element={<AppShell />}>
-              <Route index element={<StatsPlaceholder />} />
-              <Route
-                path="universidades"
-                element={<ComingSoonPage title="Universidades" description="Próximamente en KBX-15." />}
-              />
+              <Route index element={<StatsPage />} />
+              <Route path="universidades" element={<UniversidadesPage />} />
+              <Route path="universidades/:id" element={<UniversidadDetallePage />} />
             </Route>
           </Route>
 
