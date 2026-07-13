@@ -5,6 +5,7 @@ using Kubix.Infrastructure.Calificaciones;
 using Kubix.Infrastructure.EcoTokens;
 using Kubix.Infrastructure.Persistence;
 using Kubix.Infrastructure.Seeding;
+using Kubix.Infrastructure.Sos;
 using Kubix.Infrastructure.SuperAdmin;
 using Kubix.Infrastructure.Tenancy;
 using Kubix.Infrastructure.Usuarios;
@@ -57,6 +58,7 @@ try
     builder.Services.AgregarViajes(builder.Configuration);
     builder.Services.AgregarCalificaciones();
     builder.Services.AgregarEcoTokens();
+    builder.Services.AgregarSos();
 
     var jwt = builder.Configuration.GetSection(OpcionesJwt.Seccion).Get<OpcionesJwt>() ?? new OpcionesJwt();
     builder.Services

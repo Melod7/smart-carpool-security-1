@@ -19,7 +19,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | Plan v2.3 (los 13 findings de la auditoría delta incorporados) | Hecho |
 | Plan v2.4 (renombre de rol: university_admin → coordinador) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | En curso — Fase 1 (KBX-11) |
+| Implementación | En curso — Fase 1 (KBX-12) |
 | KBX-1 entorno local (compose + health + scaffolds) | Hecho |
 | KBX-2 esquema DB, migraciones y seed | Hecho |
 | KBX-3 Auth JWT (login, refresh, logout, change-password, /me) | Hecho |
@@ -31,6 +31,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | KBX-9 API ciclo de vida, cancelación e historial de viajes | Hecho |
 | KBX-10 API ratings y enforcement de rating mínimo | Hecho |
 | KBX-31 Motor EcoTokens y API | Hecho |
+| KBX-11 API de alertas SOS | Hecho |
 
 ## Tablero de tickets (desde PLAN.md sección 10)
 
@@ -46,7 +47,7 @@ Plan: [PLAN.md](PLAN.md) (v2.4, multi-tenant) · Auditorías: [docs/audit-report
 | KBX-8 | API de solicitudes de viaje | hecho |
 | KBX-9 | API de ciclo de vida, cancelación e historial de viajes | hecho |
 | KBX-10 | API de ratings y enforcement de rating mínimo | hecho |
-| KBX-11 | API de alertas SOS | pendiente |
+| KBX-11 | API de alertas SOS | hecho |
 | KBX-12 | API del servicio de tracking | pendiente |
 | KBX-13 | APIs operativas de admin (dashboard, reportes, auditoría, notificaciones, settings) | pendiente |
 | KBX-14 | Scaffolding web, auth y shell de la app | pendiente |
