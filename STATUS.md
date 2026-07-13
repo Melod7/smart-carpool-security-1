@@ -1,7 +1,7 @@
 # Kubix UTN — Smart Carpool Security · STATUS
 
 Última actualización: 2026-07-13
-Plan: [PLAN.md](PLAN.md) (v2.5, multi-tenant + buckets Planner §10.1) · Auditorías: [docs/audit-report-v2.md](docs/audit-report-v2.md) (71/100) → [docs/audit-report-v3.md](docs/audit-report-v3.md) (93/100 en v2.1) → [docs/audit-report-v4-delta.md](docs/audit-report-v4-delta.md) (delta incorporado en v2.3); **v2.4** renombra `university_admin` → `coordinador`; **v2.5** buckets Planner B1–B7
+Plan: [PLAN.md](PLAN.md) (v2.5 — epic en **2 semanas**, **7 tareas** Planner T1–T7, §10.1) · Auditorías: [docs/audit-report-v2.md](docs/audit-report-v2.md) → [docs/audit-report-v3.md](docs/audit-report-v3.md) → [docs/audit-report-v4-delta.md](docs/audit-report-v4-delta.md); **v2.4** `university_admin` → `coordinador`
 
 ## Fase
 
@@ -9,35 +9,24 @@ Plan: [PLAN.md](PLAN.md) (v2.5, multi-tenant + buckets Planner §10.1) · Audito
 |---|---|
 | Discovery + análisis de diseño (ambos exports de Figma) | Hecho |
 | Plan v1 (single tenant) | Reemplazado |
-| Rediseño Plan v2 (universidades → campuses, super admin, diagramas de secuencia) | Hecho |
-| Auditoría de implementabilidad ronda 1 (71/100, 4 blockers) | Hecho |
-| Correcciones del plan (los 21 findings) | Hecho |
-| Auditoría de implementabilidad ronda 2 (93/100, 0 blockers) | Hecho |
-| Plan v2.1 (incorporados 6 ítems menores restantes de la auditoría) | Hecho |
-| Plan v2.2 (matriz de permisos de roles + reglas funcionales de EcoTokens, KBX-31) | Hecho |
-| Auditoría delta de v2.2 (2 blockers, 8 gaps, 3 inconsistencias) | Hecho |
-| Plan v2.3 (los 13 findings de la auditoría delta incorporados) | Hecho |
-| Plan v2.4 (renombre de rol: university_admin → coordinador) | Hecho |
-| Plan v2.5 (buckets Planner B1–B7 ~2 semanas c/u) | Hecho |
+| Rediseño Plan v2–v2.4 | Hecho |
+| Plan v2.5 (Planner: 2 semanas, 7 tareas T1–T7 + Summary/AC) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | Bucket B5 Mobile — en progreso; siguiente: KBX-23 |
-| KBX-1 entorno local (compose + health + scaffolds) | Hecho |
-| KBX-2 esquema DB, migraciones y seed | Hecho |
-| KBX-3 Auth JWT (login, refresh, logout, change-password, /me) | Hecho |
-| KBX-4 Infraestructura de tenancy | Hecho |
-| KBX-5 API super admin (universidades, campuses, coordinadores, stats) | Hecho |
-| KBX-6 API registro, usuarios, perfil y contactos | Hecho |
-| KBX-7 API vehículos y publicación de viajes | Hecho |
-| KBX-8 API solicitudes de viaje | Hecho |
-| KBX-9 API ciclo de vida, cancelación e historial de viajes | Hecho |
-| KBX-10 API ratings y enforcement de rating mínimo | Hecho |
-| KBX-31 Motor EcoTokens y API | Hecho |
-| KBX-11 API de alertas SOS | Hecho |
-| KBX-12 API del servicio de tracking | Hecho |
-| KBX-13 APIs operativas de admin | Hecho |
-| KBX-14 Scaffolding web, auth y shell | Hecho |
+| Implementación | **T5 Mobile** en curso — KBX-22 hecho; siguiente KBX-23 |
 
-## Tablero de tickets (desde PLAN.md sección 10)
+## Planner (7 tareas · 2 semanas totales)
+
+| Tarea | Días | Checklist KBX | Estado |
+|---|---|---|---|
+| **T1** Fundación | D1–D2 | 1–4 | hecho |
+| **T2** Backend dominio | D2–D5 | 5–10 | hecho |
+| **T3** Backend ops + Eco | D5–D7 | 31, 11–13 | hecho |
+| **T4** Web admin | D6–D10 | 14–21 | hecho |
+| **T5** Mobile | D8–D12 | 22–26 | **en curso** (22 hecho) |
+| **T6** QA | D10–D13 | 27–29 | pendiente |
+| **T7** Deploy | D12–D14 | 30 | pendiente |
+
+## Tablero KBX (detalle interno)
 
 | Ticket | Título | Estado |
 |---|---|---|
@@ -53,7 +42,7 @@ Plan: [PLAN.md](PLAN.md) (v2.5, multi-tenant + buckets Planner §10.1) · Audito
 | KBX-10 | API de ratings y enforcement de rating mínimo | hecho |
 | KBX-11 | API de alertas SOS | hecho |
 | KBX-12 | API del servicio de tracking | hecho |
-| KBX-13 | APIs operativas de admin (dashboard, reportes, auditoría, notificaciones, settings) | hecho |
+| KBX-13 | APIs operativas de admin | hecho |
 | KBX-14 | Scaffolding web, auth y shell de la app | hecho |
 | KBX-15 | Web: consola de super admin | hecho |
 | KBX-16 | Web: Panel de Control | hecho |
@@ -71,21 +60,9 @@ Plan: [PLAN.md](PLAN.md) (v2.5, multi-tenant + buckets Planner §10.1) · Audito
 | KBX-28 | QA: colección Postman, pruebas de carga y plan JMeter | pendiente |
 | KBX-29 | QA: Selenium, TestLink, SonarCloud, MantisBT, SAST | pendiente |
 | KBX-30 | Despliegue: infraestructura AWS y CI/CD | pendiente |
-| KBX-31 | Motor EcoTokens y API (track backend: después de KBX-10, antes de KBX-13) | hecho |
+| KBX-31 | Motor EcoTokens y API | hecho |
 
-Orden de ejecución (buckets Planner §10.1): **B1** KBX-1→4 → **B2** 5→10 → **B3** 31,11→13 → **B4** 14→21 → **B5** 22→26 (mobile, activo) → **B6** 27→29 (QA) → **B7** 30 (deploy).
-
-### Buckets Planner (resumen)
-
-| Bucket | Tickets | Estado |
-|---|---|---|
-| B1 Fundación | KBX-1→4 | hecho |
-| B2 Backend dominio | KBX-5→10 | hecho |
-| B3 Backend ops + Eco | KBX-31,11→13 | hecho |
-| B4 Web admin | KBX-14→21 | hecho |
-| B5 Mobile | KBX-22→26 | **en curso** (KBX-22 listo → commit; siguiente KBX-23) |
-| B6 QA | KBX-27→29 | pendiente |
-| B7 Deploy | KBX-30 | pendiente |
+Orden: T1→T4 hechos · **T5** (22→26) activo · luego T6 QA · T7 Deploy. Commits por KBX-* interno; tarea Planner se cierra al completar su checklist.
 
 ## Log de decisiones clave
 
@@ -100,3 +77,4 @@ Orden de ejecución (buckets Planner §10.1): **B1** KBX-1→4 → **B2** 5→10
 - EcoTokens FUNCIONALES en v1 (ledger + engine idempotente, KBX-31): driver +8 / passenger +4 por viaje completado, +2 por rating, +10 racha semanal (5 viajes en la semana lun–dom del timezone de la universidad, una vez por semana vía unicidad de week-key ISO), cancelación tardía del driver −min(5, balance) clamped para que la suma del ledger = balance; niveles Bronce 0 / Plata 100 / Oro 500 / Platino 2000 sobre eco_lifetime; canje fuera de alcance; toggle gamification_enabled por universidad (default true, expuesto a mobile vía GET /me/eco); widget admin XP-por-carrera con datos reales (montos positivos de la semana actual)
 - Admin ops (KBX-13): `adoptionRate` = % usuarios activos / total (driver+passenger), documentado como `adoptionRateBasis: active_users_over_total`; export CSV/XLSX/PDF vía ClosedXML + QuestPDF (fallo → 500 problem+json)
 - Estático en v1: pagos, subida de docs, chat (solo email de soporte), feed de notificaciones mobile, canje de ECT
+- Planner v2.5: epic completo en 2 semanas; 7 tareas T1–T7 con Summary + AC; KBX-* = checklist interna (no 31 tarjetas)

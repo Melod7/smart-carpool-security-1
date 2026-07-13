@@ -1,7 +1,7 @@
 # Kubix UTN — Plan de la plataforma Smart Carpool Security
 
-Versión: 2.5 (agrupación Planner: 7 buckets × 2 semanas desde KBX-1)
-Estado: Auditado. Auditoría completa en v2.1: 93/100 (`docs/audit-report-v3.md`). v2.2–2.3: matriz de roles + EcoTokens (auditoría delta incorporada). v2.4: rol renombrado `university_admin` → `coordinador` (policy `CoordinadorOnly`, label UI Coordinador). v2.5: buckets Planner B1–B7 (§10.1), 2 semanas c/u.
+Versión: 2.5 (Planner: epic en **2 semanas**, **7 tareas** agrupadas — §10.1)
+Estado: Auditado. v2.1–2.4 como antes. **v2.5:** §10.1 = calendario 14 días + 7 tareas Planner (T1–T7); KBX-* = checklist interna.
 Workspace: `/Users/patriciochachalo/jer/fern/smart-carpool-security`
 
 ---
@@ -445,33 +445,122 @@ Cloud (AWS, cuenta de prueba, todo friendly con free-tier):
 **Epic — KBX: Kubix UTN Smart Carpool Security Platform**
 Plataforma multi-tenant de seguridad para carpooling (super admin → universidades → campuses) con React admin web, .NET 8 API, Flutter mobile, PostgreSQL, tracking en vivo de trips con Google Maps, alertas SOS, tooling completo de QA, deployment AWS.
 
-Cada ticket abajo tiene Título / Descripción / QA (criterios de aceptación).
+Cada ítem detallado KBX-* más abajo es **alcance interno / checklist**. En Planner no se crean 31 tareas: se crean **7 tareas agrupadas** (§10.1).
 
-### 10.1 Agrupación Planner (cada bucket = **2 semanas**)
+### 10.1 Agrupación Planner — **todo el proyecto = 2 semanas · 7 tareas**
 
-Crear en Microsoft Planner **un bucket/plan por fila**. Duración fija: **2 semanas calendario** por bucket. Cerrar el bucket solo cuando todos sus tickets estén hechos (o explícitamente aplazados). Orden estricto por dependencias.
+**Duración total: 2 semanas (Día 1 → Día 14).**  
+**En Planner: exactamente 7 tareas** (una por fase). Los KBX-* van como checklist / notas dentro de cada tarea, no como tareas sueltas.
 
-| # | Nombre en Planner | Duración | Tickets (checklist) | Entregable | Estado |
+| # | Tarea en Planner (título) | Días | Incluye (checklist interna) | Track | Estado |
 |---|---|---|---|---|---|
-| **B1** | Fundación | 2 semanas | KBX-1 · KBX-2 · KBX-3 · KBX-4 | Compose + schema + JWT + tenancy | Hecho |
-| **B2** | Backend dominio | 2 semanas | KBX-5 · KBX-6 · KBX-7 · KBX-8 · KBX-9 · KBX-10 | APIs universidad → viajes → ratings | Hecho |
-| **B3** | Backend ops + Eco | 2 semanas | KBX-31 · KBX-11 · KBX-12 · KBX-13 | EcoTokens, SOS, tracking, admin ops | Hecho |
-| **B4** | Web admin | 2 semanas | KBX-14 · KBX-15 · KBX-16 · KBX-17 · KBX-18 · KBX-19 · KBX-20 · KBX-21 | Consola React completa | Hecho |
-| **B5** | Mobile | 2 semanas | KBX-22 · KBX-23 · KBX-24 · KBX-25 · KBX-26 | App Flutter driver/passenger | **En curso** |
-| **B6** | QA | 2 semanas | KBX-27 · KBX-28 · KBX-29 | Coverage, Postman/JMeter, Selenium/Sonar/SAST | Pendiente |
-| **B7** | Deploy | 2 semanas | KBX-30 | AWS App Runner + S3/CloudFront + CI/CD | Pendiente |
+| **T1** | Fundación — monorepo, DB, auth, tenancy | D1–D2 | KBX-1 · KBX-2 · KBX-3 · KBX-4 | Backend | Hecho |
+| **T2** | Backend dominio — universidades, usuarios, viajes | D2–D5 | KBX-5 · KBX-6 · KBX-7 · KBX-8 · KBX-9 · KBX-10 | Backend | Hecho |
+| **T3** | Backend ops — EcoTokens, SOS, tracking, admin API | D5–D7 | KBX-31 · KBX-11 · KBX-12 · KBX-13 | Backend | Hecho |
+| **T4** | Web admin — consola React completa | D6–D10 | KBX-14 · KBX-15 · KBX-16 · KBX-17 · KBX-18 · KBX-19 · KBX-20 · KBX-21 | Web | Hecho |
+| **T5** | Mobile — Flutter auth, pasajero, conductor, SOS, mapa | D8–D12 | KBX-22 · KBX-23 · KBX-24 · KBX-25 · KBX-26 | Mobile | Siguiente |
+| **T6** | QA — coverage, Postman/JMeter, Selenium/Sonar/SAST | D10–D13 | KBX-27 · KBX-28 · KBX-29 | QA | Pendiente |
+| **T7** | Deploy — AWS + CI/CD | D12–D14 | KBX-30 | Deploy | Pendiente |
 
-**Cómo usar en Planner**
-1. Crear 7 buckets con los nombres de la columna «Nombre en Planner».
-2. En cada bucket, una tarea por ticket KBX-* (copiar Título / Descripción / QA de §10).
-3. Fecha: bucket N empieza el día siguiente al cierre del bucket N−1; duración 14 días.
-4. B5 (mobile) admite subtareas semanales si hace falta: **semana 1** = KBX-22+23; **semana 2** = KBX-24+25+26.
-5. Commits: un commit (y push) por ticket KBX dentro del bucket activo.
-6. Tras cada ticket cerrado → actualizar [STATUS.md](STATUS.md).
+Paralelismo permitido: T4 puede solaparse con el cierre de T3; T5 con T4; T6 con el final de T4/T5; T7 al cierre.
 
-**Notas**
-- Seed de arranque (post B1): solo `super_admin`; fixture demo de tests = `SembrarDemoAsync` (no corre al levantar la API).
-- B6 puede iniciar coverage/Newman BE+web en paralelo a B5; umbrales mobile y Selenium quedan al cerrar B5.
+En Planner, cada tarea usa **Título + Summary + AC** (abajo). No pegar las secciones KBX-* completas: el detalle vive en este PLAN; en la tarea solo checklist de IDs.
+
+#### T1 — Fundación — monorepo, DB, auth, tenancy
+- **Título:** Fundación — monorepo, DB, auth, tenancy  
+- **Fechas:** D1–D2  
+- **Checklist:** KBX-1 · KBX-2 · KBX-3 · KBX-4  
+- **Summary:** Dejar el monorepo usable en local: Postgres + API + scaffolds web/mobile, esquema migrado con seed mínimo (`super_admin`), autenticación JWT (login/refresh/logout/change-password/`/me`) y tenancy (filtros + policies).  
+- **AC:**
+  - [ ] `docker compose up` deja API healthy en `:8080` (Swagger) y Postgres en `:55432`
+  - [ ] Migraciones aplican desde cero; seed de arranque crea solo `super_admin` (credenciales vía env)
+  - [ ] Login/refresh/logout y change-password funcionan; blocked/pending no entran
+  - [ ] Query filters + policies: coordinador A no lee datos de universidad B (404)
+  - [ ] README permite reproducir el arranque local
+
+#### T2 — Backend dominio — universidades, usuarios, viajes
+- **Título:** Backend dominio — universidades, usuarios, viajes  
+- **Fechas:** D2–D5  
+- **Checklist:** KBX-5 · KBX-6 · KBX-7 · KBX-8 · KBX-9 · KBX-10  
+- **Summary:** APIs de negocio core: super admin provisiona universidades/campuses/coordinadores; registro y aprobación de drivers/passengers; publicación de viajes, solicitudes, ciclo start/complete/cancel e historial; ratings con auto-block por rating mínimo.  
+- **AC:**
+  - [ ] Super admin CRUD universidad/campus/coordinador + stats; suspend bloquea logins del tenant
+  - [ ] Register → pending → accept/deny; block/unblock; export users; perfil + emergency contacts
+  - [ ] Driver publica viaje (Directions o fallback polyline null); passenger ve available y solicita asiento
+  - [ ] Accept/reject/cancel de requests respeta seats y reglas de cancelación
+  - [ ] Start/complete/cancel de trips + `GET /trips/mine` con stats; ratings + pending; auto-block si aplica
+
+#### T3 — Backend ops — EcoTokens, SOS, tracking, admin API
+- **Título:** Backend ops — EcoTokens, SOS, tracking, admin API  
+- **Fechas:** D5–D7  
+- **Checklist:** KBX-31 · KBX-11 · KBX-12 · KBX-13  
+- **Summary:** Motor EcoTokens idempotente, alertas SOS, tracking GPS (pings + visibilidad + retención) y APIs operativas de coordinador (dashboard, reportes/export, auditoría, notificaciones, settings).  
+- **AC:**
+  - [ ] Completions/ratings acreditan ECT según reglas; idempotencia; gamificación off = no-op; `GET /me/eco`
+  - [ ] SOS create/close + list/resolve admin; visible solo en el tenant
+  - [ ] Pings en trips `in_progress`; tracking respeta matriz de visibilidad; admin active trips
+  - [ ] Dashboard KPIs + SOS + xpByCareer; reportes por periodo + export CSV/XLSX/PDF
+  - [ ] Audit log filtrable; notifications mark-read; settings GET/PUT persistentes
+
+#### T4 — Web admin — consola React completa
+- **Título:** Web admin — consola React completa  
+- **Fechas:** D6–D10  
+- **Checklist:** KBX-14 · KBX-15 · KBX-16 · KBX-17 · KBX-18 · KBX-19 · KBX-20 · KBX-21  
+- **Summary:** Consola Vite/React con auth y shells por rol; super admin (universidades); coordinador (panel, usuarios, reportes, auditoría, settings, mapa de tracking en vivo).  
+- **AC:**
+  - [ ] Login/logout/guards por rol; cambio forzado de password; badge notificaciones
+  - [ ] Super: CRUD universidades/campuses/coordinadores + stats
+  - [ ] Panel: KPIs, SOS poll + resolve, XP por carrera (disabled si gamificación off)
+  - [ ] Usuarios: cola accept/deny, directorio filtros, block, export
+  - [ ] Reportes + export; auditoría filtros; settings dirty-state; mapa tracking 10s poll
+
+#### T5 — Mobile — Flutter auth, pasajero, conductor, SOS, mapa
+- **Título:** Mobile — Flutter auth, pasajero, conductor, SOS, mapa  
+- **Fechas:** D8–D12  
+- **Checklist:** KBX-22 · KBX-23 · KBX-24 · KBX-25 · KBX-26  
+- **Summary:** App Flutter con login/registro (wizard + pending), shells por rol, flujos pasajero y conductor (viajes, EcoTokens, perfiles), SOS y mapa en vivo con pings.  
+- **AC:**
+  - [ ] Login + registro (university/campus/role/vehicle) + pantalla pending; token seguro + refresh
+  - [ ] Pasajero: home, available/request, historial, rating, perfil/contacts, ayuda
+  - [ ] Conductor: publish, accept/reject, start/complete, historial, vehículo, ayuda
+  - [ ] SOS overlay con GPS; visible en admin tras poll
+  - [ ] Mapa trip: polyline/fallback, markers, pings 10s solo en `in_progress`
+
+#### T6 — QA — coverage, Postman/JMeter, Selenium/Sonar/SAST
+- **Título:** QA — coverage, Postman/JMeter, Selenium/Sonar/SAST  
+- **Fechas:** D10–D13  
+- **Checklist:** KBX-27 · KBX-28 · KBX-29  
+- **Summary:** Cerrar calidad del curso: umbrales de coverage en CI, colección Postman + Newman + JMeter, automatización web Selenium, TestLink, SonarCloud, MantisBT local y SAST.  
+- **AC:**
+  - [ ] Coverage gates: BE ≥70% App/Domain, web ≥70% features, mobile ≥60% (CI falla si baja)
+  - [ ] Postman cubre endpoints clave + Newman verde local; JMeter p95 documentado
+  - [ ] Selenium headless: login, approve, block, resolve SOS, export, create university
+  - [ ] TestLink XML importable; Sonar quality gate en PR; Semgrep/audits en CI
+  - [ ] MantisBT local vía compose documentado
+
+#### T7 — Deploy — AWS + CI/CD
+- **Título:** Deploy — AWS + CI/CD  
+- **Fechas:** D12–D14  
+- **Checklist:** KBX-30  
+- **Summary:** Infra de prueba AWS (ECR, App Runner, RDS, S3+CloudFront) y pipelines GitHub Actions; documentar deploy y teardown para no dejar cargos.  
+- **AC:**
+  - [ ] API desplegable desde imagen ECR → App Runner; migraciones al arranque
+  - [ ] Web en S3 + CloudFront (SPA routing)
+  - [ ] CI: PR build/test/lint/sonar/newman/security; main deploy + invalidation
+  - [ ] Smoke Postman env `aws` (o checklist equivalente) verde
+  - [ ] Script/doc de teardown sin recursos facturables residuales
+
+#### Cómo configurar Planner
+1. Plan único: epic; **inicio Día 1**, **fin Día 14**.
+2. Crear **7 tareas** con el **Título** de T1–T7.
+3. En cada tarea pegar solo **Summary** + **AC** (+ checklist de IDs KBX). No copiar las secciones KBX-* largas del PLAN.
+4. Fechas de la tarea = rango D* de la tabla.
+5. Marcar la tarea hecha cuando todos los AC estén cumplidos.
+6. Avance diario: [STATUS.md](STATUS.md). Detalle de implementación: secciones KBX-* más abajo.
+
+#### Notas
+- KBX-31 va en **T3** (tras ratings, antes de admin ops).
+- Seed de arranque: solo `super_admin`; demo tests = `SembrarDemoAsync`.
 
 ### KBX-1 — Scaffolding del monorepo y entorno local
 **Descripción:** Crear `smart-carpool-security/` con `backend/` (solución .NET 8: Api, Application, Domain, Infrastructure, Tests), `web/` (Vite + React + TS + Tailwind + base shadcn copiada del export de Figma), `mobile/` (app Flutter con Riverpod, dio, flavors), `qa/`, `deploy/`, root `docker-compose.yml` (postgres:16, backend, pgadmin), `.env.example`, README con instrucciones de ejecución.
