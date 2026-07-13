@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Kubix.Application.Auth;
 using Kubix.Application.Tenancy;
+using Kubix.Application.Tracking;
 using Kubix.Application.Viajes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +13,8 @@ namespace Kubix.Api.Controladores;
 [Route("trips")]
 public sealed class ControladorViajes(
     IServicioViajes viajes,
-    IServicioSolicitudesViaje solicitudes) : ControllerBase
+    IServicioSolicitudesViaje solicitudes,
+    IServicioTracking tracking) : ControllerBase
 {
     [HttpPost]
     [Authorize(Policy = NombresPoliticas.SoloConductor)]
@@ -200,6 +202,56 @@ public sealed class ControladorViajes(
         }
     }
 
+    [HttpPost("{id:guid}/pings")]
+    [Authorize(Policy = NombresPoliticas.UsuarioMobile)]
+    [ProducesResponseType(typeof(PingDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> RegistrarPing(
+        Guid id,
+        [FromBody] SolicitudPing solicitud,
+        CancellationToken ct)
+    {
+        try
+        {
+            var ping = await tracking.RegistrarPingAsync(ObtenerUsuarioId(), id, solicitud, ct);
+            return Created($"/trips/{id}/pings/{ping.Id}", ping);
+        }
+        catch (ExcepcionTracking ex)
+        {
+            return ProblemTracking(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
+    [HttpGet("{id:guid}/tracking")]
+    [Authorize(Policy = NombresPoliticas.UsuarioMobile)]
+    [ProducesResponseType(typeof(TrackingViajeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ObtenerTracking(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            var resultado = await tracking.ObtenerTrackingAsync(ObtenerUsuarioId(), id, ct);
+            return Ok(resultado);
+        }
+        catch (ExcepcionTracking ex)
+        {
+            return ProblemTracking(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
     private Guid ObtenerUsuarioId()
     {
         var sub = User.FindFirstValue("sub")
@@ -223,6 +275,14 @@ public sealed class ControladorViajes(
             extensions: new Dictionary<string, object?> { ["code"] = ex.Codigo });
 
     private ObjectResult ProblemAuth(ExcepcionAutenticacion ex) =>
+        Problem(
+            detail: ex.Message,
+            statusCode: ex.CodigoEstado,
+            title: ex.Titulo,
+            type: $"https://httpstatuses.com/{ex.CodigoEstado}",
+            extensions: new Dictionary<string, object?> { ["code"] = ex.Codigo });
+
+    private ObjectResult ProblemTracking(ExcepcionTracking ex) =>
         Problem(
             detail: ex.Message,
             statusCode: ex.CodigoEstado,

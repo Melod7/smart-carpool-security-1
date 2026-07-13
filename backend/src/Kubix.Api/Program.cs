@@ -8,6 +8,7 @@ using Kubix.Infrastructure.Seeding;
 using Kubix.Infrastructure.Sos;
 using Kubix.Infrastructure.SuperAdmin;
 using Kubix.Infrastructure.Tenancy;
+using Kubix.Infrastructure.Tracking;
 using Kubix.Infrastructure.Usuarios;
 using Kubix.Infrastructure.Viajes;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -59,6 +60,7 @@ try
     builder.Services.AgregarCalificaciones();
     builder.Services.AgregarEcoTokens();
     builder.Services.AgregarSos();
+    builder.Services.AgregarTracking();
 
     var jwt = builder.Configuration.GetSection(OpcionesJwt.Seccion).Get<OpcionesJwt>() ?? new OpcionesJwt();
     builder.Services
