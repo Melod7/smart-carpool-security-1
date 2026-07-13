@@ -1,7 +1,7 @@
 # Kubix UTN — Smart Carpool Security · STATUS
 
 Última actualización: 2026-07-13
-Plan: [PLAN.md](PLAN.md) (v2.5 — epic en **2 semanas**, **7 tareas** Planner T1–T7, §10.1) · Auditorías: [docs/audit-report-v2.md](docs/audit-report-v2.md) → [docs/audit-report-v3.md](docs/audit-report-v3.md) → [docs/audit-report-v4-delta.md](docs/audit-report-v4-delta.md); **v2.4** `university_admin` → `coordinador`
+Plan: [PLAN.md](PLAN.md) (v2.6 — epic **2 semanas**, **7 tareas** T1–T7 con Título/Prioridad/Fechas/Checklist/Notas/Adjuntos, §10.1) · Auditorías: [docs/audit-report-v2.md](docs/audit-report-v2.md) → [docs/audit-report-v3.md](docs/audit-report-v3.md) → [docs/audit-report-v4-delta.md](docs/audit-report-v4-delta.md); **v2.4** `university_admin` → `coordinador`
 
 ## Fase
 
@@ -11,20 +11,21 @@ Plan: [PLAN.md](PLAN.md) (v2.5 — epic en **2 semanas**, **7 tareas** Planner T
 | Plan v1 (single tenant) | Reemplazado |
 | Rediseño Plan v2–v2.4 | Hecho |
 | Plan v2.5 (Planner: 2 semanas, 7 tareas T1–T7 + Summary/AC) | Hecho |
+| Plan v2.6 (campos Planner: prioridad, fechas, checklist, notas, adjuntos) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
 | Implementación | **T5 Mobile** hecho (KBX-22–26); siguiente **T6 / KBX-27** |
 
-## Planner (7 tareas · 2 semanas totales)
+## Planner (7 tareas · 2 semanas · ancla D1=2026-07-06)
 
-| Tarea | Días | Checklist KBX | Estado |
-|---|---|---|---|
-| **T1** Fundación | D1–D2 | 1–4 | hecho |
-| **T2** Backend dominio | D2–D5 | 5–10 | hecho |
-| **T3** Backend ops + Eco | D5–D7 | 31, 11–13 | hecho |
-| **T4** Web admin | D6–D10 | 14–21 | hecho |
-| **T5** Mobile | D8–D12 | 22–26 | **hecho** |
-| **T6** QA | D10–D13 | 27–29 | **siguiente** |
-| **T7** Deploy | D12–D14 | 30 | pendiente |
+| Tarea | Prioridad | Inicio | Vencimiento | Checklist KBX | Estado |
+|---|---|---|---|---|---|
+| **T1** Fundación | Urgente | 07-06 | 07-07 | 1–4 | hecho |
+| **T2** Backend dominio | Urgente | 07-07 | 07-10 | 5–10 | hecho |
+| **T3** Backend ops + Eco | Importante | 07-10 | 07-12 | 31, 11–13 | hecho |
+| **T4** Web admin | Importante | 07-11 | 07-15 | 14–21 | hecho |
+| **T5** Mobile | Importante | 07-13 | 07-17 | 22–26 | hecho |
+| **T6** QA | Importante | 07-15 | 07-18 | 27–29 | **siguiente** |
+| **T7** Deploy | Media | 07-17 | 07-19 | 30 | pendiente |
 
 ## Tablero KBX (detalle interno)
 
@@ -77,4 +78,4 @@ Orden: T1→T5 hechos · **T6** (27→29) activo · luego T7 Deploy. Commits por
 - EcoTokens FUNCIONALES en v1 (ledger + engine idempotente, KBX-31): driver +8 / passenger +4 por viaje completado, +2 por rating, +10 racha semanal (5 viajes en la semana lun–dom del timezone de la universidad, una vez por semana vía unicidad de week-key ISO), cancelación tardía del driver −min(5, balance) clamped para que la suma del ledger = balance; niveles Bronce 0 / Plata 100 / Oro 500 / Platino 2000 sobre eco_lifetime; canje fuera de alcance; toggle gamification_enabled por universidad (default true, expuesto a mobile vía GET /me/eco); widget admin XP-por-carrera con datos reales (montos positivos de la semana actual)
 - Admin ops (KBX-13): `adoptionRate` = % usuarios activos / total (driver+passenger), documentado como `adoptionRateBasis: active_users_over_total`; export CSV/XLSX/PDF vía ClosedXML + QuestPDF (fallo → 500 problem+json)
 - Estático en v1: pagos, subida de docs, chat (solo email de soporte), feed de notificaciones mobile, canje de ECT
-- Planner v2.5: epic completo en 2 semanas; 7 tareas T1–T7 con Summary + AC; KBX-* = checklist interna (no 31 tarjetas)
+- Planner v2.5→v2.6: epic en 2 semanas; 7 tareas T1–T7; cada una con Título, Prioridad, Inicio/Vencimiento, Lista de comprobación (KBX+AC), Notas, Datos adjuntos; KBX-* = checklist interna (no 31 tarjetas); ancla D1=2026-07-06
