@@ -7,6 +7,7 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { RoleHomeRedirect } from './pages/RoleHomeRedirect'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 import { DashboardPage } from './pages/admin/DashboardPage'
+import { UsuariosPage } from './pages/admin/UsuariosPage'
 import { StatsPage } from './pages/super/StatsPage'
 import { UniversidadesPage } from './pages/super/UniversidadesPage'
 import { UniversidadDetallePage } from './pages/super/UniversidadDetallePage'
@@ -25,10 +26,7 @@ export default function App() {
           <Route element={<RequireAuth roles={['coordinador']} />}>
             <Route path="/admin" element={<AppShell />}>
               <Route index element={<DashboardPage />} />
-              <Route
-                path="usuarios"
-                element={<ComingSoonPage title="Gestión de Usuarios" description="Próximamente en KBX-17." />}
-              />
+              <Route path="usuarios" element={<UsuariosPage />} />
               <Route
                 path="reportes"
                 element={<ComingSoonPage title="Reportes de Viajes" description="Próximamente en KBX-18." />}

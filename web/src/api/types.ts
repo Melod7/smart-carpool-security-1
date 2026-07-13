@@ -147,3 +147,62 @@ export type AdminDashboard = {
   gamificationEnabled: boolean
   xpByCareerNote?: string | null
 }
+
+export type RegistrationRequest = {
+  id: string
+  name: string
+  email: string
+  role: string
+  career?: string | null
+  idNumber?: string | null
+  campusId: string
+  campusName?: string | null
+  vehicleJson?: string | null
+  status: string
+  createdAt: string
+}
+
+export type UsuarioAdmin = {
+  id: string
+  name: string
+  email: string
+  role: string
+  status: string
+  campusId?: string | null
+  career?: string | null
+  idNumber?: string | null
+  ratingAvg: number
+  createdAt: string
+}
+
+export type AdminUsersFilter = {
+  status?: string
+  role?: string
+  campus?: string
+  search?: string
+  page?: number
+  pageSize?: number
+}
+
+export type AdminUsersPage = {
+  items: UsuarioAdmin[]
+  total: number
+}
+
+export type PublicCampus = {
+  id: string
+  name: string
+}
+
+export type PublicUniversity = {
+  id: string
+  name: string
+  campuses: PublicCampus[]
+}
+
+export type VehicleJson = {
+  makeModel?: string
+  plate?: string
+  color?: string
+  seatsTotal?: number
+}
