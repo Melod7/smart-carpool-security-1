@@ -13,6 +13,7 @@ import type {
   ReportExportFormat,
   ReportExportResult,
   ReportPeriod,
+  TrackingActiveResponse,
   UsuarioAdmin,
 } from './types'
 
@@ -140,6 +141,11 @@ export const adminApi = {
 
   updateSettings: async (payload: AdminSettings) => {
     const { data } = await api.put<AdminSettings>('/admin/settings', payload)
+    return data
+  },
+
+  getActiveTracking: async () => {
+    const { data } = await api.get<TrackingActiveResponse>('/admin/tracking/active')
     return data
   },
 }

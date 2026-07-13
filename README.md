@@ -35,6 +35,8 @@ open http://localhost:8080/swagger
 # Web (otra terminal)
 cd web && npm install && npm run dev
 # → http://localhost:5173
+# Tracking en vivo (/admin/tracking) requiere VITE_GOOGLE_MAPS_API_KEY en web/.env
+# (ver web/.env.example). Sin clave, la lista de viajes sigue visible.
 
 # API contra Postgres local desde el host (no en Docker)
 # La connection string usa localhost:55432 (ver appsettings / .env)

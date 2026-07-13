@@ -293,3 +293,26 @@ export type AdminSettings = {
   notifyBlock: boolean
   notifyWeeklyReport: boolean
 }
+
+export type TrackingParticipantRole = 'driver' | 'passenger'
+
+export type TrackingParticipant = {
+  userId: string
+  role: TrackingParticipantRole | string
+  name?: string | null
+  lat: number
+  lng: number
+  recordedAt?: string | null
+  source: string
+}
+
+export type TrackingViajeDto = {
+  tripId: string
+  status: string
+  polyline: string | null
+  participants: TrackingParticipant[]
+}
+
+export type TrackingActiveResponse = {
+  trips: TrackingViajeDto[]
+}

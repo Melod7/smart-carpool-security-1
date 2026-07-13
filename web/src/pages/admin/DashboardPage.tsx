@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { adminApi } from '../../api/admin'
 import type { AdminDashboard, AlertaSosAdmin, XpPorCarrera } from '../../api/types'
 import {
@@ -159,7 +160,16 @@ function SosSection({
                     <div className="text-xs text-slate-500">{alert.student?.email}</div>
                   </td>
                   <td className="px-4 py-3 text-slate-700">
-                    {alert.trip ? alert.trip.originText : 'Sin viaje'}
+                    {alert.trip ? (
+                      <Link
+                        to={`/admin/tracking?tripId=${alert.trip.id}`}
+                        className="text-[var(--kubix-blue)] hover:underline"
+                      >
+                        {alert.trip.originText}
+                      </Link>
+                    ) : (
+                      'Sin viaje'
+                    )}
                   </td>
                   <td className="px-4 py-3 text-slate-700">{alert.driver?.name ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-700">
