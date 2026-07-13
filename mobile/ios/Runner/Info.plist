@@ -51,6 +51,9 @@
 	<string>Kubix necesita tu ubicación para enviar alertas SOS a seguridad del campus y para el seguimiento de viajes activos.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Kubix necesita tu ubicación para enviar alertas SOS a seguridad del campus y para el seguimiento de viajes activos.</string>
+	<!-- Google Maps: sustituir por tu clave o inyectar en el esquema Xcode. Misma que --dart-define=MAPS_API_KEY. -->
+	<key>GMSApiKey</key>
+	<string>$(MAPS_API_KEY)</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/models.dart';
 import '../../auth/auth_state.dart';
 import '../../theme/kubix_theme.dart';
+import '../map/open_trip_map.dart';
 import 'passenger_providers.dart';
 import 'trip_labels.dart';
 import 'widgets/rating_dialog.dart';
@@ -103,7 +104,13 @@ class _PaxTripsPageState extends ConsumerState<PaxTripsPage> {
                   if (upcoming.isEmpty)
                     const _EmptyHint('No tienes viajes próximos.')
                   else
-                    ...upcoming.map((t) => _TripTile(trip: t)),
+                    ...upcoming.map(
+                      (t) => _TripTile(
+                        trip: t,
+                        onOpenMap: () =>
+                            openTripMapFromMyTrip(context, ref, t),
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   _SectionTitle('Historial'),
                   if (history.isEmpty)
@@ -318,9 +325,10 @@ class _EmptyHint extends StatelessWidget {
 }
 
 class _TripTile extends StatelessWidget {
-  const _TripTile({required this.trip});
+  const _TripTile({required this.trip, this.onOpenMap});
 
   final MyTrip trip;
+  final VoidCallback? onOpenMap;
 
   @override
   Widget build(BuildContext context) {
@@ -357,6 +365,17 @@ class _TripTile extends StatelessWidget {
                 _Chip(TripLabels.formatCo2(trip.co2SavedKg)),
             ],
           ),
+          if (onOpenMap != null) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: onOpenMap,
+                icon: const Icon(Icons.map_outlined, size: 18),
+                label: const Text('Ver mapa'),
+              ),
+            ),
+          ],
         ],
       ),
     );

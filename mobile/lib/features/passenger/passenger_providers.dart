@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/models.dart';
 import '../../api/passenger_api.dart';
 import '../../auth/auth_state.dart';
+import '../map/trip_geometry_cache.dart';
 import 'trip_labels.dart';
 
 const pollInterval = Duration(seconds: 15);
@@ -21,7 +22,9 @@ void _schedulePoll(Ref ref, Duration interval) {
 final availableTripsProvider =
     FutureProvider.autoDispose<List<AvailableTrip>>((ref) async {
   _schedulePoll(ref, const Duration(seconds: 30));
-  return ref.watch(passengerApiProvider).getAvailableTrips();
+  final list = await ref.watch(passengerApiProvider).getAvailableTrips();
+  ref.read(tripGeometryCacheProvider.notifier).putAvailableList(list);
+  return list;
 });
 
 final myTripsProvider =

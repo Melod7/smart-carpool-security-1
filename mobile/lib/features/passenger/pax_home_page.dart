@@ -6,6 +6,8 @@ import '../../auth/auth_state.dart';
 import '../../theme/kubix_theme.dart';
 import '../sos/sos_button.dart';
 import '../sos/sos_overlay.dart';
+import '../map/open_trip_map.dart';
+import '../map/trip_geometry_cache.dart';
 import 'passenger_providers.dart';
 import 'trip_labels.dart';
 import 'widgets/eco_widget.dart';
@@ -69,7 +71,10 @@ class PaxHomePage extends ConsumerWidget {
                   icon: Icons.event_busy_outlined,
                 );
               }
-              return _NextTripCard(trip: next);
+              return _NextTripCard(
+                trip: next,
+                onOpenMap: () => openTripMapFromMyTrip(context, ref, next),
+              );
             },
             loading: () => const _LoadingCard(),
             error: (e, _) => _ErrorCard(message: e.toString()),
@@ -117,6 +122,13 @@ class PaxHomePage extends ConsumerWidget {
                     _AvailableTripTile(
                       trip: trip,
                       onRequest: () => _openRequestSheet(context, ref, trip),
+                      onMap: () => openTripMap(
+                        context,
+                        ref,
+                        tripId: trip.id,
+                        status: trip.status,
+                        available: trip,
+                      ),
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -250,6 +262,17 @@ class PaxHomePage extends ConsumerWidget {
                                     pickupLat: lat,
                                     pickupLng: lng,
                                   );
+                              ref
+                                  .read(tripGeometryCacheProvider.notifier)
+                                  .putAvailable(trip);
+                              ref
+                                  .read(tripGeometryCacheProvider.notifier)
+                                  .putPickup(
+                                    tripId: trip.id,
+                                    pickupLat: lat,
+                                    pickupLng: lng,
+                                    status: trip.status,
+                                  );
                               invalidatePassengerTrips(ref);
                               if (ctx.mounted) Navigator.pop(ctx);
                               if (context.mounted) {
@@ -294,9 +317,10 @@ class PaxHomePage extends ConsumerWidget {
 }
 
 class _NextTripCard extends StatelessWidget {
-  const _NextTripCard({required this.trip});
+  const _NextTripCard({required this.trip, required this.onOpenMap});
 
   final MyTrip trip;
+  final VoidCallback onOpenMap;
 
   @override
   Widget build(BuildContext context) {
@@ -350,6 +374,16 @@ class _NextTripCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: onOpenMap,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white70),
+            ),
+            icon: const Icon(Icons.map_outlined, size: 18),
+            label: const Text('Ver mapa'),
+          ),
         ],
       ),
     );
@@ -357,10 +391,15 @@ class _NextTripCard extends StatelessWidget {
 }
 
 class _AvailableTripTile extends StatelessWidget {
-  const _AvailableTripTile({required this.trip, required this.onRequest});
+  const _AvailableTripTile({
+    required this.trip,
+    required this.onRequest,
+    required this.onMap,
+  });
 
   final AvailableTrip trip;
   final VoidCallback onRequest;
+  final VoidCallback onMap;
 
   @override
   Widget build(BuildContext context) {
@@ -410,7 +449,12 @@ class _AvailableTripTile extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
+              IconButton(
+                onPressed: onMap,
+                tooltip: 'Ver mapa',
+                icon: const Icon(Icons.map_outlined, color: KubixColors.utnBlue),
+              ),
               FilledButton(
                 onPressed: onRequest,
                 style: FilledButton.styleFrom(

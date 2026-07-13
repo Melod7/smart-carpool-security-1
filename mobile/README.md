@@ -134,3 +134,17 @@ cd ios && pod install --repo-update && cd ..
 - Sin `-d`, Flutter puede elegir un iPhone físico y fallar si el firmado no está configurado. Preferir `flutter devices` y luego un `-d` explícito.
 - `127.0.0.1` en un teléfono físico es el propio teléfono, no tu Mac.
 - CocoaPods es obligatorio para builds de plugins iOS/macOS; Chrome/web no lo necesita.
+
+## Google Maps (`MAPS_API_KEY`)
+
+La pantalla de mapa de viaje (KBX-26) usa `google_maps_flutter`. Pasa la clave en el run:
+
+```bash
+flutter run -d <device-id> \
+  --dart-define=API_URL=http://127.0.0.1:8080 \
+  --dart-define=MAPS_API_KEY=AIza...
+```
+
+- **Android:** `build.gradle.kts` inyecta `MAPS_API_KEY` desde dart-define (o env / `-PMAPS_API_KEY=`) en el `AndroidManifest`.
+- **iOS:** define `MAPS_API_KEY` en el esquema Xcode / `xcconfig` para que `Info.plist` (`GMSApiKey`) y `AppDelegate` la reciban. Restringe la clave por bundle id.
+- Sin clave, la app arranca pero el mapa muestra un aviso y el tile nativo fallará.

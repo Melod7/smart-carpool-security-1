@@ -619,6 +619,159 @@ class SosAlert {
   }
 }
 
+/// Ping de ubicación (POST /trips/{id}/pings).
+class LocationPing {
+  const LocationPing({
+    required this.id,
+    required this.tripId,
+    required this.userId,
+    required this.lat,
+    required this.lng,
+    required this.recordedAt,
+  });
+
+  final String id;
+  final String tripId;
+  final String userId;
+  final double lat;
+  final double lng;
+  final DateTime recordedAt;
+
+  factory LocationPing.fromJson(Map<String, dynamic> json) {
+    return LocationPing(
+      id: json['id'] as String,
+      tripId: json['tripId'] as String,
+      userId: json['userId'] as String,
+      lat: _asDouble(json['lat']),
+      lng: _asDouble(json['lng']),
+      recordedAt: _asDateTime(json['recordedAt']),
+    );
+  }
+}
+
+/// Participante visible en GET /trips/{id}/tracking.
+class TrackingParticipant {
+  const TrackingParticipant({
+    required this.userId,
+    required this.role,
+    required this.lat,
+    required this.lng,
+    required this.source,
+    this.name,
+    this.recordedAt,
+  });
+
+  final String userId;
+  final String role;
+  final String? name;
+  final double lat;
+  final double lng;
+  final DateTime? recordedAt;
+
+  /// `ping` | `pickup`
+  final String source;
+
+  bool get isDriver => role == 'driver';
+  bool get isPickup => source == 'pickup';
+
+  factory TrackingParticipant.fromJson(Map<String, dynamic> json) {
+    return TrackingParticipant(
+      userId: json['userId'] as String,
+      role: json['role'] as String? ?? 'passenger',
+      name: json['name'] as String?,
+      lat: _asDouble(json['lat']),
+      lng: _asDouble(json['lng']),
+      recordedAt: json['recordedAt'] == null
+          ? null
+          : _asDateTime(json['recordedAt']),
+      source: json['source'] as String? ?? 'ping',
+    );
+  }
+}
+
+/// Estado de tracking (GET /trips/{id}/tracking) — solo trips `in_progress`.
+class TripTracking {
+  const TripTracking({
+    required this.tripId,
+    required this.status,
+    required this.participants,
+    this.polyline,
+  });
+
+  final String tripId;
+  final String status;
+  final String? polyline;
+  final List<TrackingParticipant> participants;
+
+  bool get isActive => status == 'in_progress';
+  bool get isTerminal => status == 'completed' || status == 'cancelled';
+
+  factory TripTracking.fromJson(Map<String, dynamic> json) {
+    final raw = json['participants'] as List<dynamic>? ?? const [];
+    return TripTracking(
+      tripId: json['tripId'] as String,
+      status: json['status'] as String? ?? 'in_progress',
+      polyline: json['polyline'] as String?,
+      participants: raw
+          .map((e) => TrackingParticipant.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+/// Semilla de geometría para mapa scheduled (sin pings aún).
+class TripMapSeed {
+  const TripMapSeed({
+    required this.tripId,
+    required this.status,
+    this.polyline,
+    this.originLat,
+    this.originLng,
+    this.pickupLat,
+    this.pickupLng,
+  });
+
+  final String tripId;
+  final String status;
+  final String? polyline;
+  final double? originLat;
+  final double? originLng;
+  final double? pickupLat;
+  final double? pickupLng;
+
+  bool get hasOrigin => originLat != null && originLng != null;
+  bool get hasPickup => pickupLat != null && pickupLng != null;
+
+  TripMapSeed copyWith({
+    String? status,
+    String? polyline,
+    double? originLat,
+    double? originLng,
+    double? pickupLat,
+    double? pickupLng,
+  }) {
+    return TripMapSeed(
+      tripId: tripId,
+      status: status ?? this.status,
+      polyline: polyline ?? this.polyline,
+      originLat: originLat ?? this.originLat,
+      originLng: originLng ?? this.originLng,
+      pickupLat: pickupLat ?? this.pickupLat,
+      pickupLng: pickupLng ?? this.pickupLng,
+    );
+  }
+
+  factory TripMapSeed.fromAvailableTrip(AvailableTrip trip) {
+    return TripMapSeed(
+      tripId: trip.id,
+      status: trip.status,
+      polyline: trip.polyline,
+      originLat: trip.originLat,
+      originLng: trip.originLng,
+    );
+  }
+}
+
 /// Vehículo del conductor (GET/PUT /me/vehicle).
 class Vehicle {
   const Vehicle({

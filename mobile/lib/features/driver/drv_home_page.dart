@@ -7,6 +7,8 @@ import '../../theme/kubix_theme.dart';
 import '../passenger/trip_labels.dart';
 import '../sos/sos_button.dart';
 import '../sos/sos_overlay.dart';
+import '../map/open_trip_map.dart';
+import '../map/trip_geometry_cache.dart';
 import 'driver_providers.dart';
 
 class DrvHomePage extends ConsumerWidget {
@@ -70,6 +72,7 @@ class DrvHomePage extends ConsumerWidget {
                 trip: active,
                 onStart: () => _start(context, ref, active),
                 onComplete: () => _complete(context, ref, active),
+                onOpenMap: () => openTripMapFromMyTrip(context, ref, active),
               );
             },
             loading: () => const _LoadingCard(),
@@ -107,7 +110,8 @@ class DrvHomePage extends ConsumerWidget {
     MyTrip trip,
   ) async {
     try {
-      await ref.read(driverApiProvider).startTrip(trip.id);
+      final started = await ref.read(driverApiProvider).startTrip(trip.id);
+      ref.read(tripGeometryCacheProvider.notifier).putAvailable(started);
       invalidateDriverTrips(ref);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -149,7 +153,8 @@ class DrvHomePage extends ConsumerWidget {
     );
     if (confirm != true) return;
     try {
-      await ref.read(driverApiProvider).completeTrip(trip.id);
+      final completed = await ref.read(driverApiProvider).completeTrip(trip.id);
+      ref.read(tripGeometryCacheProvider.notifier).putAvailable(completed);
       invalidateDriverTrips(ref);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -171,11 +176,13 @@ class _ActiveRouteCard extends StatelessWidget {
     required this.trip,
     required this.onStart,
     required this.onComplete,
+    required this.onOpenMap,
   });
 
   final MyTrip trip;
   final VoidCallback onStart;
   final VoidCallback onComplete;
+  final VoidCallback onOpenMap;
 
   @override
   Widget build(BuildContext context) {
@@ -231,6 +238,16 @@ class _ActiveRouteCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: onOpenMap,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white70),
+            ),
+            icon: const Icon(Icons.map_outlined, size: 18),
+            label: const Text('Ver mapa'),
+          ),
+          const SizedBox(height: 8),
           if (trip.status == 'scheduled')
             FilledButton(
               onPressed: onStart,
@@ -389,6 +406,11 @@ class _RequestsSection extends ConsumerWidget {
       final api = ref.read(driverApiProvider);
       if (accept) {
         await api.acceptRequest(request.id);
+        ref.read(tripGeometryCacheProvider.notifier).putPickup(
+              tripId: tripId,
+              pickupLat: request.pickupLat,
+              pickupLng: request.pickupLng,
+            );
       } else {
         await api.rejectRequest(request.id);
       }

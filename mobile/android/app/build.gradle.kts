@@ -4,6 +4,19 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+fun dartDefinesMap(): Map<String, String> {
+    val raw = project.findProperty("dart-defines") as? String ?: return emptyMap()
+    return raw.split(",")
+        .mapNotNull { entry ->
+            if (entry.isBlank()) return@mapNotNull null
+            val decoded = String(java.util.Base64.getDecoder().decode(entry))
+            val idx = decoded.indexOf('=')
+            if (idx <= 0) return@mapNotNull null
+            decoded.substring(0, idx) to decoded.substring(idx + 1)
+        }
+        .toMap()
+}
+
 android {
     namespace = "com.example.kubix_mobile"
     compileSdk = flutter.compileSdkVersion
@@ -23,6 +36,14 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        val fromDart = dartDefinesMap()["MAPS_API_KEY"]
+        val fromEnv = System.getenv("MAPS_API_KEY")
+        val fromProps = (project.findProperty("MAPS_API_KEY") as? String)?.trim()
+        val mapsApiKey = listOf(fromDart, fromEnv, fromProps)
+            .firstOrNull { !it.isNullOrBlank() }
+            ?: ""
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {

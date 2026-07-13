@@ -12,7 +12,7 @@ Plan: [PLAN.md](PLAN.md) (v2.5 — epic en **2 semanas**, **7 tareas** Planner T
 | Rediseño Plan v2–v2.4 | Hecho |
 | Plan v2.5 (Planner: 2 semanas, 7 tareas T1–T7 + Summary/AC) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | **T5 Mobile** en curso — KBX-22–25 hechos; siguiente KBX-26 |
+| Implementación | **T5 Mobile** hecho (KBX-22–26); siguiente **T6 / KBX-27** |
 
 ## Planner (7 tareas · 2 semanas totales)
 
@@ -22,8 +22,8 @@ Plan: [PLAN.md](PLAN.md) (v2.5 — epic en **2 semanas**, **7 tareas** Planner T
 | **T2** Backend dominio | D2–D5 | 5–10 | hecho |
 | **T3** Backend ops + Eco | D5–D7 | 31, 11–13 | hecho |
 | **T4** Web admin | D6–D10 | 14–21 | hecho |
-| **T5** Mobile | D8–D12 | 22–26 | **en curso** (22–25 hechos) |
-| **T6** QA | D10–D13 | 27–29 | pendiente |
+| **T5** Mobile | D8–D12 | 22–26 | **hecho** |
+| **T6** QA | D10–D13 | 27–29 | **siguiente** |
 | **T7** Deploy | D12–D14 | 30 | pendiente |
 
 ## Tablero KBX (detalle interno)
@@ -55,14 +55,14 @@ Plan: [PLAN.md](PLAN.md) (v2.5 — epic en **2 semanas**, **7 tareas** Planner T
 | KBX-23 | Mobile: flujos de pasajero | hecho |
 | KBX-24 | Mobile: flujos de conductor | hecho |
 | KBX-25 | Mobile: flujo SOS | hecho |
-| KBX-26 | Mobile: mapa de viaje en vivo y pings | pendiente |
-| KBX-27 | QA: suites unitarias y umbrales de cobertura | pendiente |
+| KBX-26 | Mobile: mapa de viaje en vivo y pings | hecho |
+| KBX-27 | QA: suites unitarias y umbrales de cobertura | **siguiente** |
 | KBX-28 | QA: colección Postman, pruebas de carga y plan JMeter | pendiente |
 | KBX-29 | QA: Selenium, TestLink, SonarCloud, MantisBT, SAST | pendiente |
 | KBX-30 | Despliegue: infraestructura AWS y CI/CD | pendiente |
 | KBX-31 | Motor EcoTokens y API | hecho |
 
-Orden: T1→T4 hechos · **T5** (22→26) activo · luego T6 QA · T7 Deploy. Commits por KBX-* interno; tarea Planner se cierra al completar su checklist.
+Orden: T1→T5 hechos · **T6** (27→29) activo · luego T7 Deploy. Commits por KBX-* interno; tarea Planner se cierra al completar su checklist.
 
 ## Log de decisiones clave
 

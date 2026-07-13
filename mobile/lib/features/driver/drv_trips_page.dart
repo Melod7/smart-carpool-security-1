@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/models.dart';
 import '../../theme/kubix_theme.dart';
+import '../map/open_trip_map.dart';
 import '../passenger/trip_labels.dart';
 import 'driver_providers.dart';
 
@@ -79,7 +80,13 @@ class _DrvTripsPageState extends ConsumerState<DrvTripsPage> {
                   if (upcoming.isEmpty)
                     const _EmptyHint('No tienes rutas programadas.')
                   else
-                    ...upcoming.map((t) => _TripTile(trip: t)),
+                    ...upcoming.map(
+                      (t) => _TripTile(
+                        trip: t,
+                        onOpenMap: () =>
+                            openTripMapFromMyTrip(context, ref, t),
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   _SectionTitle('Historial'),
                   if (history.isEmpty)
@@ -236,9 +243,10 @@ class _EmptyHint extends StatelessWidget {
 }
 
 class _TripTile extends StatelessWidget {
-  const _TripTile({required this.trip});
+  const _TripTile({required this.trip, this.onOpenMap});
 
   final MyTrip trip;
+  final VoidCallback? onOpenMap;
 
   @override
   Widget build(BuildContext context) {
@@ -274,6 +282,17 @@ class _TripTile extends StatelessWidget {
               if (trip.distanceKm > 0) _Chip(TripLabels.formatKm(trip.distanceKm)),
             ],
           ),
+          if (onOpenMap != null) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: onOpenMap,
+                icon: const Icon(Icons.map_outlined, size: 18),
+                label: const Text('Ver mapa'),
+              ),
+            ),
+          ],
         ],
       ),
     );

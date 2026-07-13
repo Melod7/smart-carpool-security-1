@@ -7,6 +7,8 @@ import '../features/auth/change_password_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/pending_page.dart';
 import '../features/auth/register_wizard_page.dart';
+import '../features/map/trip_map_page.dart';
+import '../api/models.dart';
 import '../features/shell/driver_shell.dart';
 import '../features/shell/passenger_shell.dart';
 
@@ -69,10 +71,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return homeForRole(user.role);
       }
 
-      if (loc == '/driver' && !user.isDriver) {
+      if (loc.startsWith('/driver') && !user.isDriver) {
         return homeForRole(user.role);
       }
-      if (loc == '/passenger' && !user.isPassenger) {
+      if (loc.startsWith('/passenger') && !user.isPassenger) {
         return homeForRole(user.role);
       }
 
@@ -110,6 +112,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/driver',
         builder: (_, __) => const DriverShell(),
+      ),
+      GoRoute(
+        path: '/trips/:tripId/map',
+        builder: (context, state) {
+          final tripId = state.pathParameters['tripId']!;
+          final extra = state.extra;
+          final seed = extra is TripMapSeed ? extra : null;
+          return TripMapPage(tripId: tripId, seed: seed);
+        },
       ),
     ],
   );

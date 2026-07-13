@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../api/models.dart';
 import '../../../auth/auth_state.dart';
 import '../../../theme/kubix_theme.dart';
+import '../../map/trip_geometry_cache.dart';
 import '../../passenger/trip_labels.dart';
 import '../driver_providers.dart';
 
@@ -265,14 +266,18 @@ Future<bool> showPublishModal(BuildContext context, WidgetRef ref) async {
                               error = null;
                             });
                             try {
-                              await ref.read(driverApiProvider).publishTrip(
-                                    originText: originCtrl.text.trim(),
-                                    originLat: lat,
-                                    originLng: lng,
-                                    destinationCampusId: campusId!,
-                                    departureAt: departureAt,
-                                    seatsAvailable: seats!,
-                                  );
+                              final publishedTrip =
+                                  await ref.read(driverApiProvider).publishTrip(
+                                        originText: originCtrl.text.trim(),
+                                        originLat: lat,
+                                        originLng: lng,
+                                        destinationCampusId: campusId!,
+                                        departureAt: departureAt,
+                                        seatsAvailable: seats!,
+                                      );
+                              ref
+                                  .read(tripGeometryCacheProvider.notifier)
+                                  .putAvailable(publishedTrip);
                               invalidateDriverTrips(ref);
                               published = true;
                               if (ctx.mounted) Navigator.pop(ctx);
