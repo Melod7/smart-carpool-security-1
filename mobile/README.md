@@ -2,7 +2,7 @@
 
 App Flutter para conductores y pasajeros.
 
-La Fase 1 solo entrega el shell de la app + cableado de API URL. Las pantallas completas empiezan en KBX-22.
+La Fase 1 entregó el shell + `API_URL`. **KBX-22+** (bucket B5): auth, registro y shells por rol.
 
 ## Requisitos previos
 
