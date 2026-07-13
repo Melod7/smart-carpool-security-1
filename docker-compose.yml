@@ -33,6 +33,7 @@ services:
       Database__SeedOnStartup: ${SEED_ON_STARTUP:-true}
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-superadmin@kubix.local}
       SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-ChangeMe123!}
+      GoogleMaps__ApiKey: ${GOOGLE_MAPS_API_KEY:-}
       Swagger__Enabled: "true"
     ports:
       - "${API_PORT:-8080}:8080"
