@@ -237,7 +237,7 @@ public class PruebasViajes
             .Build();
 
         var sembrador = new SembradorBaseDatos(db, config, NullLogger<SembradorBaseDatos>.Instance);
-        await sembrador.SembrarAsync();
+        await sembrador.SembrarDemoAsync();
         return db;
     }
 

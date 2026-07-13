@@ -84,11 +84,13 @@ Si no aparece emulador/simulador: `flutter emulators` / `flutter emulators --lau
 
 Notas iOS: el deployment target mínimo es **14.0**; los dispositivos físicos necesitan un Development Team en Xcode; CocoaPods es obligatorio (`brew install cocoapods`).
 
-## Credenciales locales por defecto (desde KBX-2)
+## Credenciales locales por defecto
 
-Definidas en `.env.example` — seedeadas tras el ticket de schema:
+El seed de arranque (`SEED_ON_STARTUP=true`) **solo** crea el super admin (sin universidades ni usuarios demo):
 
-- Super admin: `superadmin@kubix.local` / `ChangeMe123!`
+- Super admin: `superadmin@kubix.local` / `ChangeMe123!` (configurable vía `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD`)
+
+El resto (universidades, campuses, coordinadores, drivers/passengers) se crea por API.
 
 ## Alcance de la Fase 1 (KBX-1 → KBX-3)
 
@@ -104,15 +106,13 @@ docker compose up -d postgres
 cd backend && dotnet run --project src/Kubix.Api
 ```
 
-Cuentas seed (password `ChangeMe123!` salvo que cambies env): `superadmin@kubix.local`, `coordinador@utn.local`, `driver1@utn.local`, `pax1@utn.local`.
-
 ### Auth (KBX-3)
 
 En Swagger (`http://localhost:8080/swagger`) o curl:
 
 ```bash
 curl -s http://localhost:8080/auth/login -H 'Content-Type: application/json' \
-  -d '{"email":"driver1@utn.local","password":"ChangeMe123!"}'
+  -d '{"email":"superadmin@kubix.local","password":"ChangeMe123!"}'
 ```
 
 Endpoints: `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `POST /auth/change-password`, `GET /me` (Bearer JWT).

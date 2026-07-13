@@ -15,11 +15,14 @@ public sealed class SembradorBaseDatos(
 {
     public const string ContrasenaPorDefecto = "ChangeMe123!";
 
+    /// <summary>
+    /// Seed de arranque: solo crea el super_admin si aún no existe.
+    /// </summary>
     public async Task SembrarAsync(CancellationToken ct = default)
     {
         if (await db.Usuarios.AnyAsync(u => u.Rol == RolUsuario.SuperAdministrador, ct))
         {
-            logger.LogInformation("Seed omitido: ya existen datos (super_admin presente)");
+            logger.LogInformation("Seed omitido: ya existe super_admin");
             return;
         }
 
@@ -29,6 +32,38 @@ public sealed class SembradorBaseDatos(
         var emailSuper = configuration["SUPER_ADMIN_EMAIL"]
             ?? configuration["Seed:SuperAdminEmail"]
             ?? "superadmin@kubix.local";
+        var hash = BCrypt.Net.BCrypt.HashPassword(contrasena);
+
+        var superAdmin = NuevoUsuario(
+            null,
+            null,
+            RolUsuario.SuperAdministrador,
+            "Super Admin Kubix",
+            emailSuper,
+            hash);
+
+        db.Usuarios.Add(superAdmin);
+        await db.SaveChangesAsync(ct);
+
+        logger.LogInformation("Seed completado: solo super_admin ({Correo})", emailSuper);
+    }
+
+    /// <summary>
+    /// Fixture demo para tests de integración. No se ejecuta al arrancar la API.
+    /// </summary>
+    public async Task SembrarDemoAsync(CancellationToken ct = default)
+    {
+        await SembrarAsync(ct);
+
+        if (await db.Universidades.AnyAsync(ct))
+        {
+            logger.LogInformation("Seed demo omitido: ya existen universidades");
+            return;
+        }
+
+        var contrasena = configuration["SUPER_ADMIN_PASSWORD"]
+            ?? configuration["Seed:SuperAdminPassword"]
+            ?? ContrasenaPorDefecto;
         var hash = BCrypt.Net.BCrypt.HashPassword(contrasena);
 
         var ahora = DateTimeOffset.UtcNow;
@@ -50,7 +85,7 @@ public sealed class SembradorBaseDatos(
 
         var coordUtn = NuevoUsuario(utn.Id, null, RolUsuario.Coordinador, "Ana Coordinadora UTN", "coordinador@utn.local", hash, debeCambiar: true);
         var coordPuce = NuevoUsuario(pue.Id, null, RolUsuario.Coordinador, "Luis Coordinador PUCE", "coordinador@puce.local", hash, debeCambiar: true);
-        var superAdmin = NuevoUsuario(null, null, RolUsuario.SuperAdministrador, "Super Admin Kubix", emailSuper, hash);
+        var superAdmin = await db.Usuarios.SingleAsync(u => u.Rol == RolUsuario.SuperAdministrador, ct);
 
         var conductoresUtn = new[]
         {
@@ -129,7 +164,6 @@ public sealed class SembradorBaseDatos(
             Eco(pue.Id, pasajerosPuce[0].Id, TipoTransaccionEcoToken.ViajeCompletadoPasajero, 4, viajePuceCompletado.Id.ToString(), inicioSemana.AddDays(1).AddHours(9)),
         };
 
-        // Ajustar balances a la suma del ledger seedeado
         conductoresUtn[0].BalanceEco = 8 + 8 + 10;
         conductoresUtn[0].EcoVitalicio = conductoresUtn[0].BalanceEco;
         conductoresUtn[1].BalanceEco = 8;
@@ -252,7 +286,6 @@ public sealed class SembradorBaseDatos(
         db.Universidades.AddRange(utn, pue);
         db.Sedes.AddRange(utnIbarra, utnOtavalo, pueCentro, pueCumbaya);
         db.ConfiguracionesUniversidad.AddRange(configuraciones);
-        db.Usuarios.Add(superAdmin);
         db.Usuarios.AddRange(coordUtn, coordPuce);
         db.Usuarios.AddRange(conductoresUtn);
         db.Usuarios.AddRange(pasajerosUtn);
@@ -272,8 +305,7 @@ public sealed class SembradorBaseDatos(
 
         await db.SaveChangesAsync(ct);
         logger.LogInformation(
-            "Seed KBX-2 completado: super={Correo}, universidades=2, usuarios={Usuarios}",
-            emailSuper,
+            "Seed demo completado: universidades=2, usuarios={Usuarios}",
             await db.Usuarios.CountAsync(ct));
     }
 

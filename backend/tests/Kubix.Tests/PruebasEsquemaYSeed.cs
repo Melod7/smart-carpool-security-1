@@ -25,20 +25,32 @@ public class PruebasEsquemaYSeed
     }
 
     [Fact]
-    public async Task Seed_es_idempotente_y_llena_university_id_en_tablas_hijas()
+    public async Task Seed_arranque_solo_crea_super_admin_e_idempotente()
     {
         await using var db = CrearDb();
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["SUPER_ADMIN_EMAIL"] = "superadmin@kubix.local",
-                ["SUPER_ADMIN_PASSWORD"] = SembradorBaseDatos.ContrasenaPorDefecto
-            })
-            .Build();
+        var sembrador = CrearSembrador(db);
 
-        var sembrador = new SembradorBaseDatos(db, config, NullLogger<SembradorBaseDatos>.Instance);
         await sembrador.SembrarAsync();
         await sembrador.SembrarAsync();
+
+        Assert.Equal(1, await db.Usuarios.CountAsync());
+        Assert.Equal(1, await db.Usuarios.CountAsync(u => u.Rol == RolUsuario.SuperAdministrador));
+        Assert.Equal(0, await db.Universidades.CountAsync());
+        Assert.Equal(0, await db.Sedes.CountAsync());
+
+        var super = await db.Usuarios.SingleAsync(u => u.Rol == RolUsuario.SuperAdministrador);
+        Assert.Equal("superadmin@kubix.local", super.Correo);
+        Assert.True(BCrypt.Net.BCrypt.Verify(SembradorBaseDatos.ContrasenaPorDefecto, super.HashContrasena));
+    }
+
+    [Fact]
+    public async Task Seed_demo_es_idempotente_y_llena_university_id_en_tablas_hijas()
+    {
+        await using var db = CrearDb();
+        var sembrador = CrearSembrador(db);
+
+        await sembrador.SembrarDemoAsync();
+        await sembrador.SembrarDemoAsync();
 
         Assert.Equal(1, await db.Usuarios.CountAsync(u => u.Rol == RolUsuario.SuperAdministrador));
         Assert.Equal(2, await db.Universidades.CountAsync());
@@ -60,6 +72,19 @@ public class PruebasEsquemaYSeed
             .Distinct()
             .CountAsync();
         Assert.Equal(await db.TransaccionesEcoToken.CountAsync(), paresUnicos);
+    }
+
+    private static SembradorBaseDatos CrearSembrador(ContextoApp db)
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["SUPER_ADMIN_EMAIL"] = "superadmin@kubix.local",
+                ["SUPER_ADMIN_PASSWORD"] = SembradorBaseDatos.ContrasenaPorDefecto
+            })
+            .Build();
+
+        return new SembradorBaseDatos(db, config, NullLogger<SembradorBaseDatos>.Instance);
     }
 
     private static ContextoApp CrearDb()
