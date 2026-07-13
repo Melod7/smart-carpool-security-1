@@ -1,13 +1,33 @@
 using System.Security.Claims;
 using Kubix.Application.Auth;
+using Kubix.Application.Usuarios;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Kubix.Api.Controladores;
 
 [ApiController]
 [Route("auth")]
-public sealed class ControladorAuth(IServicioAutenticacion autenticacion) : ControllerBase
+public sealed class ControladorAuth(
+    IServicioAutenticacion autenticacion,
+    IServicioRegistroUsuarios registro) : ControllerBase
 {
+    [HttpPost("register")]
+    [ProducesResponseType(typeof(RespuestaRegistroDto), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> Register([FromBody] SolicitudRegistroDto solicitud, CancellationToken ct)
+    {
+        try
+        {
+            var respuesta = await registro.RegistrarAsync(solicitud, ct);
+            return Accepted(respuesta);
+        }
+        catch (ExcepcionRegistroUsuarios ex)
+        {
+            return ProblemRegistro(ex);
+        }
+    }
+
     [HttpPost("login")]
     [ProducesResponseType(typeof(RespuestaAutenticacion), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
@@ -97,6 +117,14 @@ public sealed class ControladorAuth(IServicioAutenticacion autenticacion) : Cont
     }
 
     private ObjectResult ProblemFrom(ExcepcionAutenticacion ex) =>
+        Problem(
+            detail: ex.Message,
+            statusCode: ex.CodigoEstado,
+            title: ex.Titulo,
+            type: $"https://httpstatuses.com/{ex.CodigoEstado}",
+            extensions: new Dictionary<string, object?> { ["code"] = ex.Codigo });
+
+    private ObjectResult ProblemRegistro(ExcepcionRegistroUsuarios ex) =>
         Problem(
             detail: ex.Message,
             statusCode: ex.CodigoEstado,

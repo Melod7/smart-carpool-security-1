@@ -5,6 +5,7 @@ using Kubix.Infrastructure.Persistence;
 using Kubix.Infrastructure.Seeding;
 using Kubix.Infrastructure.SuperAdmin;
 using Kubix.Infrastructure.Tenancy;
+using Kubix.Infrastructure.Usuarios;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -49,6 +50,7 @@ try
     builder.Services.AgregarServiciosAuth(builder.Configuration);
     builder.Services.AgregarTenancy();
     builder.Services.AgregarSuperAdmin();
+    builder.Services.AgregarRegistroUsuarios();
 
     var jwt = builder.Configuration.GetSection(OpcionesJwt.Seccion).Get<OpcionesJwt>() ?? new OpcionesJwt();
     builder.Services
