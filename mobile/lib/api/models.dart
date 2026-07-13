@@ -572,3 +572,30 @@ class RatingResult {
     );
   }
 }
+
+/// Vehículo del conductor (GET/PUT /me/vehicle).
+class Vehicle {
+  const Vehicle({
+    required this.id,
+    required this.makeModel,
+    required this.plate,
+    required this.color,
+    required this.seatsTotal,
+  });
+
+  final String id;
+  final String makeModel;
+  final String plate;
+  final String color;
+  final int seatsTotal;
+
+  factory Vehicle.fromJson(Map<String, dynamic> json) {
+    return Vehicle(
+      id: json['id'] as String,
+      makeModel: json['makeModel'] as String? ?? '',
+      plate: json['plate'] as String? ?? '',
+      color: json['color'] as String? ?? '',
+      seatsTotal: json['seatsTotal'] as int? ?? 4,
+    );
+  }
+}

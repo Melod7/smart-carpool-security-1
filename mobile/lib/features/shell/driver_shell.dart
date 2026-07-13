@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/auth_state.dart';
-import '../../theme/kubix_theme.dart';
+import '../driver/drv_help_page.dart';
+import '../driver/drv_home_page.dart';
+import '../driver/drv_profile_page.dart';
+import '../driver/drv_trips_page.dart';
+import '../driver/widgets/publish_modal.dart';
 
 class DriverShell extends ConsumerStatefulWidget {
   const DriverShell({super.key});
@@ -18,8 +22,6 @@ class _DriverShellState extends ConsumerState<DriverShell> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authProvider).user;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_index]),
@@ -34,30 +36,20 @@ class _DriverShellState extends ConsumerState<DriverShell> {
       ),
       body: IndexedStack(
         index: _index,
-        children: [
-          _PlaceholderTab(
-            title: 'Inicio',
-            subtitle:
-                'Hola ${user?.name ?? ''}. Aquí gestionarás tu ruta activa (KBX-24).',
-          ),
-          const _PlaceholderTab(
-            title: 'Mis Viajes',
-            subtitle: 'Histororial y estadísticas — próximamente en KBX-24.',
-          ),
-          _PlaceholderTab(
-            title: 'Perfil',
-            subtitle: user?.email ?? '',
-            child: FilledButton(
-              onPressed: () => ref.read(authProvider.notifier).logout(),
-              child: const Text('Cerrar sesión'),
-            ),
-          ),
-          const _PlaceholderTab(
-            title: 'Ayuda',
-            subtitle: 'FAQ y correo de soporte — próximamente en KBX-24.',
-          ),
+        children: const [
+          DrvHomePage(),
+          DrvTripsPage(),
+          DrvProfilePage(),
+          DrvHelpPage(),
         ],
       ),
+      floatingActionButton: _index == 0
+          ? FloatingActionButton(
+              tooltip: 'Publicar ruta',
+              onPressed: () => showPublishModal(context, ref),
+              child: const Icon(Icons.add),
+            )
+          : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
@@ -82,44 +74,6 @@ class _DriverShellState extends ConsumerState<DriverShell> {
             selectedIcon: Icon(Icons.help),
             label: 'Ayuda',
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({
-    required this.title,
-    required this.subtitle,
-    this.child,
-  });
-
-  final String title;
-  final String subtitle;
-  final Widget? child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: KubixColors.utnBlue,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(subtitle, style: const TextStyle(color: KubixColors.muted)),
-          if (child != null) ...[
-            const SizedBox(height: 24),
-            child!,
-          ],
         ],
       ),
     );

@@ -12,7 +12,7 @@ Plan: [PLAN.md](PLAN.md) (v2.5 — epic en **2 semanas**, **7 tareas** Planner T
 | Rediseño Plan v2–v2.4 | Hecho |
 | Plan v2.5 (Planner: 2 semanas, 7 tareas T1–T7 + Summary/AC) | Hecho |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | **T5 Mobile** en curso — KBX-22–23 hechos; siguiente KBX-24 |
+| Implementación | **T5 Mobile** en curso — KBX-22–24 hechos; siguiente KBX-25 |
 
 ## Planner (7 tareas · 2 semanas totales)
 
@@ -22,7 +22,7 @@ Plan: [PLAN.md](PLAN.md) (v2.5 — epic en **2 semanas**, **7 tareas** Planner T
 | **T2** Backend dominio | D2–D5 | 5–10 | hecho |
 | **T3** Backend ops + Eco | D5–D7 | 31, 11–13 | hecho |
 | **T4** Web admin | D6–D10 | 14–21 | hecho |
-| **T5** Mobile | D8–D12 | 22–26 | **en curso** (22–23 hechos) |
+| **T5** Mobile | D8–D12 | 22–26 | **en curso** (22–24 hechos) |
 | **T6** QA | D10–D13 | 27–29 | pendiente |
 | **T7** Deploy | D12–D14 | 30 | pendiente |
 
@@ -53,7 +53,7 @@ Plan: [PLAN.md](PLAN.md) (v2.5 — epic en **2 semanas**, **7 tareas** Planner T
 | KBX-21 | Web: mapa de tracking en vivo | hecho |
 | KBX-22 | Scaffolding mobile, auth y registro | hecho |
 | KBX-23 | Mobile: flujos de pasajero | hecho |
-| KBX-24 | Mobile: flujos de conductor | pendiente |
+| KBX-24 | Mobile: flujos de conductor | hecho |
 | KBX-25 | Mobile: flujo SOS | pendiente |
 | KBX-26 | Mobile: mapa de viaje en vivo y pings | pendiente |
 | KBX-27 | QA: suites unitarias y umbrales de cobertura | pendiente |

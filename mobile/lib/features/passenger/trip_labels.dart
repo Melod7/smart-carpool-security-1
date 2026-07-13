@@ -76,4 +76,36 @@ abstract final class TripLabels {
           (t.requestStatus == 'pending' || t.requestStatus == 'accepted'),
     );
   }
+
+  /// Ruta activa del conductor: prioriza `in_progress`, luego el próximo `scheduled`.
+  static MyTrip? activeDriverTrip(List<MyTrip> trips) {
+    final active = trips.where((t) => t.isUpcoming).toList()
+      ..sort((a, b) {
+        if (a.status == 'in_progress' && b.status != 'in_progress') return -1;
+        if (b.status == 'in_progress' && a.status != 'in_progress') return 1;
+        return a.departureAt.compareTo(b.departureAt);
+      });
+    return active.isEmpty ? null : active.first;
+  }
+
+  static bool hasDriverActiveTrip(List<MyTrip> trips) =>
+      trips.any((t) => t.isUpcoming);
+
+  /// Suma de ECT de transacciones del día local [day] (por defecto hoy).
+  static int ectTodayAmount(
+    List<EcoTransaction> transactions, {
+    DateTime? day,
+  }) {
+    final ref = (day ?? DateTime.now()).toLocal();
+    final start = DateTime(ref.year, ref.month, ref.day);
+    final end = start.add(const Duration(days: 1));
+    var sum = 0;
+    for (final tx in transactions) {
+      final at = tx.createdAt.toLocal();
+      if (!at.isBefore(start) && at.isBefore(end)) {
+        sum += tx.amount;
+      }
+    }
+    return sum;
+  }
 }

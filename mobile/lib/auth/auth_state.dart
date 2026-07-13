@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_client.dart';
 import '../api/auth_api.dart';
+import '../api/driver_api.dart';
 import '../api/models.dart';
 import '../api/passenger_api.dart';
 import '../api/public_api.dart';
@@ -74,6 +75,10 @@ final publicApiProvider = Provider<PublicApi>((ref) {
 
 final passengerApiProvider = Provider<PassengerApi>((ref) {
   return PassengerApi(ref.watch(apiClientProvider));
+});
+
+final driverApiProvider = Provider<DriverApi>((ref) {
+  return DriverApi(ref.watch(apiClientProvider));
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
