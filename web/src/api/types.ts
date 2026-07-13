@@ -103,3 +103,47 @@ export type ResetPasswordResponse = {
   temporaryPassword: string
   mustChangePassword: boolean
 }
+
+export type SosParticipante = {
+  id: string
+  name: string
+  email: string
+  role: string
+}
+
+export type SosViaje = {
+  id: string
+  status: string
+  originText: string
+  departureAt: string
+}
+
+export type AlertaSosAdmin = {
+  id: string
+  status: string
+  lat: number
+  lng: number
+  firedAt: string
+  resolvedBy?: string | null
+  resolvedAt?: string | null
+  student?: SosParticipante | null
+  trip?: SosViaje | null
+  driver?: SosParticipante | null
+}
+
+export type XpPorCarrera = {
+  career: string
+  xp: number
+}
+
+export type AdminDashboard = {
+  tripsToday: number
+  blockedUsers: number
+  co2Saved: number
+  adoptionRate: number
+  adoptionRateBasis?: string
+  activeSos: AlertaSosAdmin[]
+  xpByCareer: XpPorCarrera[]
+  gamificationEnabled: boolean
+  xpByCareerNote?: string | null
+}
