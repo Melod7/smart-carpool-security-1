@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
 import '../api/auth_api.dart';
 import '../api/models.dart';
+import '../api/passenger_api.dart';
 import '../api/public_api.dart';
 import 'auth_repository.dart';
 import 'token_storage.dart';
@@ -69,6 +70,10 @@ final authApiProvider = Provider<AuthApi>((ref) {
 
 final publicApiProvider = Provider<PublicApi>((ref) {
   return PublicApi(ref.watch(apiClientProvider));
+});
+
+final passengerApiProvider = Provider<PassengerApi>((ref) {
+  return PassengerApi(ref.watch(apiClientProvider));
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -159,6 +164,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       mustChangePassword: false,
       clearError: true,
     );
+  }
+
+  void updateDisplayName(String name) {
+    final user = state.user;
+    if (user == null) return;
+    state = state.copyWith(user: user.copyWith(name: name));
   }
 
   Future<void> _handleSessionExpired() async {

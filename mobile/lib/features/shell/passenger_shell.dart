@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/auth_state.dart';
-import '../../theme/kubix_theme.dart';
+import '../passenger/pax_help_page.dart';
+import '../passenger/pax_home_page.dart';
+import '../passenger/pax_profile_page.dart';
+import '../passenger/pax_trips_page.dart';
 
 class PassengerShell extends ConsumerStatefulWidget {
   const PassengerShell({super.key});
@@ -18,8 +21,6 @@ class _PassengerShellState extends ConsumerState<PassengerShell> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authProvider).user;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_index]),
@@ -34,28 +35,11 @@ class _PassengerShellState extends ConsumerState<PassengerShell> {
       ),
       body: IndexedStack(
         index: _index,
-        children: [
-          _PlaceholderTab(
-            title: 'Inicio',
-            subtitle:
-                'Hola ${user?.name ?? ''}. Aquí verás viajes disponibles (KBX-23).',
-          ),
-          const _PlaceholderTab(
-            title: 'Mis Viajes',
-            subtitle: 'Próximos e historial — próximamente en KBX-23.',
-          ),
-          _PlaceholderTab(
-            title: 'Perfil',
-            subtitle: user?.email ?? '',
-            child: FilledButton(
-              onPressed: () => ref.read(authProvider.notifier).logout(),
-              child: const Text('Cerrar sesión'),
-            ),
-          ),
-          const _PlaceholderTab(
-            title: 'Ayuda',
-            subtitle: 'FAQ y correo de soporte — próximamente en KBX-23.',
-          ),
+        children: const [
+          PaxHomePage(),
+          PaxTripsPage(),
+          PaxProfilePage(),
+          PaxHelpPage(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -82,44 +66,6 @@ class _PassengerShellState extends ConsumerState<PassengerShell> {
             selectedIcon: Icon(Icons.help),
             label: 'Ayuda',
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({
-    required this.title,
-    required this.subtitle,
-    this.child,
-  });
-
-  final String title;
-  final String subtitle;
-  final Widget? child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: KubixColors.utnBlue,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(subtitle, style: const TextStyle(color: KubixColors.muted)),
-          if (child != null) ...[
-            const SizedBox(height: 24),
-            child!,
-          ],
         ],
       ),
     );
