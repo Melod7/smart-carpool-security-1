@@ -51,6 +51,14 @@
 	<string>Kubix necesita tu ubicación para enviar alertas SOS a seguridad del campus y para el seguimiento de viajes activos.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Kubix necesita tu ubicación para enviar alertas SOS a seguridad del campus y para el seguimiento de viajes activos.</string>
+	<!-- Dev: API HTTP en LAN (Mac). En prod usar HTTPS y quitar esto. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Kubix necesita acceder a la API en la red local durante el desarrollo.</string>
 	<!-- Google Maps: sustituir por tu clave o inyectar en el esquema Xcode. Misma que --dart-define=MAPS_API_KEY. -->
 	<key>GMSApiKey</key>
 	<string>$(MAPS_API_KEY)</string>

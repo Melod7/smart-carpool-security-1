@@ -85,14 +85,43 @@ open -a Simulator
 flutter devices
 ```
 
-## Android
+## Android (Mac → teléfono o emulador)
+
+### Teléfono físico (recomendado)
+
+1. En el Android: **Ajustes → Acerca del teléfono** → toca 7× **Número de compilación** (activa opciones de desarrollador).
+2. **Ajustes → Opciones de desarrollador** → activa **Depuración USB**.
+3. Conecta el USB al Mac; acepta “¿Permitir depuración USB?” en el teléfono.
+4. Misma Wi‑Fi que el Mac. La API debe estar arriba (`http://<IP-Mac>:8080/health`).
+5. Corre:
 
 ```bash
+# IP LAN del Mac (ej. en0)
+ipconfig getifaddr en0
+
+adb devices          # debe listar el dispositivo (no "unauthorized")
 flutter devices
-flutter run -d <android-device-id> --dart-define=API_URL=http://10.0.2.2:8080
+
+cd mobile
+flutter run -d <android-id> \
+  --dart-define=API_URL=http://192.168.1.180:8080
 ```
 
-En un dispositivo Android físico, usar la IP LAN del Mac en lugar de `10.0.2.2`.
+Sustituye `192.168.1.180` por tu IP real. **No uses** `127.0.0.1` ni `localhost` en el teléfono (eso apunta al propio Android).
+
+Si `adb devices` está vacío: prueba otro cable/puerto, o **Revocar autorizaciones USB** en opciones de desarrollador y reconecta.
+
+### Emulador Android
+
+`10.0.2.2` es el alias del localhost del Mac desde el emulador:
+
+```bash
+flutter emulators
+flutter emulators --launch <emulator_id>
+flutter run -d emulator-5554 --dart-define=API_URL=http://10.0.2.2:8080
+```
+
+Si no hay AVDs: instala **Android Studio → Device Manager → Create Device**, o SDK Platform + Emulator vía `sdkmanager`.
 
 ## iOS
 
@@ -131,6 +160,19 @@ Si `pod install` falla después de clonar:
 cd ios && pod install --repo-update && cd ..
 ```
 
+### Android + iPhone a la vez
+
+Deja el Android corriendo en una terminal y abre **otra** terminal para el iPhone (misma `API_URL` = IP LAN del Mac):
+
+```bash
+# Terminal A (Android) — ya lo tienes
+flutter run -d R5CXC28VKTF --dart-define=API_URL=http://192.168.1.180:8080
+
+# Terminal B (iPhone wireless)
+flutter run -d 00008110-000A7D020140401E --dart-define=API_URL=http://192.168.1.180:8080
+```
+
+Cada sesión tiene su propio hot reload (`r` / `R` en esa terminal). La API en el Mac atiende a ambos.
 ## Notas
 
 - Sin `-d`, Flutter puede elegir un iPhone físico y fallar si el firmado no está configurado. Preferir `flutter devices` y luego un `-d` explícito.

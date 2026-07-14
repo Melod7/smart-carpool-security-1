@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -5,16 +7,26 @@ plugins {
 }
 
 fun dartDefinesMap(): Map<String, String> {
-    val raw = project.findProperty("dart-defines") as? String ?: return emptyMap()
-    return raw.split(",")
-        .mapNotNull { entry ->
-            if (entry.isBlank()) return@mapNotNull null
-            val decoded = String(java.util.Base64.getDecoder().decode(entry))
-            val idx = decoded.indexOf('=')
-            if (idx <= 0) return@mapNotNull null
-            decoded.substring(0, idx) to decoded.substring(idx + 1)
+    val raw = project.findProperty("dart-defines") as? String
+    if (raw.isNullOrBlank()) {
+        return emptyMap()
+    }
+
+    val result = linkedMapOf<String, String>()
+    for (entry in raw.split(",")) {
+        if (entry.isBlank()) {
+            continue
         }
-        .toMap()
+        val decoded = String(Base64.getDecoder().decode(entry), Charsets.UTF_8)
+        val idx = decoded.indexOf('=')
+        if (idx <= 0) {
+            continue
+        }
+        val key = decoded.substring(0, idx)
+        val value = decoded.substring(idx + 1)
+        result[key] = value
+    }
+    return result
 }
 
 android {
