@@ -1,7 +1,7 @@
 # Kubix UTN — Plan de la plataforma Smart Carpool Security
 
-Versión: 2.6 (Planner: epic en **2 semanas**, **7 tareas** T1–T7 con campos listos para pegar — §10.1)
-Estado: Auditado. v2.1–2.4 como antes. **v2.5:** 14 días + 7 tareas. **v2.6:** cada T* con Título, Prioridad, Inicio/Vencimiento, Lista de comprobación (AC), Notas, Datos adjuntos.
+Versión: 2.7 (cambio de diseño: publicar ruta del conductor por **mapa + waypoints**; pickup sugerido al pasajero)
+Estado: Auditado. v2.1–2.4 como antes. **v2.5–2.6:** Planner T1–T7. **v2.7:** el driver ya no publica con solo texto/origen fijo — dibuja la ruta en el mapa (waypoints); el pasajero puede subir en cualquier punto y el sistema calcula dónde esperar.
 Workspace: `/Users/patriciochachalo/jer/fern/smart-carpool-security`
 
 ---
@@ -142,6 +142,7 @@ erDiagram
   users ||--o{ trips : drives
   campuses ||--o{ trips : "destination of"
   trips ||--o{ ride_requests : receives
+  trips ||--o{ trip_waypoints : path
   trips ||--o{ location_pings : tracks
   trips ||--o{ ratings : produces
   users ||--o{ sos_alerts : fires
@@ -160,8 +161,9 @@ erDiagram
 | `refresh_tokens` | user_id, token_hash, expires_at, revoked_at (nullable) |
 | `registration_requests` | university_id, campus_id, name, email, password_hash, role (driver/passenger), career, id_number, vehicle_json (drivers), status (pending/accepted/denied), decided_by, decided_at |
 | `vehicles` | university_id, user_id, make_model, plate, color, seats_total |
-| `trips` | university_id, driver_id, destination_campus_id, origin_text, origin_lat, origin_lng, departure_at, seats_available, polyline (Google-encoded, nullable — ver política de fallo de Directions), distance_km, status (scheduled/in_progress/completed/cancelled), started_at, completed_at, co2_saved_kg |
-| `ride_requests` | university_id, trip_id, passenger_id, pickup_text, pickup_lat, pickup_lng, status (pending/accepted/rejected/cancelled_by_passenger/cancelled_by_driver) |
+| `trips` | university_id, driver_id, destination_campus_id, origin_text, origin_lat, origin_lng, departure_at, seats_available, polyline (Google-encoded, nullable — ver política de fallo de Directions), distance_km, status (scheduled/in_progress/completed/cancelled), started_at, completed_at, co2_saved_kg. **v2.7:** `origin_*` = primer waypoint (inicio de ruta); la geometría completa vive en `trip_waypoints` + `polyline` |
+| `trip_waypoints` | **(v2.7)** university_id, trip_id, seq (0..n-1 ordenados), lat, lng, label (nullable). Mín. 2 puntos (inicio + al menos un punto de paso). El destino campus **no** se duplica como waypoint: Directions usa waypoints intermedios y destination = campus. Unique(trip_id, seq) |
+| `ride_requests` | university_id, trip_id, passenger_id, pickup_text, pickup_lat, pickup_lng, status (pending/accepted/rejected/cancelled_by_passenger/cancelled_by_driver). **v2.7:** el pickup es el punto de espera sobre la ruta (sugerido por el server a partir de la ubicación del passenger; el passenger puede confirmar o ajustar ligeramente). Campos opcionales: `suggested_lat`, `suggested_lng`, `distance_to_route_m` (auditoría / UI) |
 | `ratings` | university_id, trip_id, rater_id, rated_id, stars (1–5), comment |
 | `sos_alerts` | university_id, trip_id (nullable), user_id, lat, lng, fired_at, status (active/resolved), resolved_by, resolved_at |
 | `location_pings` | university_id, trip_id, user_id, lat, lng, recorded_at |
@@ -183,6 +185,7 @@ Reglas de negocio mantenidas en v1 (todas aplicadas server-side):
 - CO2 = distance_km × co2_factor (0 cuando co2_tracking_enabled está off).
 - Convención de enums: todos los statuses/enums están **en inglés en DB y API** (`scheduled/in_progress/completed/cancelled`, `system`, `high/medium/low`); los clients renderizan **labels en español** (`programado/en_curso/completado/cancelado`, `sistema`, `alta/media/baja`) como se ve en los diseños. Única excepción documentada: el query param de reporte `period` conserva los valores en español `diario|semanal|mensual|trimestral|anual` porque son vocabulario orientado al diseño.
 - `GET /trips/mine` incluye trips donde el request del passenger sigue `pending` (renderizado como "pendiente"); la card "próximo viaje" de PaxHome usa el primer trip upcoming **accepted**, y el poll de status del trip a 15s corre cuando exista cualquier trip upcoming pending o accepted.
+- **(v2.7) Ruta del conductor por waypoints:** el driver define la trayectoria con puntos ordenados en el mapa (no un único origin textual). Los waypoints **describen la ruta**; el destino sigue siendo el campus. El passenger puede solicitar el viaje estando en cualquier lugar cercano a esa ruta; el server calcula el **punto de espera sugerido** (proyección al segmento más cercano de la polilínea/waypoints) y se lo muestra. El passenger confirma (o ajusta levemente) ese punto al crear el `ride_request`.
 
 Los emergency contacts son **solo informativos** en v1: se almacenan y se muestran a los coordinadores durante el manejo de SOS, pero no se notifican automáticamente (el copy mobile de SOS debe decir "seguridad del campus notificada", no que se contactó a los contactos).
 
@@ -230,7 +233,7 @@ Reglas adicionales:
 | Super admin | `GET/POST/PUT /super/universities` · `POST /super/universities/{id}/suspend` · `GET/POST/PUT/DELETE /super/universities/{id}/campuses` · `GET/POST /super/universities/{id}/coordinadores` · `POST /super/coordinadores/{id}/reset-password` · `GET /super/stats` |
 | Admin: users | `GET /admin/registration-requests` · `POST /admin/registration-requests/{id}/accept|deny` · `GET /admin/users` (filters: status, role, campus, search) · `POST /admin/users/{id}/block|unblock` · `GET /admin/users/export` |
 | Admin: ops | `GET /admin/dashboard` (KPI cards + active SOS list) · `GET /admin/reports?period=` · `GET /admin/reports/export?format=csv|xlsx|pdf` · `GET /admin/audit-log` · `GET /admin/notifications` · `PUT /admin/notifications/{id}/read` · `PUT /admin/notifications/read-all` · `GET/PUT /admin/settings` · `GET /admin/tracking/active` · `GET /admin/sos` · `POST /admin/sos/{id}/resolve` |
-| Trips (mobile) | `POST /trips` (publish; backend computes polyline) · `GET /trips/available` (passenger: scheduled, own campus, seats>0) · `GET /trips/mine` (driver or passenger history + stats) · `POST /trips/{id}/start|complete|cancel` · `POST /trips/{id}/requests` · `GET /trips/{id}/requests` (driver) · `POST /requests/{id}/accept|reject|cancel` |
+| Trips (mobile) | `POST /trips` (publish; **v2.7:** body con `waypoints[]` ordenados + campus + time + seats; backend Directions origin=WP0, via=WP1..n-1, dest=campus; persiste `trip_waypoints` + polyline) · `GET /trips/available?lat=&lng=` (passenger: scheduled, own campus, seats>0; **v2.7:** si lat/lng presentes, cada ítem incluye `suggestedWait` {lat,lng,distanceM,segmentIndex}) · `GET /trips/{id}/suggested-pickup?lat=&lng=` (recalcular punto de espera) · `GET /trips/mine` · `POST /trips/{id}/start|complete|cancel` · `POST /trips/{id}/requests` (pickup = punto de espera confirmado) · `GET /trips/{id}/requests` · `POST /requests/{id}/accept|reject|cancel` |
 | Tracking | `POST /trips/{id}/pings` · `GET /trips/{id}/tracking` (visibility-scoped) |
 | Ratings | `POST /trips/{id}/ratings` · `GET /ratings/pending` |
 | EcoTokens | `GET /me/eco` (balance, lifetime, level, progress, `gamificationEnabled`, recent transactions — paginated; works with frozen balance when gamification is off) |
@@ -242,7 +245,8 @@ Contrato de errores: RFC 7807 problem+json. Paginación: `?page=&pageSize=` con 
 Notas:
 - El widget XP-by-career del dashboard es **datos reales**: `GET /admin/dashboard` incluye `xpByCareer` (sumas ECT de la semana actual agrupadas por career, desde `eco_token_transactions`).
 - Mobile **no tiene feed de notificaciones** en v1: passengers/drivers observan cambios de estado exclusivamente a través de sus polls existentes (`/trips/mine`, `/trips/available`, `/trips/{id}/requests`, `/trips/{id}/tracking`). El icono de campana del header del diseño se omite en mobile.
-- Política de fallo de Google Directions: si Directions falla al publicar (timeout, quota, `ZERO_RESULTS`, origin inválido), `POST /trips` igual tiene éxito — el trip se guarda con `polyline = null` y `distance_km` calculado como línea recta haversine. Las superficies de mapa renderizan una línea recta discontinua entre origin y campus cuando `polyline` es null. Se devuelve 422 solo cuando las coordenadas del origin en sí son inválidas.
+- Política de fallo de Google Directions: si Directions falla al publicar (timeout, quota, `ZERO_RESULTS`, origin inválido), `POST /trips` igual tiene éxito — el trip se guarda con `polyline = null` y `distance_km` calculado como línea recta haversine **a través de los waypoints en orden + campus**. Las superficies de mapa renderizan segmentos discontinuos entre waypoints→campus cuando `polyline` es null. Se devuelve 422 solo cuando las coordenadas de algún waypoint son inválidas o hay < 2 waypoints.
+- **(v2.7) Algoritmo de punto de espera (server-side):** dada la ubicación del passenger y la geometría del trip (polyline si existe; si no, segmentos rectos entre waypoints + campus), proyectar el punto del passenger sobre cada segmento, elegir la proyección con menor distancia haversine. Si la distancia al segmento más cercano supera un umbral configurable (default **800 m**), el trip sigue listable pero `suggestedWait.tooFar = true` (UI avisa; el passenger puede igual solicitar). No se requiere que el passenger esté exactamente en un waypoint: cualquier punto sobre la ruta es válido.
 - CORS: la API permite los origins web (localhost:5173 y el dominio CloudFront) vía configuración.
 
 ---
@@ -293,7 +297,17 @@ sequenceDiagram
   API-->>M: 200 JWT {role, university_id, campus_id}
 ```
 
-### 6.3 Publicar trip, solicitar y aceptar ride
+### 6.3 Publicar trip (mapa + waypoints), solicitar y aceptar ride
+
+**UX conductor (reemplaza el bottom sheet textual de Figma como flujo principal):**
+1. FAB **Agregar ruta** → pantalla de mapa a pantalla completa centrada en GPS actual (recenter disponible).
+2. El driver puede mover el mapa / long-press o tap para **añadir waypoints** ordenados (inicio = primer punto; siguientes = por dónde pasará). Reordenar/eliminar puntos; máx. **8** waypoints.
+3. Selector de campus destino, hora, asientos → confirmar → `POST /trips` con `waypoints[]`.
+
+**UX pasajero:**
+1. `GET /trips/available?lat=&lng=` muestra viajes y, por cada uno, **dónde esperar** (`suggestedWait`).
+2. Al solicitar, el mapa muestra la ruta del conductor + marker “espera aquí”; el passenger confirma o mueve ligeramente el pin (snap a la ruta en server).
+3. El driver, al aceptar, ve el pickup del passenger sobre su ruta.
 
 ```mermaid
 sequenceDiagram
@@ -303,23 +317,24 @@ sequenceDiagram
   participant DB as PostgreSQL
   participant P as Passenger (mobile)
 
-  D->>API: POST /trips {origin, destination_campus_id, departure_at, seats}
-  API->>API: check max_daily_trips_per_driver
-  API->>G: Directions(origin -> campus lat/lng)
+  D->>API: POST /trips {waypoints[lat,lng]≥2, destination_campus_id, departure_at, seats}
+  API->>API: check max_daily_trips_per_driver + validar waypoints
+  API->>G: Directions(WP0 → via WP1..n-1 → campus)
   G-->>API: encoded polyline + distance
-  API->>DB: INSERT trips(status=scheduled)
+  API->>DB: INSERT trips + trip_waypoints(seq)
   API-->>D: 201 trip
-  P->>API: GET /trips/available (own campus only)
-  API-->>P: scheduled trips with seats > 0
-  P->>API: POST /trips/{id}/requests {pickup}
+  P->>API: GET /trips/available?lat&lng (own campus)
+  API->>API: suggestedWait = nearest point on route
+  API-->>P: trips + suggestedWait
+  P->>API: POST /trips/{id}/requests {pickup=confirmed wait point}
   API->>DB: INSERT ride_requests(pending)
   D->>API: GET /trips/{id}/requests (poll 15s)
-  API-->>D: pending requests
+  API-->>D: pending requests (+ pickup on route)
   D->>API: POST /requests/{id}/accept
-  API->>DB: UPDATE request=accepted, trips.seats_available -1
+  API->>DB: UPDATE request=accepted, seats_available -1
   API-->>D: 200
   P->>API: GET /trips/mine (poll)
-  API-->>P: trip confirmed (programado)
+  API-->>P: trip confirmed (programado) + wait point
 ```
 
 ### 6.4 Tracking en vivo del trip
@@ -399,8 +414,9 @@ sequenceDiagram
 |---|---|---|
 | Login / Register | (new, follows design language) | University + campus pickers, role choice, driver vehicle fields |
 | Passenger: Inicio, Mis Viajes, Perfil, Ayuda | `PaxHome/PaxTrips/PaxProfile/PaxHelp` | Real data incl. EcoTokens balance/level/transactions from `GET /me/eco`; CO2 stats real from trip history; redemption copy shown as "próximamente"; header bell icon omitted (no mobile notifications feed); Ayuda shows support email only (no chat) |
-| Driver: Inicio, Mis Viajes, Perfil, Ayuda | `DrvHome/DrvTrips/DrvProfile/DrvHelp` | Real requests accept/reject; publish FAB; vehicle from profile; "ECT hoy" history real from `GET /me/eco` |
-| Publish route bottom sheet | `PublishModal` | Destination = campus selector (own university) |
+| Driver: Inicio, Mis Viajes, Perfil, Ayuda | `DrvHome/DrvTrips/DrvProfile/DrvHelp` | Real requests accept/reject; **v2.7:** FAB abre mapa de waypoints (no solo PublishModal textual); vehicle from profile; "ECT hoy" from `GET /me/eco` |
+| Publish route (mapa) | `PublishRouteMap` (reemplaza `PublishModal` como flujo principal) | GPS + waypoints editables + campus + time + seats → `POST /trips` |
+| Passenger: request + punto de espera | `PaxHome` / request sheet | Ruta del driver + `suggestedWait`; confirmar/ajustar pickup |
 | SOS overlay | `SOSOverlay` | Wired to `POST /sos` with GPS |
 | Trip map (new) | — | google_maps_flutter: polyline + markers per visibility rules, 10s polling |
 
@@ -467,6 +483,8 @@ Cada ítem detallado KBX-* más abajo es **alcance interno / checklist**. En Pla
 | D12 | 2026-07-17 |
 | D13 | 2026-07-18 |
 | D14 | 2026-07-19 (dom) |
+
+**Delta v2.7 (post-T5, no nueva tarjeta Planner obligatoria):** implementar **KBX-32** (API/waypoints) + **KBX-33** (mobile mapa publicar + espera) antes o en paralelo suave con T6. Si se quiere reflejar en Planner, añadir checklist a T5 o una tarea extra “Ruta por waypoints”.
 
 **En Planner: exactamente 7 tareas** (una por fase). Los KBX-* **no** se crean como tareas sueltas: van en **Notas** + como ítems de la **Lista de comprobación** junto con el AC.
 
@@ -751,12 +769,12 @@ Infra de prueba AWS (ECR, App Runner, RDS t4g.micro, S3+CloudFront) y GitHub Act
 **QA:** registrar con dominio incorrecto → 422 con mensaje claro; accept crea usuario capaz de iniciar sesión; deny mantiene al usuario incapaz; block a mitad de sesión → calls autenticadas 403 dentro de ≤30 s (ventana de caché del status-check de KBX-3); el export coincide con las filas filtradas; el endpoint público de universities no requiere auth y lista campuses; CRUD de emergency contacts round-trip con tests de tenancy; 4.º contacto → 422.
 
 ### KBX-7 — API de vehículos y publicación de viajes
-**Descripción:** `GET/PUT /me/vehicle`; `POST /trips` valida rol driver, vehicle active, `max_daily_trips_per_driver`; el backend llama Google Directions (origin → coordenadas del campus de destino), guarda polyline encoded + distance_km. Política de fallo de Directions (sección 5): en timeout/quota/ZERO_RESULTS el trip igual se crea con `polyline = null` y `distance_km` haversine; coordenadas de origin inválidas → 422 vía validación server-side de rango lat/lng (debe funcionar aunque Directions esté caído).
-**QA:** publicar sobre el límite diario → 422; polyline + distance persistidos (Directions mockeado en tests); mock de fallo de Directions → trip creado con polyline null + distancia haversine; origin inválido → 422; non-drivers obtienen 403.
+**Descripción:** `GET/PUT /me/vehicle`; `POST /trips` valida rol driver, vehicle active, `max_daily_trips_per_driver`; el backend llama Google Directions, guarda polyline + distance_km. **v2.7:** el contrato canónico pasa a `waypoints[]` (≥2) — ver **KBX-32**; hasta entonces origin único sigue válido como compat (migrado a waypoints mínimos). Política de fallo Directions (sección 5): timeout/quota/ZERO_RESULTS → trip con `polyline = null` + distancia haversine; coords inválidas → 422.
+**QA:** publicar sobre límite diario → 422; polyline + distance persistidos (Directions mockeado); fallo Directions → polyline null; origin/waypoint inválido → 422; non-drivers 403.
 
 ### KBX-8 — API de solicitudes de viaje
-**Descripción:** `GET /trips/available` (campus del passenger, scheduled, seats>0, departure futura); `POST /trips/{id}/requests` con punto de pickup; driver `GET /trips/{id}/requests`; accept (decrementar seats, auto-rechazar otros si está full), reject; cancel del passenger: pending → `cancelled_by_passenger`; accepted → `cancelled_by_passenger` Y `seats_available +1` (los requests auto-rechazados no se reactivan).
-**QA:** passenger de otro campus nunca ve el trip; aceptar el último asiento auto-rechaza los pending restantes; request duplicado → 409; test de concurrencia: dos accepts por un asiento → uno gana; cancelar un request accepted restaura el asiento y el trip reaparece en `/trips/available`.
+**Descripción:** `GET /trips/available` (campus del passenger, scheduled, seats>0, departure futura); `POST /trips/{id}/requests` con punto de pickup; driver `GET /trips/{id}/requests`; accept/reject/cancel como antes. **v2.7:** available acepta `lat`/`lng` y devuelve `suggestedWait`; ver **KBX-32**.
+**QA:** passenger de otro campus no ve el trip; aceptar último asiento auto-rechaza pending; request duplicado → 409; cancel accepted restaura asiento.
 
 ### KBX-9 — API de ciclo de vida, cancelación e historial de viajes
 **Descripción:** `POST /trips/{id}/start` (driver, scheduled→in_progress), `complete` (calcula co2_saved = distance × factor, 0 si co2 tracking deshabilitado; llama `IEcoTokenEngine` — stub no-op hasta que KBX-31 lo reemplace — para awards de driver/passenger/streak), `POST /trips/{id}/cancel` — posee las reglas completas de cancelación: solo trips `scheduled` cancelables (in_progress → 409); gratis ≥30 min antes de departure, marcado late en audit en caso contrario (late cancel también llama al hook de penalty del engine); el cascade mueve todos los ride_requests pending/accepted a `cancelled_by_driver`. `GET /trips/mine` devolviendo historial apropiado al rol con statuses y stats de periodo (week/month/total: trips, km, co2) coincidiendo con las cajas de stats del diseño mobile — este poll es cómo los passengers observan cancelaciones del driver.
@@ -815,12 +833,12 @@ Infra de prueba AWS (ECR, App Runner, RDS t4g.micro, S3+CloudFront) y GitHub Act
 **QA:** widget tests de validación del wizard; register → pantalla pending; tras accept del admin, login aterriza en el shell correcto del rol; el token sobrevive reinicio de la app; fallo de refresh-token (expired/revoked) fuerza re-login con mensaje amigable; dominio incorrecto muestra el mensaje del server.
 
 ### KBX-23 — Mobile: flujos de pasajero
-**Descripción:** Portar `PaxHome` (card próximo viaje, EcoWidget desde `GET /me/eco`, lista de drivers disponibles desde `/trips/available`, request ride con punto de pickup), `PaxTrips` (cajas de stats incl. ECT/CO2 reales, upcoming, historial filtrado, rating pendiente → diálogo de rating), `PaxProfile` (perfil, CRUD emergency contacts, sección gamificación con level/progress reales, copy de canje "próximamente", sección de verificación estática, logout), `PaxHelp` (accordion FAQ, solo email de soporte — sin chat).
-**QA:** request ride → aparece en la cola del driver (integración vs BE local); filtros del historial coinciden con statuses; el submit de rating actualiza el avg del driver Y suma +2 ECT al balance del passenger; el badge de level coincide con umbrales de eco_lifetime; CRUD de contacts round-trip; universidad con gamificación off oculta widgets ECT.
+**Descripción:** Portar `PaxHome` (card próximo viaje, EcoWidget, lista `/trips/available`, request), `PaxTrips`, `PaxProfile`, `PaxHelp`. **v2.7:** el request usa punto de espera sugerido sobre la ruta del conductor — ver **KBX-33**.
+**QA:** request → cola del driver; rating +2 ECT; gamificación off oculta ECT.
 
 ### KBX-24 — Mobile: flujos de conductor
-**Descripción:** Portar `DrvHome` (card de ruta activa con start/complete, historial "ECT hoy" desde `GET /me/eco`, cards de request de passenger accept/reject polling 15s, FAB), bottom sheet `PublishModal` (origin vía texto places + ubicación actual, selector de campus destino, time, seats), `DrvTrips` (stats de periodo + chart + historial, ECT real), `DrvProfile` (sección vehicle editable, level de gamificación real, compliance/verification estático), `DrvHelp`.
-**QA:** publish → passenger del mismo campus lo ve; accept actualiza seats y el poll `/trips/mine` del passenger muestra el trip confirmado (sin push/feed de notificaciones en mobile); complete suma +8 ECT visibles en el siguiente fetch `/me/eco`; transiciones start/complete reflejadas en reportes admin; publish sobre límite muestra error amigable.
+**Descripción:** Portar `DrvHome` (card de ruta activa con start/complete, historial "ECT hoy" desde `GET /me/eco`, cards de request accept/reject polling 15s, FAB), `DrvTrips`, `DrvProfile`, `DrvHelp`. **v2.7:** el FAB ya no abre solo el `PublishModal` textual — el flujo canónico es **KBX-33** (mapa + waypoints). El modal textual puede quedar como fallback temporal hasta cerrar KBX-33.
+**QA:** publish (waypoints) → passenger del mismo campus lo ve; accept actualiza seats; complete suma +8 ECT; publish sobre límite muestra error amigable.
 
 ### KBX-25 — Mobile: flujo SOS
 **Descripción:** Portar `SOSOverlay`: confirm fullscreen rojo, captura GPS vía geolocator, `POST /sos` (adjuntando trip activo si hay), estado de éxito mostrando "seguridad del campus notificada" (copy ajustado — los emergency contacts NO se notifican automáticamente en v1), botón "Estoy a salvo" llamando `POST /sos/{id}/close`, disponible desde las pantallas home de ambos roles.
@@ -849,6 +867,15 @@ Infra de prueba AWS (ECR, App Runner, RDS t4g.micro, S3+CloudFront) y GitHub Act
 ### KBX-31 — Motor EcoTokens y API (track backend: después de KBX-10, antes de KBX-13)
 **Descripción:** Implementación real de `IEcoTokenEngine` reemplazando el stub no-op cableado en KBX-9/10, aplicando las reglas de la sección 4: eventos de award (driver +8 / passenger +4 en trip completion, +2 en rating, +10 racha semanal en el 5.º trip completed en la semana lun–dom del timezone de la universidad, late-cancel penalty registrado como −min(5, balance) clamped); idempotente vía unique(user_id, type, source_id) donde source_id es trip_id / rating_id / week key ISO por tipo — la week key hace la racha una-vez-por-semana incluso bajo completions concurrentes; la racha cuenta solo filas del ledger `trip_completed_*`; `eco_balance`/`eco_lifetime` desnormalizados actualizados en la misma transacción (la suma del ledger siempre iguala eco_balance); cómputo de level + fórmula de progress (null en Platino); no-op cuando `gamification_enabled = false`; `GET /me/eco` (balance, lifetime, level, progress, `gamificationEnabled`, transacciones paginadas); agregación de montos positivos de la semana actual `xpByCareer` consumida por el dashboard de KBX-13. Pese al número, se ejecuta en el track backend: after KBX-10, before KBX-13.
 **QA:** completar un trip seedeado acredita exactamente +8/+4 una vez (reproducir el evento es no-op, incluido el tipo penalty); dos completions concurrentes del 5.º trip en la misma semana producen exactamente un +10 (constraint unique week-key); late cancel con balance 2 registra −2 y deja eco_lifetime sin cambios; la suma del ledger iguala eco_balance tras cada escenario; límites de level en 100/500/2000 y fórmula de progress (incl. null en Platino) verificados; ventanas week/day respetan `university_settings.timezone`; universidad con gamificación off no acumula nada, sus trips no cuentan hacia rachas, y `/me/eco` devuelve el balance congelado con `gamificationEnabled: false`; xpByCareer suma solo montos positivos de la semana actual y coincide con seeds.
+
+### KBX-32 — Backend: waypoints de ruta + punto de espera sugerido (v2.7)
+**Descripción:** Migración `trip_waypoints`; `POST /trips` acepta `waypoints[]` (≥2, ≤8) + campus; deriva `origin_*` de WP0; Directions WP0→via→campus; persiste waypoints + polyline. `GET /trips/available?lat=&lng=` y `GET /trips/{id}/suggested-pickup` calculan proyección al segmento más cercano (umbral tooFar default 800 m). Extender `ride_requests` con suggested_* opcionales. Seeds/demo con ≥2 waypoints. Compat: body legacy `{originLat,originLng}` se normaliza a waypoints de 2 puntos (origin + midpoint hacia campus) o se rechaza tras cutover documentado en STATUS.
+**QA:** publish con 3 waypoints persiste seq 0..2; Directions mock recibe vias; fallo Directions → polyline null pero waypoints intactos; suggestedWait cae sobre segmento; passenger >800 m → tooFar; tests de tenancy en trip_waypoints; <2 waypoints → 422.
+
+### KBX-33 — Mobile: mapa publicar ruta + espera del pasajero (v2.7)
+**Descripción:** Reemplazar `PublishModal` textual como flujo principal: pantalla mapa fullscreen (GPS, recenter, tap/long-press add waypoint, editar/borrar, máx 8), campus/hora/asientos → `POST /trips` con waypoints. Pasajero: available con GPS; card/mapa muestra ruta + “espera aquí” (`suggestedWait`); al solicitar confirma o ajusta pin (server re-snap); driver ve pickups sobre ruta en requests. Mapas scheduled muestran waypoints + campus.
+**QA:** driver dibuja ≥2 puntos y publica; passenger ve suggestedWait coherente con su GPS; tooFar muestra aviso; request confirmado aparece en cola driver con pickup en ruta; sin permiso GPS → mensaje y no inventar coords.
+
 
 ---
 

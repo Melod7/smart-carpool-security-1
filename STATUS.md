@@ -1,7 +1,7 @@
 # Kubix UTN — Smart Carpool Security · STATUS
 
 Última actualización: 2026-07-13
-Plan: [PLAN.md](PLAN.md) (v2.6 — epic **2 semanas**, **7 tareas** T1–T7 con Título/Prioridad/Fechas/Checklist/Notas/Adjuntos, §10.1) · Auditorías: [docs/audit-report-v2.md](docs/audit-report-v2.md) → [docs/audit-report-v3.md](docs/audit-report-v3.md) → [docs/audit-report-v4-delta.md](docs/audit-report-v4-delta.md); **v2.4** `university_admin` → `coordinador`
+Plan: [PLAN.md](PLAN.md) (v2.7 — **ruta por waypoints** + punto de espera; Planner T1–T7 §10.1) · Auditorías: [docs/audit-report-v2.md](docs/audit-report-v2.md) → [docs/audit-report-v3.md](docs/audit-report-v3.md) → [docs/audit-report-v4-delta.md](docs/audit-report-v4-delta.md); **v2.4** `university_admin` → `coordinador`
 
 ## Fase
 
@@ -12,8 +12,9 @@ Plan: [PLAN.md](PLAN.md) (v2.6 — epic **2 semanas**, **7 tareas** T1–T7 con 
 | Rediseño Plan v2–v2.4 | Hecho |
 | Plan v2.5 (Planner: 2 semanas, 7 tareas T1–T7 + Summary/AC) | Hecho |
 | Plan v2.6 (campos Planner: prioridad, fechas, checklist, notas, adjuntos) | Hecho |
+| Plan v2.7 (publicar ruta en mapa + waypoints; espera sugerida al pasajero) | Hecho (doc) |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | **T5 Mobile** hecho (KBX-22–26); siguiente **T6 / KBX-27** |
+| Implementación | T5 hecho; **siguiente: KBX-32/33 (waypoints)** luego T6/KBX-27 |
 
 ## Planner (7 tareas · 2 semanas · ancla D1=2026-07-06)
 
@@ -57,13 +58,15 @@ Plan: [PLAN.md](PLAN.md) (v2.6 — epic **2 semanas**, **7 tareas** T1–T7 con 
 | KBX-24 | Mobile: flujos de conductor | hecho |
 | KBX-25 | Mobile: flujo SOS | hecho |
 | KBX-26 | Mobile: mapa de viaje en vivo y pings | hecho |
-| KBX-27 | QA: suites unitarias y umbrales de cobertura | **siguiente** |
+| KBX-27 | QA: suites unitarias y umbrales de cobertura | pendiente |
 | KBX-28 | QA: colección Postman, pruebas de carga y plan JMeter | pendiente |
 | KBX-29 | QA: Selenium, TestLink, SonarCloud, MantisBT, SAST | pendiente |
 | KBX-30 | Despliegue: infraestructura AWS y CI/CD | pendiente |
 | KBX-31 | Motor EcoTokens y API | hecho |
+| KBX-32 | Backend: waypoints de ruta + punto de espera sugerido (v2.7) | **siguiente** |
+| KBX-33 | Mobile: mapa publicar ruta + espera del pasajero (v2.7) | pendiente |
 
-Orden: T1→T5 hechos · **T6** (27→29) activo · luego T7 Deploy. Commits por KBX-* interno; tarea Planner se cierra al completar su checklist.
+Orden: T1→T5 hechos · **delta v2.7** KBX-32→33 · luego **T6** (27→29) · T7 Deploy. Commits por KBX-* interno; tarea Planner se cierra al completar su checklist.
 
 ## Log de decisiones clave
 
@@ -79,3 +82,4 @@ Orden: T1→T5 hechos · **T6** (27→29) activo · luego T7 Deploy. Commits por
 - Admin ops (KBX-13): `adoptionRate` = % usuarios activos / total (driver+passenger), documentado como `adoptionRateBasis: active_users_over_total`; export CSV/XLSX/PDF vía ClosedXML + QuestPDF (fallo → 500 problem+json)
 - Estático en v1: pagos, subida de docs, chat (solo email de soporte), feed de notificaciones mobile, canje de ECT
 - Planner v2.5→v2.6: epic en 2 semanas; 7 tareas T1–T7; cada una con Título, Prioridad, Inicio/Vencimiento, Lista de comprobación (KBX+AC), Notas, Datos adjuntos; KBX-* = checklist interna (no 31 tarjetas); ancla D1=2026-07-06
+- **v2.7:** publicar ruta del conductor = mapa + waypoints (≥2, ≤8); destino = campus; pasajero sube en cualquier punto de la ruta; server calcula `suggestedWait` (proyección al segmento; tooFar >800 m); tickets KBX-32 (BE) + KBX-33 (mobile)
