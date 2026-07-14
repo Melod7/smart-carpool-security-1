@@ -22,6 +22,7 @@ public sealed class ServicioDirectionsGoogle(
         double origenLng,
         double destinoLat,
         double destinoLng,
+        IReadOnlyList<(double Lat, double Lng)>? vias = null,
         CancellationToken ct = default)
     {
         var apiKey = opciones.Value.ApiKey;
@@ -35,6 +36,14 @@ public sealed class ServicioDirectionsGoogle(
         var destino = FormatearCoord(destinoLat, destinoLng);
         var url =
             $"https://maps.googleapis.com/maps/api/directions/json?origin={origen}&destination={destino}&key={apiKey}";
+
+        if (vias is { Count: > 0 })
+        {
+            var viasParam = string.Join(
+                '|',
+                vias.Select(v => FormatearCoord(v.Lat, v.Lng)));
+            url += $"&waypoints={Uri.EscapeDataString(viasParam)}";
+        }
 
         try
         {
@@ -71,7 +80,7 @@ public sealed class ServicioDirectionsGoogle(
                 return null;
             }
 
-            var metros = ruta.Legs?.FirstOrDefault()?.Distance?.Value ?? 0;
+            var metros = ruta.Legs?.Sum(l => l.Distance?.Value ?? 0) ?? 0;
             if (metros <= 0)
             {
                 return null;

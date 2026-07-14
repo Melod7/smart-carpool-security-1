@@ -15,6 +15,8 @@ public sealed class ServicioSolicitudesViaje(
 {
     public async Task<IReadOnlyList<ViajeDto>> ListarDisponiblesAsync(
         Guid usuarioId,
+        double? lat = null,
+        double? lng = null,
         CancellationToken ct = default)
     {
         var pasajero = await ObtenerUsuarioAsync(usuarioId, ct);
@@ -28,9 +30,23 @@ public sealed class ServicioSolicitudesViaje(
                 "missing_campus");
         }
 
+        if ((lat is null) != (lng is null))
+        {
+            throw ExcepcionViajes.Validacion(
+                "lat and lng must both be provided or both omitted.",
+                "invalid_location");
+        }
+
+        if (lat is double latVal && lng is double lngVal)
+        {
+            ValidarCoordenadasRecogida(latVal, lngVal);
+        }
+
         var ahora = DateTimeOffset.UtcNow;
         var viajes = await db.Viajes
             .AsNoTracking()
+            .Include(v => v.PuntosRuta)
+            .Include(v => v.CampusDestino)
             .Where(v =>
                 v.CampusDestinoId == campusPasajero
                 && v.Estado == EstadoViaje.Programado
@@ -39,7 +55,53 @@ public sealed class ServicioSolicitudesViaje(
             .OrderBy(v => v.SaleEn)
             .ToListAsync(ct);
 
-        return viajes.Select(MapearViaje).ToList();
+        return viajes.Select(v =>
+        {
+            var dto = MapearViaje(v);
+            if (lat is double pLat && lng is double pLng)
+            {
+                dto.EsperaSugerida = MapearEsperaSugerida(
+                    CalcularEspera(v, pLat, pLng));
+            }
+
+            return dto;
+        }).ToList();
+    }
+
+    public async Task<PuntoEsperaSugeridoDto> ObtenerPuntoEsperaSugeridoAsync(
+        Guid usuarioId,
+        Guid viajeId,
+        double lat,
+        double lng,
+        CancellationToken ct = default)
+    {
+        var pasajero = await ObtenerUsuarioAsync(usuarioId, ct);
+        AsegurarPasajero(pasajero);
+        ValidarCoordenadasRecogida(lat, lng);
+
+        var campusId = pasajero.CampusId ?? inquilino.CampusId;
+        if (campusId is not Guid campusPasajero)
+        {
+            throw ExcepcionViajes.Validacion(
+                "Passenger has no campus assigned.",
+                "missing_campus");
+        }
+
+        var viaje = await db.Viajes
+            .AsNoTracking()
+            .Include(v => v.PuntosRuta)
+            .Include(v => v.CampusDestino)
+            .FirstOrDefaultAsync(v => v.Id == viajeId, ct)
+            ?? throw ExcepcionViajes.NoEncontrado("Trip not found.", "trip_not_found");
+
+        if (viaje.CampusDestinoId != campusPasajero)
+        {
+            throw ExcepcionViajes.Prohibido(
+                "Trip is not available for this passenger campus.",
+                "trip_not_available");
+        }
+
+        return MapearEsperaSugerida(CalcularEspera(viaje, lat, lng));
     }
 
     public async Task<SolicitudViajeDto> CrearSolicitudAsync(
@@ -401,6 +463,39 @@ public sealed class ServicioSolicitudesViaje(
         && viaje.AsientosDisponibles > 0
         && viaje.SaleEn > DateTimeOffset.UtcNow;
 
+    private static ResultadoPuntoEspera CalcularEspera(Viaje viaje, double lat, double lng)
+    {
+        var campus = viaje.CampusDestino
+            ?? throw ExcepcionViajes.Validacion("Trip campus not loaded.", "campus_not_found");
+
+        var waypoints = viaje.PuntosRuta
+            .OrderBy(p => p.Seq)
+            .Select(p => (p.Lat, p.Lng))
+            .ToList();
+
+        if (waypoints.Count == 0)
+        {
+            waypoints.Add((viaje.OrigenLat, viaje.OrigenLng));
+        }
+
+        return UtilidadPuntoEspera.Calcular(
+            lat,
+            lng,
+            viaje.Polilinea,
+            waypoints,
+            campus.Lat,
+            campus.Lng);
+    }
+
+    private static PuntoEsperaSugeridoDto MapearEsperaSugerida(ResultadoPuntoEspera r) => new()
+    {
+        Lat = r.Lat,
+        Lng = r.Lng,
+        DistanciaM = r.DistanciaM,
+        SegmentIndex = r.SegmentIndex,
+        TooFar = r.TooFar
+    };
+
     private static void ValidarCoordenadasRecogida(double lat, double lng)
     {
         if (lat is < -90 or > 90 || lng is < -180 or > 180)
@@ -423,8 +518,19 @@ public sealed class ServicioSolicitudesViaje(
         AsientosDisponibles = v.AsientosDisponibles,
         Polilinea = v.Polilinea,
         DistanciaKm = v.DistanciaKm,
+        Co2AhorradoKg = v.Co2AhorradoKg,
         ConductorId = v.ConductorId,
-        UniversidadId = v.UniversidadId
+        UniversidadId = v.UniversidadId,
+        Waypoints = v.PuntosRuta
+            .OrderBy(p => p.Seq)
+            .Select(p => new WaypointDto
+            {
+                Seq = p.Seq,
+                Lat = p.Lat,
+                Lng = p.Lng,
+                Etiqueta = p.Etiqueta
+            })
+            .ToList()
     };
 
     private static SolicitudViajeDto MapearSolicitud(SolicitudViaje s) => new()

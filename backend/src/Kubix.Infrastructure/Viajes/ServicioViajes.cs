@@ -114,14 +114,6 @@ public sealed class ServicioViajes(
             throw ExcepcionViajes.Validacion("Driver has no university.", "missing_university");
         }
 
-        ValidarCoordenadasOrigen(solicitud.OrigenLat, solicitud.OrigenLng);
-
-        var origenTexto = (solicitud.OrigenTexto ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(origenTexto))
-        {
-            throw ExcepcionViajes.Validacion("originText is required.");
-        }
-
         if (solicitud.SaleEn == default)
         {
             throw ExcepcionViajes.Validacion("departureAt is required.");
@@ -149,6 +141,20 @@ public sealed class ServicioViajes(
                 "Destination campus not found for this university.",
                 "campus_not_found");
 
+        var waypoints = NormalizarWaypoints(solicitud, campus);
+        ValidarWaypoints(waypoints);
+
+        var wp0 = waypoints[0];
+        var origenLat = wp0.Lat;
+        var origenLng = wp0.Lng;
+        var origenTexto = (solicitud.OrigenTexto ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(origenTexto))
+        {
+            origenTexto = string.IsNullOrWhiteSpace(wp0.Etiqueta)
+                ? "Waypoint 1"
+                : wp0.Etiqueta!.Trim();
+        }
+
         var configuracion = await db.ConfiguracionesUniversidad.AsNoTracking()
             .FirstOrDefaultAsync(c => c.UniversidadId == universidadId, ct);
 
@@ -170,25 +176,26 @@ public sealed class ServicioViajes(
                 "max_daily_trips");
         }
 
+        var vias = waypoints.Count > 1
+            ? waypoints.Skip(1).Select(w => (w.Lat, w.Lng)).ToList()
+            : new List<(double Lat, double Lng)>();
+
         string? polilinea = null;
         decimal distanciaKm;
 
         try
         {
             var resultado = await directions.ObtenerRutaAsync(
-                solicitud.OrigenLat,
-                solicitud.OrigenLng,
+                origenLat,
+                origenLng,
                 campus.Lat,
                 campus.Lng,
+                vias,
                 ct);
 
             if (resultado is null || string.IsNullOrWhiteSpace(resultado.Polilinea))
             {
-                distanciaKm = UtilidadHaversine.DistanciaKm(
-                    solicitud.OrigenLat,
-                    solicitud.OrigenLng,
-                    campus.Lat,
-                    campus.Lng);
+                distanciaKm = DistanciaHaversinePorWaypoints(waypoints, campus);
             }
             else
             {
@@ -202,20 +209,12 @@ public sealed class ServicioViajes(
         }
         catch
         {
-            distanciaKm = UtilidadHaversine.DistanciaKm(
-                solicitud.OrigenLat,
-                solicitud.OrigenLng,
-                campus.Lat,
-                campus.Lng);
+            distanciaKm = DistanciaHaversinePorWaypoints(waypoints, campus);
         }
 
         if (distanciaKm <= 0)
         {
-            distanciaKm = UtilidadHaversine.DistanciaKm(
-                solicitud.OrigenLat,
-                solicitud.OrigenLng,
-                campus.Lat,
-                campus.Lng);
+            distanciaKm = DistanciaHaversinePorWaypoints(waypoints, campus);
         }
 
         var ahora = DateTimeOffset.UtcNow;
@@ -225,8 +224,8 @@ public sealed class ServicioViajes(
             ConductorId = usuarioId,
             CampusDestinoId = campus.Id,
             OrigenTexto = origenTexto,
-            OrigenLat = solicitud.OrigenLat,
-            OrigenLng = solicitud.OrigenLng,
+            OrigenLat = origenLat,
+            OrigenLng = origenLng,
             SaleEn = solicitud.SaleEn,
             AsientosDisponibles = solicitud.AsientosDisponibles,
             Polilinea = polilinea,
@@ -235,6 +234,19 @@ public sealed class ServicioViajes(
             CreadoEn = ahora,
             ActualizadoEn = ahora
         };
+
+        for (var i = 0; i < waypoints.Count; i++)
+        {
+            var wp = waypoints[i];
+            viaje.PuntosRuta.Add(new PuntoRutaViaje
+            {
+                UniversidadId = universidadId,
+                Seq = i,
+                Lat = wp.Lat,
+                Lng = wp.Lng,
+                Etiqueta = string.IsNullOrWhiteSpace(wp.Etiqueta) ? null : wp.Etiqueta.Trim()
+            });
+        }
 
         db.Viajes.Add(viaje);
         await db.SaveChangesAsync(ct);
@@ -469,7 +481,9 @@ public sealed class ServicioViajes(
         Guid viajeId,
         CancellationToken ct)
     {
-        var viaje = await db.Viajes.FirstOrDefaultAsync(v => v.Id == viajeId, ct)
+        var viaje = await db.Viajes
+            .Include(v => v.PuntosRuta)
+            .FirstOrDefaultAsync(v => v.Id == viajeId, ct)
             ?? throw ExcepcionViajes.NoEncontrado("Trip not found.", "trip_not_found");
 
         if (viaje.ConductorId != conductorId)
@@ -499,14 +513,81 @@ public sealed class ServicioViajes(
         }
     }
 
-    private static void ValidarCoordenadasOrigen(double lat, double lng)
+    private static void ValidarCoordenadasWaypoint(double lat, double lng, string codigo = "invalid_origin")
     {
         if (lat is < -90 or > 90 || lng is < -180 or > 180)
         {
             throw ExcepcionViajes.Validacion(
-                "originLat must be in [-90, 90] and originLng in [-180, 180].",
-                "invalid_origin");
+                "Waypoint lat must be in [-90, 90] and lng in [-180, 180].",
+                codigo);
         }
+    }
+
+    private static List<WaypointDto> NormalizarWaypoints(SolicitudPublicarViaje solicitud, Campus campus)
+    {
+        var lista = solicitud.Waypoints?
+            .Where(w => w is not null)
+            .Select(w => new WaypointDto
+            {
+                Lat = w.Lat,
+                Lng = w.Lng,
+                Etiqueta = w.Etiqueta
+            })
+            .ToList() ?? new List<WaypointDto>();
+
+        if (lista.Count == 0)
+        {
+            if (solicitud.OrigenLat is not double origenLat
+                || solicitud.OrigenLng is not double origenLng)
+            {
+                return lista;
+            }
+
+            // Compat legacy: originLat/Lng → origin + midpoint hacia campus.
+            ValidarCoordenadasWaypoint(origenLat, origenLng);
+            lista.Add(new WaypointDto
+            {
+                Lat = origenLat,
+                Lng = origenLng,
+                Etiqueta = string.IsNullOrWhiteSpace(solicitud.OrigenTexto)
+                    ? null
+                    : solicitud.OrigenTexto.Trim()
+            });
+            lista.Add(new WaypointDto
+            {
+                Lat = (origenLat + campus.Lat) / 2.0,
+                Lng = (origenLng + campus.Lng) / 2.0,
+                Etiqueta = null
+            });
+        }
+
+        return lista;
+    }
+
+    private static void ValidarWaypoints(IReadOnlyList<WaypointDto> waypoints)
+    {
+        if (waypoints.Count < 2 || waypoints.Count > 8)
+        {
+            throw ExcepcionViajes.Validacion(
+                "waypoints must contain between 2 and 8 points.",
+                "invalid_waypoints");
+        }
+
+        foreach (var wp in waypoints)
+        {
+            ValidarCoordenadasWaypoint(wp.Lat, wp.Lng);
+        }
+    }
+
+    private static decimal DistanciaHaversinePorWaypoints(
+        IReadOnlyList<WaypointDto> waypoints,
+        Campus campus)
+    {
+        var puntos = waypoints
+            .Select(w => (w.Lat, w.Lng))
+            .Append((campus.Lat, campus.Lng))
+            .ToList();
+        return UtilidadHaversine.DistanciaALoLargoKm(puntos);
     }
 
     private static string NormalizarPeriodo(string? periodo)
@@ -553,7 +634,17 @@ public sealed class ServicioViajes(
         DistanciaKm = v.DistanciaKm,
         Co2AhorradoKg = v.Co2AhorradoKg,
         ConductorId = v.ConductorId,
-        UniversidadId = v.UniversidadId
+        UniversidadId = v.UniversidadId,
+        Waypoints = v.PuntosRuta
+            .OrderBy(p => p.Seq)
+            .Select(p => new WaypointDto
+            {
+                Seq = p.Seq,
+                Lat = p.Lat,
+                Lng = p.Lng,
+                Etiqueta = p.Etiqueta
+            })
+            .ToList()
     };
 
     private static ViajeMioDto MapearViajeMio(

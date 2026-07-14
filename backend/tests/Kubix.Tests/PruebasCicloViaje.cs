@@ -257,6 +257,7 @@ public class PruebasCicloViaje
             double origenLng,
             double destinoLat,
             double destinoLng,
+            IReadOnlyList<(double Lat, double Lng)>? vias = null,
             CancellationToken ct = default) =>
             Task.FromResult<ResultadoDirections?>(null);
     }

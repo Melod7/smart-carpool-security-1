@@ -44,12 +44,52 @@ public sealed class ControladorViajes(
     [Authorize(Policy = NombresPoliticas.SoloPasajero)]
     [ProducesResponseType(typeof(IReadOnlyList<ViajeDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> ListarDisponibles(CancellationToken ct)
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ListarDisponibles(
+        [FromQuery] double? lat,
+        [FromQuery] double? lng,
+        CancellationToken ct)
     {
         try
         {
-            var lista = await solicitudes.ListarDisponiblesAsync(ObtenerUsuarioId(), ct);
+            var lista = await solicitudes.ListarDisponiblesAsync(
+                ObtenerUsuarioId(),
+                lat,
+                lng,
+                ct);
             return Ok(lista);
+        }
+        catch (ExcepcionViajes ex)
+        {
+            return ProblemViajes(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
+    [HttpGet("{id:guid}/suggested-pickup")]
+    [Authorize(Policy = NombresPoliticas.SoloPasajero)]
+    [ProducesResponseType(typeof(PuntoEsperaSugeridoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ObtenerPuntoEsperaSugerido(
+        Guid id,
+        [FromQuery] double lat,
+        [FromQuery] double lng,
+        CancellationToken ct)
+    {
+        try
+        {
+            var punto = await solicitudes.ObtenerPuntoEsperaSugeridoAsync(
+                ObtenerUsuarioId(),
+                id,
+                lat,
+                lng,
+                ct);
+            return Ok(punto);
         }
         catch (ExcepcionViajes ex)
         {

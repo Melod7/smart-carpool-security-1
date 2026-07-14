@@ -110,7 +110,14 @@ public class PruebasViajes
 
         const double origenLat = -0.33;
         const double origenLng = -78.11;
-        var esperado = UtilidadHaversine.DistanciaKm(origenLat, origenLng, campus.Lat, campus.Lng);
+        var midLat = (origenLat + campus.Lat) / 2.0;
+        var midLng = (origenLng + campus.Lng) / 2.0;
+        var esperado = UtilidadHaversine.DistanciaALoLargoKm(
+        [
+            (origenLat, origenLng),
+            (midLat, midLng),
+            (campus.Lat, campus.Lng)
+        ]);
 
         var publicado = await servicio.PublicarViajeAsync(conductor.Id, new SolicitudPublicarViaje
         {
@@ -126,6 +133,7 @@ public class PruebasViajes
         Assert.Null(publicado.Polilinea);
         Assert.True(publicado.DistanciaKm > 0);
         Assert.Equal(esperado, publicado.DistanciaKm);
+        Assert.Equal(2, publicado.Waypoints.Count);
     }
 
     [Fact]
@@ -259,6 +267,7 @@ public class PruebasViajes
             double origenLng,
             double destinoLat,
             double destinoLng,
+            IReadOnlyList<(double Lat, double Lng)>? vias = null,
             CancellationToken ct = default)
         {
             if (Excepcion is not null)

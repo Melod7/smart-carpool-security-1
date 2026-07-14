@@ -4,6 +4,15 @@ public interface IServicioSolicitudesViaje
 {
     Task<IReadOnlyList<ViajeDto>> ListarDisponiblesAsync(
         Guid usuarioId,
+        double? lat = null,
+        double? lng = null,
+        CancellationToken ct = default);
+
+    Task<PuntoEsperaSugeridoDto> ObtenerPuntoEsperaSugeridoAsync(
+        Guid usuarioId,
+        Guid viajeId,
+        double lat,
+        double lng,
         CancellationToken ct = default);
 
     Task<SolicitudViajeDto> CrearSolicitudAsync(

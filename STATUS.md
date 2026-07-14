@@ -14,7 +14,7 @@ Plan: [PLAN.md](PLAN.md) (v2.7 — **ruta por waypoints** + punto de espera; Pla
 | Plan v2.6 (campos Planner: prioridad, fechas, checklist, notas, adjuntos) | Hecho |
 | Plan v2.7 (publicar ruta en mapa + waypoints; espera sugerida al pasajero) | Hecho (doc) |
 | Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | T5 hecho; **siguiente: KBX-32/33 (waypoints)** luego T6/KBX-27 |
+| Implementación | T5 hecho; **KBX-32 hecho**; **siguiente: KBX-33** luego T6/KBX-27 |
 
 ## Planner (7 tareas · 2 semanas · ancla D1=2026-07-06)
 
@@ -63,10 +63,10 @@ Plan: [PLAN.md](PLAN.md) (v2.7 — **ruta por waypoints** + punto de espera; Pla
 | KBX-29 | QA: Selenium, TestLink, SonarCloud, MantisBT, SAST | pendiente |
 | KBX-30 | Despliegue: infraestructura AWS y CI/CD | pendiente |
 | KBX-31 | Motor EcoTokens y API | hecho |
-| KBX-32 | Backend: waypoints de ruta + punto de espera sugerido (v2.7) | **siguiente** |
-| KBX-33 | Mobile: mapa publicar ruta + espera del pasajero (v2.7) | pendiente |
+| KBX-32 | Backend: waypoints de ruta + punto de espera sugerido (v2.7) | hecho |
+| KBX-33 | Mobile: mapa publicar ruta + espera del pasajero (v2.7) | **siguiente** |
 
-Orden: T1→T5 hechos · **delta v2.7** KBX-32→33 · luego **T6** (27→29) · T7 Deploy. Commits por KBX-* interno; tarea Planner se cierra al completar su checklist.
+Orden: T1→T5 hechos · **delta v2.7** KBX-32 hecho → **KBX-33** · luego **T6** (27→29) · T7 Deploy. Commits por KBX-* interno; tarea Planner se cierra al completar su checklist.
 
 ## Log de decisiones clave
 

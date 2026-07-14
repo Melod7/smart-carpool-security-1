@@ -4,13 +4,15 @@ public interface IServicioDirections
 {
     /// <summary>
     /// Obtiene polilínea encoded y distancia entre origen y destino.
-    /// Devuelve null o lanza si Directions no está disponible / falla.
+    /// <paramref name="vias"/> son waypoints intermedios (WP1..WPn-1); el destino es el campus.
+    /// Devuelve null si Directions no está disponible / falla.
     /// </summary>
     Task<ResultadoDirections?> ObtenerRutaAsync(
         double origenLat,
         double origenLng,
         double destinoLat,
         double destinoLng,
+        IReadOnlyList<(double Lat, double Lng)>? vias = null,
         CancellationToken ct = default);
 }
 

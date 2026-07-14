@@ -138,9 +138,24 @@ public class Viaje : EntidadAuditable
     public Universidad Universidad { get; set; } = null!;
     public Usuario Conductor { get; set; } = null!;
     public Campus CampusDestino { get; set; } = null!;
+    public ICollection<PuntoRutaViaje> PuntosRuta { get; set; } = new List<PuntoRutaViaje>();
     public ICollection<SolicitudViaje> SolicitudesViaje { get; set; } = new List<SolicitudViaje>();
     public ICollection<PingUbicacion> PingsUbicacion { get; set; } = new List<PingUbicacion>();
     public ICollection<Calificacion> Calificaciones { get; set; } = new List<Calificacion>();
+}
+
+public class PuntoRutaViaje
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UniversidadId { get; set; }
+    public Guid ViajeId { get; set; }
+    public int Seq { get; set; }
+    public double Lat { get; set; }
+    public double Lng { get; set; }
+    public string? Etiqueta { get; set; }
+
+    public Universidad Universidad { get; set; } = null!;
+    public Viaje Viaje { get; set; } = null!;
 }
 
 public class SolicitudViaje : EntidadAuditable
@@ -151,6 +166,9 @@ public class SolicitudViaje : EntidadAuditable
     public string RecogidaTexto { get; set; } = string.Empty;
     public double RecogidaLat { get; set; }
     public double RecogidaLng { get; set; }
+    public double? LatSugerida { get; set; }
+    public double? LngSugerida { get; set; }
+    public double? DistanciaARutaM { get; set; }
     public EstadoSolicitudViaje Estado { get; set; } = EstadoSolicitudViaje.Pendiente;
 
     public Universidad Universidad { get; set; } = null!;

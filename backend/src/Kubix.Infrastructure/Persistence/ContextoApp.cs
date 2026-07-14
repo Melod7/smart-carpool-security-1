@@ -26,6 +26,7 @@ public class ContextoApp : DbContext
     public DbSet<SolicitudRegistro> SolicitudesRegistro => Set<SolicitudRegistro>();
     public DbSet<Vehiculo> Vehiculos => Set<Vehiculo>();
     public DbSet<Viaje> Viajes => Set<Viaje>();
+    public DbSet<PuntoRutaViaje> PuntosRutaViaje => Set<PuntoRutaViaje>();
     public DbSet<SolicitudViaje> SolicitudesViaje => Set<SolicitudViaje>();
     public DbSet<Calificacion> Calificaciones => Set<Calificacion>();
     public DbSet<AlertaSos> AlertasSos => Set<AlertaSos>();
@@ -94,6 +95,9 @@ public class ContextoApp : DbContext
             case Viaje e when e.UniversidadId == Guid.Empty:
                 e.UniversidadId = universidadId;
                 break;
+            case PuntoRutaViaje e when e.UniversidadId == Guid.Empty:
+                e.UniversidadId = universidadId;
+                break;
             case SolicitudViaje e when e.UniversidadId == Guid.Empty:
                 e.UniversidadId = universidadId;
                 break;
@@ -133,6 +137,7 @@ public class ContextoApp : DbContext
         ConfigurarSolicitudRegistro(modelBuilder);
         ConfigurarVehiculo(modelBuilder);
         ConfigurarViaje(modelBuilder);
+        ConfigurarPuntoRutaViaje(modelBuilder);
         ConfigurarSolicitudViaje(modelBuilder);
         ConfigurarCalificacion(modelBuilder);
         ConfigurarAlertaSos(modelBuilder);
@@ -166,6 +171,9 @@ public class ContextoApp : DbContext
             .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
 
         modelBuilder.Entity<Viaje>()
+            .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
+
+        modelBuilder.Entity<PuntoRutaViaje>()
             .HasQueryFilter(x => _inquilino.OmitirFiltros || x.UniversidadId == _inquilino.UniversidadId);
 
         modelBuilder.Entity<SolicitudViaje>()
@@ -360,6 +368,23 @@ public class ContextoApp : DbContext
         e.HasOne(x => x.CampusDestino).WithMany().HasForeignKey(x => x.CampusDestinoId);
     }
 
+    private static void ConfigurarPuntoRutaViaje(ModelBuilder modelBuilder)
+    {
+        var e = modelBuilder.Entity<PuntoRutaViaje>();
+        e.ToTable("trip_waypoints");
+        e.HasKey(x => x.Id);
+        e.Property(x => x.Id).HasColumnName("id");
+        e.Property(x => x.UniversidadId).HasColumnName("university_id");
+        e.Property(x => x.ViajeId).HasColumnName("trip_id");
+        e.Property(x => x.Seq).HasColumnName("seq");
+        e.Property(x => x.Lat).HasColumnName("lat");
+        e.Property(x => x.Lng).HasColumnName("lng");
+        e.Property(x => x.Etiqueta).HasColumnName("label").HasMaxLength(200);
+        e.HasIndex(x => new { x.ViajeId, x.Seq }).IsUnique();
+        e.HasOne(x => x.Universidad).WithMany().HasForeignKey(x => x.UniversidadId);
+        e.HasOne(x => x.Viaje).WithMany(x => x.PuntosRuta).HasForeignKey(x => x.ViajeId);
+    }
+
     private static void ConfigurarSolicitudViaje(ModelBuilder modelBuilder)
     {
         var e = modelBuilder.Entity<SolicitudViaje>();
@@ -372,6 +397,9 @@ public class ContextoApp : DbContext
         e.Property(x => x.RecogidaTexto).HasColumnName("pickup_text").HasMaxLength(500).IsRequired();
         e.Property(x => x.RecogidaLat).HasColumnName("pickup_lat");
         e.Property(x => x.RecogidaLng).HasColumnName("pickup_lng");
+        e.Property(x => x.LatSugerida).HasColumnName("suggested_lat");
+        e.Property(x => x.LngSugerida).HasColumnName("suggested_lng");
+        e.Property(x => x.DistanciaARutaM).HasColumnName("distance_to_route_m");
         e.Property(x => x.Estado).HasColumnName("status").HasConversion(ConversorEnum<EstadoSolicitudViaje>()).HasMaxLength(40);
         e.HasIndex(x => new { x.ViajeId, x.PasajeroId }).IsUnique();
         e.HasOne(x => x.Universidad).WithMany().HasForeignKey(x => x.UniversidadId);

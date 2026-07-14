@@ -293,6 +293,24 @@ public sealed class SembradorBaseDatos(
         db.Usuarios.AddRange(pasajerosPuce);
         db.Vehiculos.AddRange(vehiculos);
         db.Viajes.AddRange(viajeCompletado1, viajeCompletado2, viajeCompletado3, viajeProgramado, viajeEnCurso, viajePuceCompletado);
+
+        var puntosRuta = new[]
+        {
+            NuevoPuntoRuta(viajeCompletado1, utnIbarra, 0),
+            NuevoPuntoRuta(viajeCompletado1, utnIbarra, 1),
+            NuevoPuntoRuta(viajeCompletado2, utnIbarra, 0),
+            NuevoPuntoRuta(viajeCompletado2, utnIbarra, 1),
+            NuevoPuntoRuta(viajeCompletado3, utnIbarra, 0),
+            NuevoPuntoRuta(viajeCompletado3, utnIbarra, 1),
+            NuevoPuntoRuta(viajeProgramado, utnIbarra, 0),
+            NuevoPuntoRuta(viajeProgramado, utnIbarra, 1),
+            NuevoPuntoRuta(viajeEnCurso, utnIbarra, 0),
+            NuevoPuntoRuta(viajeEnCurso, utnIbarra, 1),
+            NuevoPuntoRuta(viajePuceCompletado, pueCentro, 0),
+            NuevoPuntoRuta(viajePuceCompletado, pueCentro, 1),
+        };
+        db.PuntosRutaViaje.AddRange(puntosRuta);
+
         db.SolicitudesViaje.AddRange(solicitudesViaje);
         db.TransaccionesEcoToken.AddRange(eco);
         db.Calificaciones.AddRange(calificaciones);
@@ -411,6 +429,32 @@ public sealed class SembradorBaseDatos(
         Co2AhorradoKg = co2,
         Polilinea = null
     };
+
+    private static PuntoRutaViaje NuevoPuntoRuta(Viaje viaje, Campus campus, int seq)
+    {
+        if (seq == 0)
+        {
+            return new PuntoRutaViaje
+            {
+                UniversidadId = viaje.UniversidadId,
+                ViajeId = viaje.Id,
+                Seq = 0,
+                Lat = viaje.OrigenLat,
+                Lng = viaje.OrigenLng,
+                Etiqueta = viaje.OrigenTexto
+            };
+        }
+
+        return new PuntoRutaViaje
+        {
+            UniversidadId = viaje.UniversidadId,
+            ViajeId = viaje.Id,
+            Seq = seq,
+            Lat = (viaje.OrigenLat + campus.Lat) / 2.0,
+            Lng = (viaje.OrigenLng + campus.Lng) / 2.0,
+            Etiqueta = null
+        };
+    }
 
     private static SolicitudViaje NuevaSolicitudViaje(
         Guid universidadId,

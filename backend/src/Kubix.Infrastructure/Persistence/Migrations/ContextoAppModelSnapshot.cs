@@ -460,6 +460,48 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                     b.ToTable("location_pings", (string)null);
                 });
 
+            modelBuilder.Entity("Kubix.Domain.Entities.PuntoRutaViaje", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Etiqueta")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("label");
+
+                    b.Property<double>("Lat")
+                        .HasColumnType("double precision")
+                        .HasColumnName("lat");
+
+                    b.Property<double>("Lng")
+                        .HasColumnType("double precision")
+                        .HasColumnName("lng");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("integer")
+                        .HasColumnName("seq");
+
+                    b.Property<Guid>("UniversidadId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("university_id");
+
+                    b.Property<Guid>("ViajeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("trip_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UniversidadId");
+
+                    b.HasIndex("ViajeId", "Seq")
+                        .IsUnique();
+
+                    b.ToTable("trip_waypoints", (string)null);
+                });
+
             modelBuilder.Entity("Kubix.Domain.Entities.SolicitudRegistro", b =>
                 {
                     b.Property<Guid>("Id")
@@ -582,6 +624,18 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("pickup_text");
+
+                    b.Property<double?>("DistanciaARutaM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("distance_to_route_m");
+
+                    b.Property<double?>("LatSugerida")
+                        .HasColumnType("double precision")
+                        .HasColumnName("suggested_lat");
+
+                    b.Property<double?>("LngSugerida")
+                        .HasColumnType("double precision")
+                        .HasColumnName("suggested_lng");
 
                     b.Property<Guid>("UniversidadId")
                         .HasColumnType("uuid")
@@ -1124,6 +1178,25 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                     b.Navigation("Viaje");
                 });
 
+            modelBuilder.Entity("Kubix.Domain.Entities.PuntoRutaViaje", b =>
+                {
+                    b.HasOne("Kubix.Domain.Entities.Universidad", "Universidad")
+                        .WithMany()
+                        .HasForeignKey("UniversidadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Kubix.Domain.Entities.Viaje", "Viaje")
+                        .WithMany("PuntosRuta")
+                        .HasForeignKey("ViajeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Universidad");
+
+                    b.Navigation("Viaje");
+                });
+
             modelBuilder.Entity("Kubix.Domain.Entities.SolicitudRegistro", b =>
                 {
                     b.HasOne("Kubix.Domain.Entities.Campus", "Campus")
@@ -1284,6 +1357,8 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                     b.Navigation("Calificaciones");
 
                     b.Navigation("PingsUbicacion");
+
+                    b.Navigation("PuntosRuta");
 
                     b.Navigation("SolicitudesViaje");
                 });

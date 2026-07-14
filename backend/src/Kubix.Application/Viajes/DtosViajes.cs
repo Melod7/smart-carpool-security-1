@@ -38,16 +38,34 @@ public sealed class SolicitudUpsertVehiculo
     public int AsientosTotales { get; set; }
 }
 
+public sealed class WaypointDto
+{
+    [JsonPropertyName("lat")]
+    public double Lat { get; set; }
+
+    [JsonPropertyName("lng")]
+    public double Lng { get; set; }
+
+    [JsonPropertyName("label")]
+    public string? Etiqueta { get; set; }
+
+    [JsonPropertyName("seq")]
+    public int? Seq { get; set; }
+}
+
 public sealed class SolicitudPublicarViaje
 {
     [JsonPropertyName("originText")]
     public string OrigenTexto { get; set; } = string.Empty;
 
     [JsonPropertyName("originLat")]
-    public double OrigenLat { get; set; }
+    public double? OrigenLat { get; set; }
 
     [JsonPropertyName("originLng")]
-    public double OrigenLng { get; set; }
+    public double? OrigenLng { get; set; }
+
+    [JsonPropertyName("waypoints")]
+    public List<WaypointDto>? Waypoints { get; set; }
 
     [JsonPropertyName("destinationCampusId")]
     public Guid CampusDestinoId { get; set; }
@@ -57,6 +75,24 @@ public sealed class SolicitudPublicarViaje
 
     [JsonPropertyName("seatsAvailable")]
     public int AsientosDisponibles { get; set; }
+}
+
+public sealed class PuntoEsperaSugeridoDto
+{
+    [JsonPropertyName("lat")]
+    public double Lat { get; set; }
+
+    [JsonPropertyName("lng")]
+    public double Lng { get; set; }
+
+    [JsonPropertyName("distanceM")]
+    public double DistanciaM { get; set; }
+
+    [JsonPropertyName("segmentIndex")]
+    public int SegmentIndex { get; set; }
+
+    [JsonPropertyName("tooFar")]
+    public bool TooFar { get; set; }
 }
 
 public sealed class ViajeDto
@@ -99,6 +135,12 @@ public sealed class ViajeDto
 
     [JsonPropertyName("universityId")]
     public Guid UniversidadId { get; set; }
+
+    [JsonPropertyName("waypoints")]
+    public IReadOnlyList<WaypointDto> Waypoints { get; set; } = Array.Empty<WaypointDto>();
+
+    [JsonPropertyName("suggestedWait")]
+    public PuntoEsperaSugeridoDto? EsperaSugerida { get; set; }
 }
 
 public sealed class MisViajesDto
