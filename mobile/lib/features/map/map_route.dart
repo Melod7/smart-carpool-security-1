@@ -13,13 +13,14 @@ class MapRoutePath {
   bool get isRenderable => points.length >= 2;
 }
 
-/// Construye la ruta: polyline encoded o línea recta discontinua de fallback.
+/// Construye la ruta: polyline encoded, waypoints ordenados, o línea recta discontinua.
 MapRoutePath buildMapRoute({
   String? polyline,
   double? originLat,
   double? originLng,
   double? pickupLat,
   double? pickupLng,
+  List<TripWaypoint> waypoints = const [],
   List<TrackingParticipant> participants = const [],
 }) {
   if (polyline != null && polyline.isNotEmpty) {
@@ -27,6 +28,15 @@ MapRoutePath buildMapRoute({
     if (decoded.length >= 2) {
       return MapRoutePath(points: decoded, dashed: false);
     }
+  }
+
+  if (waypoints.length >= 2) {
+    return MapRoutePath(
+      points: [
+        for (final w in waypoints) LatLng(w.lat, w.lng),
+      ],
+      dashed: true,
+    );
   }
 
   final points = <LatLng>[];

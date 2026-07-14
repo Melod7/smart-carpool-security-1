@@ -271,6 +271,20 @@ Future<bool> showPublishModal(BuildContext context, WidgetRef ref) async {
                                         originText: originCtrl.text.trim(),
                                         originLat: lat,
                                         originLng: lng,
+                                        waypoints: [
+                                          TripWaypoint(
+                                            lat: lat,
+                                            lng: lng,
+                                            label: originCtrl.text.trim(),
+                                          ),
+                                          // Segundo punto: leve offset hacia
+                                          // el campus (compat legacy → waypoints).
+                                          TripWaypoint(
+                                            lat: lat + 0.002,
+                                            lng: lng + 0.002,
+                                            label: 'Ruta',
+                                          ),
+                                        ],
                                         destinationCampusId: campusId!,
                                         departureAt: departureAt,
                                         seatsAvailable: seats!,

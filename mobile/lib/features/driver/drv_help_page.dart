@@ -8,9 +8,10 @@ const driverFaqs = <FaqItem>[
   FaqItem(
     question: '¿Cómo publico una ruta?',
     answer:
-        'En Inicio toca el botón +. Indica origen, campus de destino, hora '
-        'y asientos disponibles. Los pasajeros de tu campus verán el viaje '
-        'en su lista de disponibles.',
+        'En Inicio toca el botón +. Se abre el mapa: centra con GPS, toca '
+        'para añadir puntos de tu ruta (mín. 2, máx. 8), elige campus, hora '
+        'y asientos. Los pasajeros de tu campus verán el viaje y un punto '
+        'de espera sugerido cerca de la ruta.',
   ),
   FaqItem(
     question: '¿Cómo acepto o rechazo solicitudes?',

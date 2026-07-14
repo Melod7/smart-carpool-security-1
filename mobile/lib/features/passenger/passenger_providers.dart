@@ -6,6 +6,7 @@ import '../../api/models.dart';
 import '../../api/passenger_api.dart';
 import '../../auth/auth_state.dart';
 import '../map/trip_geometry_cache.dart';
+import '../sos/sos_location.dart';
 import 'trip_labels.dart';
 
 const pollInterval = Duration(seconds: 15);
@@ -18,13 +19,50 @@ void _schedulePoll(Ref ref, Duration interval) {
   ref.onDispose(timer.cancel);
 }
 
-/// Poll de disponibles: 30s (PLAN §3).
+/// Resultado de disponibles + si se pudo usar GPS para suggestedWait.
+class AvailableTripsResult {
+  const AvailableTripsResult({
+    required this.trips,
+    required this.hasGps,
+    this.gpsMessage,
+  });
+
+  final List<AvailableTrip> trips;
+  final bool hasGps;
+  final String? gpsMessage;
+}
+
+/// Poll de disponibles: 30s (PLAN §3). Pasa GPS si hay permiso (KBX-33).
 final availableTripsProvider =
-    FutureProvider.autoDispose<List<AvailableTrip>>((ref) async {
+    FutureProvider.autoDispose<AvailableTripsResult>((ref) async {
   _schedulePoll(ref, const Duration(seconds: 30));
-  final list = await ref.watch(passengerApiProvider).getAvailableTrips();
+  double? lat;
+  double? lng;
+  String? gpsMessage;
+  var hasGps = false;
+  try {
+    final coords =
+        await ref.read(sosLocationSourceProvider).getCurrentCoords();
+    lat = coords.lat;
+    lng = coords.lng;
+    hasGps = true;
+  } on SosLocationException catch (e) {
+    gpsMessage = e.message;
+  } catch (_) {
+    gpsMessage =
+        'Sin ubicación GPS: los puntos de espera sugeridos no estarán disponibles.';
+  }
+
+  final list = await ref.watch(passengerApiProvider).getAvailableTrips(
+        lat: lat,
+        lng: lng,
+      );
   ref.read(tripGeometryCacheProvider.notifier).putAvailableList(list);
-  return list;
+  return AvailableTripsResult(
+    trips: list,
+    hasGps: hasGps,
+    gpsMessage: gpsMessage,
+  );
 });
 
 final myTripsProvider =

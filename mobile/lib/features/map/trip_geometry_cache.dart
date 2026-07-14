@@ -25,6 +25,9 @@ class TripGeometryCache extends StateNotifier<Map<String, TripMapSeed>> {
         originLng: seed.originLng ?? previous.originLng,
         pickupLat: seed.pickupLat ?? previous.pickupLat,
         pickupLng: seed.pickupLng ?? previous.pickupLng,
+        waypoints: seed.waypoints.isNotEmpty
+            ? seed.waypoints
+            : previous.waypoints,
       ),
     };
   }

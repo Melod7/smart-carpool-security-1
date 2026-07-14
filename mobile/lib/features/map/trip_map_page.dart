@@ -197,12 +197,14 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
     final participants = tracking?.participants ?? const <TrackingParticipant>[];
     final polyline = tracking?.polyline ?? seed?.polyline;
 
+    final waypoints = seed?.waypoints ?? const <TripWaypoint>[];
     final route = buildMapRoute(
       polyline: polyline,
       originLat: seed?.originLat,
       originLng: seed?.originLng,
       pickupLat: seed?.pickupLat,
       pickupLng: seed?.pickupLng,
+      waypoints: waypoints,
       participants: participants,
     );
 
@@ -253,7 +255,24 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
         );
       }
     } else {
-      // scheduled: ruta + pickup (sin pings en vivo).
+      // scheduled: waypoints numerados + pickup / origen (sin pings en vivo).
+      for (var i = 0; i < waypoints.length; i++) {
+        final w = waypoints[i];
+        final pos = LatLng(w.lat, w.lng);
+        boundsPoints.add(pos);
+        markers.add(
+          Marker(
+            markerId: MarkerId('wp-$i'),
+            position: pos,
+            infoWindow: InfoWindow(
+              title: '${i + 1}. ${w.label ?? (i == 0 ? 'Inicio' : 'Punto')}',
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              i == 0 ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueAzure,
+            ),
+          ),
+        );
+      }
       if (seed?.hasPickup == true) {
         final pickup = LatLng(seed!.pickupLat!, seed.pickupLng!);
         boundsPoints.add(pickup);
@@ -261,13 +280,14 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
           Marker(
             markerId: const MarkerId('pickup'),
             position: pickup,
-            infoWindow: const InfoWindow(title: 'Punto de recogida'),
+            infoWindow: const InfoWindow(title: 'Punto de espera / recogida'),
             icon: BitmapDescriptor.defaultMarkerWithHue(
               BitmapDescriptor.hueOrange,
             ),
+            zIndexInt: 3,
           ),
         );
-      } else if (seed?.hasOrigin == true) {
+      } else if (waypoints.isEmpty && seed?.hasOrigin == true) {
         final origin = LatLng(seed!.originLat!, seed.originLng!);
         boundsPoints.add(origin);
         markers.add(

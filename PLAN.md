@@ -1,7 +1,7 @@
 # Kubix UTN — Plan de la plataforma Smart Carpool Security
 
-Versión: 2.7 (cambio de diseño: publicar ruta del conductor por **mapa + waypoints**; pickup sugerido al pasajero)
-Estado: Auditado. v2.1–2.4 como antes. **v2.5–2.6:** Planner T1–T7. **v2.7:** el driver ya no publica con solo texto/origen fijo — dibuja la ruta en el mapa (waypoints); el pasajero puede subir en cualquier punto y el sistema calcula dónde esperar.
+Versión: 2.8 (Planner T1–T8 + cambio de diseño: publicar ruta del conductor por **mapa + waypoints**; pickup sugerido al pasajero)
+Estado: Auditado. v2.1–2.4 como antes. **v2.5–2.6:** Planner T1–T7. **v2.7:** el driver ya no publica con solo texto/origen fijo — dibuja la ruta en el mapa (waypoints); el pasajero puede subir en cualquier punto y el sistema calcula dónde esperar. **v2.8:** se añade tarea Planner **T8** (KBX-32·33).
 Workspace: `/Users/patriciochachalo/jer/fern/smart-carpool-security`
 
 ---
@@ -461,9 +461,9 @@ Cloud (AWS, cuenta de prueba, todo friendly con free-tier):
 **Epic — KBX: Kubix UTN Smart Carpool Security Platform**
 Plataforma multi-tenant de seguridad para carpooling (super admin → universidades → campuses) con React admin web, .NET 8 API, Flutter mobile, PostgreSQL, tracking en vivo de trips con Google Maps, alertas SOS, tooling completo de QA, deployment AWS.
 
-Cada ítem detallado KBX-* más abajo es **alcance interno / checklist**. En Planner no se crean 31 tareas: se crean **7 tareas agrupadas** (§10.1).
+Cada ítem detallado KBX-* más abajo es **alcance interno / checklist**. En Planner no se crean 31+ tareas KBX: se crean **8 tareas agrupadas** T1–T8 (§10.1).
 
-### 10.1 Agrupación Planner — **todo el proyecto = 2 semanas · 7 tareas**
+### 10.1 Agrupación Planner — **todo el proyecto = 2 semanas · 8 tareas**
 
 **Duración total: 2 semanas (Día 1 → Día 14).**  
 **Calendario ancla (ajustar en Planner si el Día 1 real cambia):**  
@@ -484,9 +484,7 @@ Cada ítem detallado KBX-* más abajo es **alcance interno / checklist**. En Pla
 | D13 | 2026-07-18 |
 | D14 | 2026-07-19 (dom) |
 
-**Delta v2.7 (post-T5, no nueva tarjeta Planner obligatoria):** implementar **KBX-32** (API/waypoints) + **KBX-33** (mobile mapa publicar + espera) antes o en paralelo suave con T6. Si se quiere reflejar en Planner, añadir checklist a T5 o una tarea extra “Ruta por waypoints”.
-
-**En Planner: exactamente 7 tareas** (una por fase). Los KBX-* **no** se crean como tareas sueltas: van en **Notas** + como ítems de la **Lista de comprobación** junto con el AC.
+**En Planner: 8 tareas** (T1–T7 fases + **T8** delta de diseño v2.7). Los KBX-* **no** se crean como tareas sueltas: van en **Notas** + checklist junto con el AC.
 
 | # | Título | Prioridad | Inicio | Vencimiento | Track | Estado |
 |---|---|---|---|---|---|---|
@@ -495,10 +493,11 @@ Cada ítem detallado KBX-* más abajo es **alcance interno / checklist**. En Pla
 | **T3** | Backend ops — EcoTokens, SOS, tracking, admin API | Importante | 2026-07-10 | 2026-07-12 | Backend | Hecho |
 | **T4** | Web admin — consola React completa | Importante | 2026-07-11 | 2026-07-15 | Web | Hecho |
 | **T5** | Mobile — Flutter auth, pasajero, conductor, SOS, mapa | Importante | 2026-07-13 | 2026-07-17 | Mobile | Hecho |
+| **T8** | Ruta por waypoints — mapa conductor + espera pasajero | Importante | 2026-07-13 | 2026-07-17 | Mobile+BE | Hecho |
 | **T6** | QA — coverage, Postman/JMeter, Selenium/Sonar/SAST | Importante | 2026-07-15 | 2026-07-18 | QA | Pendiente |
 | **T7** | Deploy — AWS + CI/CD | Media | 2026-07-17 | 2026-07-19 | Deploy | Pendiente |
 
-Paralelismo permitido: T4 con cierre de T3; T5 con T4; T6 con final de T4/T5; T7 al cierre.
+Paralelismo: T8 tras T5 (o solapado al final de T5); T6 tras T8; T7 al cierre.
 
 **Campos por tarea (mapeo Planner):** Título · Prioridad · Fecha de inicio · Fecha de vencimiento · Lista de comprobación (= AC + IDs KBX) · Notas · Datos adjuntos (links/archivos). No pegar las secciones KBX-* largas del PLAN.
 
@@ -668,6 +667,33 @@ App Flutter con login/registro (wizard + pending), shells por rol, flujos pasaje
 
 ---
 
+
+#### T8 — Ruta por waypoints — mapa conductor + espera pasajero
+
+| Campo Planner | Valor |
+|---|---|
+| **Título** | Ruta por waypoints — mapa conductor + espera pasajero |
+| **Prioridad** | Importante |
+| **Fecha de inicio** | 2026-07-13 (D8) |
+| **Fecha de vencimiento** | 2026-07-17 (D12) |
+
+**Lista de comprobación:**
+- [x] KBX-32 — Backend: `trip_waypoints`, `POST /trips` con waypoints, Directions vias, `suggestedWait`
+- [x] KBX-33 — Mobile: mapa publicar ruta (FAB) + espera sugerida al pasajero
+- [x] Migración `trip_waypoints` + seed con ≥2 waypoints
+- [x] `GET /trips/available?lat=&lng=` y `GET /trips/{id}/suggested-pickup`
+- [x] Driver: tap/long-press waypoints (2–8), campus/hora/asientos → publicar
+- [x] Pasajero: ve “espera aquí” / tooFar; confirma pickup sobre la ruta
+
+**Notas:**
+Delta de diseño v2.7: el conductor dibuja la ruta en el mapa (waypoints); el pasajero puede subir en cualquier punto; el server calcula dónde esperar. Detalle: PLAN.md → KBX-32 · KBX-33 · §6.3. Avance: STATUS.md.
+
+**Datos adjuntos:**
+- Link: `PLAN.md` §6.3 (secuencia publish + suggestedWait)
+- Link: captura mapa publicar (driver) + card “espera aquí” (passenger)
+- Link: Swagger `POST /trips`, `GET /trips/available`
+- Opcional: video corto de dos dispositivos (driver dibuja / passenger solicita)
+
 #### T6 — QA — coverage, Postman/JMeter, Selenium/Sonar/SAST
 
 | Campo Planner | Valor |
@@ -730,7 +756,7 @@ Infra de prueba AWS (ECR, App Runner, RDS t4g.micro, S3+CloudFront) y GitHub Act
 
 #### Cómo configurar Planner
 1. Plan único: epic **KBX: Kubix UTN…**; **inicio 2026-07-06**, **fin 2026-07-19** (o re-anclar el calendario D1–D14).
-2. Crear **7 tareas** con el **Título** exacto de T1–T7.
+2. Crear **8 tareas** con el **Título** exacto de T1–T8 (incluir T8 waypoints).
 3. En cada tarea completar: **Prioridad**, **Fecha de inicio**, **Fecha de vencimiento**.
 4. Pegar la **Lista de comprobación** (ítems KBX + AC). Marcar hechos según STATUS.
 5. Pegar **Notas** (resumen corto; no las secciones KBX-* largas).

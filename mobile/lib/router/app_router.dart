@@ -7,6 +7,7 @@ import '../features/auth/change_password_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/pending_page.dart';
 import '../features/auth/register_wizard_page.dart';
+import '../features/driver/publish_route_map_page.dart';
 import '../features/map/trip_map_page.dart';
 import '../api/models.dart';
 import '../features/shell/driver_shell.dart';
@@ -112,6 +113,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/driver',
         builder: (_, __) => const DriverShell(),
+      ),
+      GoRoute(
+        path: '/driver/publish-route',
+        builder: (_, __) => const PublishRouteMapPage(),
       ),
       GoRoute(
         path: '/trips/:tripId/map',

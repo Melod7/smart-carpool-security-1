@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../auth/auth_state.dart';
 import '../driver/drv_help_page.dart';
 import '../driver/drv_home_page.dart';
 import '../driver/drv_profile_page.dart';
 import '../driver/drv_trips_page.dart';
-import '../driver/widgets/publish_modal.dart';
 
 class DriverShell extends ConsumerStatefulWidget {
   const DriverShell({super.key});
@@ -46,7 +46,7 @@ class _DriverShellState extends ConsumerState<DriverShell> {
       floatingActionButton: _index == 0
           ? FloatingActionButton(
               tooltip: 'Publicar ruta',
-              onPressed: () => showPublishModal(context, ref),
+              onPressed: () => context.push('/driver/publish-route'),
               child: const Icon(Icons.add),
             )
           : null,

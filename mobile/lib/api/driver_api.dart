@@ -23,26 +23,32 @@ class DriverApi {
     }
   }
 
+  /// Publica un viaje. Preferir [waypoints] (≥2, ≤8); legacy originLat/Lng
+  /// se mantiene para el modal textual de fallback.
   Future<AvailableTrip> publishTrip({
-    required String originText,
-    required double originLat,
-    required double originLng,
     required String destinationCampusId,
     required DateTime departureAt,
     required int seatsAvailable,
+    String? originText,
+    double? originLat,
+    double? originLng,
+    List<TripWaypoint>? waypoints,
   }) async {
     try {
-      final res = await _dio.post<Map<String, dynamic>>(
-        '/trips',
-        data: {
-          'originText': originText,
-          'originLat': originLat,
-          'originLng': originLng,
-          'destinationCampusId': destinationCampusId,
-          'departureAt': departureAt.toUtc().toIso8601String(),
-          'seatsAvailable': seatsAvailable,
+      final wp = waypoints;
+      final body = <String, dynamic>{
+        'destinationCampusId': destinationCampusId,
+        'departureAt': departureAt.toUtc().toIso8601String(),
+        'seatsAvailable': seatsAvailable,
+        if (originText != null && originText.isNotEmpty) 'originText': originText,
+        if (wp != null && wp.isNotEmpty)
+          'waypoints': wp.map((w) => w.toJson()).toList()
+        else ...{
+          if (originLat != null) 'originLat': originLat,
+          if (originLng != null) 'originLng': originLng,
         },
-      );
+      };
+      final res = await _dio.post<Map<String, dynamic>>('/trips', data: body);
       return AvailableTrip.fromJson(res.data!);
     } on DioException catch (e) {
       throw mapDioError(e, fallback: 'No se pudo publicar el viaje.');

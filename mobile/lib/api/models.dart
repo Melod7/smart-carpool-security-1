@@ -230,6 +230,78 @@ DateTime _asDateTime(dynamic value) {
   return DateTime.parse(value as String);
 }
 
+/// Waypoint de ruta del conductor (POST /trips, respuesta de viaje).
+class TripWaypoint {
+  const TripWaypoint({
+    required this.lat,
+    required this.lng,
+    this.label,
+    this.seq,
+  });
+
+  final double lat;
+  final double lng;
+  final String? label;
+  final int? seq;
+
+  Map<String, dynamic> toJson() => {
+        'lat': lat,
+        'lng': lng,
+        if (label != null && label!.isNotEmpty) 'label': label,
+        if (seq != null) 'seq': seq,
+      };
+
+  factory TripWaypoint.fromJson(Map<String, dynamic> json) {
+    return TripWaypoint(
+      lat: _asDouble(json['lat']),
+      lng: _asDouble(json['lng']),
+      label: json['label'] as String?,
+      seq: json['seq'] as int?,
+    );
+  }
+
+  TripWaypoint copyWith({
+    double? lat,
+    double? lng,
+    String? label,
+    int? seq,
+  }) {
+    return TripWaypoint(
+      lat: lat ?? this.lat,
+      lng: lng ?? this.lng,
+      label: label ?? this.label,
+      seq: seq ?? this.seq,
+    );
+  }
+}
+
+/// Punto de espera sugerido (GET /trips/available?lat=&lng=).
+class SuggestedWait {
+  const SuggestedWait({
+    required this.lat,
+    required this.lng,
+    required this.distanceM,
+    required this.segmentIndex,
+    this.tooFar = false,
+  });
+
+  final double lat;
+  final double lng;
+  final double distanceM;
+  final int segmentIndex;
+  final bool tooFar;
+
+  factory SuggestedWait.fromJson(Map<String, dynamic> json) {
+    return SuggestedWait(
+      lat: _asDouble(json['lat']),
+      lng: _asDouble(json['lng']),
+      distanceM: _asDouble(json['distanceM']),
+      segmentIndex: json['segmentIndex'] as int? ?? 0,
+      tooFar: json['tooFar'] as bool? ?? false,
+    );
+  }
+}
+
 /// Viaje disponible (GET /trips/available).
 class AvailableTrip {
   const AvailableTrip({
@@ -245,6 +317,8 @@ class AvailableTrip {
     required this.co2SavedKg,
     required this.driverId,
     this.polyline,
+    this.waypoints = const [],
+    this.suggestedWait,
   });
 
   final String id;
@@ -259,8 +333,11 @@ class AvailableTrip {
   final double co2SavedKg;
   final String driverId;
   final String? polyline;
+  final List<TripWaypoint> waypoints;
+  final SuggestedWait? suggestedWait;
 
   factory AvailableTrip.fromJson(Map<String, dynamic> json) {
+    final rawWp = json['waypoints'] as List<dynamic>? ?? const [];
     return AvailableTrip(
       id: json['id'] as String,
       status: json['status'] as String,
@@ -274,6 +351,14 @@ class AvailableTrip {
       co2SavedKg: _asDouble(json['co2SavedKg']),
       driverId: json['driverId'] as String,
       polyline: json['polyline'] as String?,
+      waypoints: rawWp
+          .map((e) => TripWaypoint.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      suggestedWait: json['suggestedWait'] == null
+          ? null
+          : SuggestedWait.fromJson(
+              json['suggestedWait'] as Map<String, dynamic>,
+            ),
     );
   }
 }
@@ -729,6 +814,7 @@ class TripMapSeed {
     this.originLng,
     this.pickupLat,
     this.pickupLng,
+    this.waypoints = const [],
   });
 
   final String tripId;
@@ -738,9 +824,11 @@ class TripMapSeed {
   final double? originLng;
   final double? pickupLat;
   final double? pickupLng;
+  final List<TripWaypoint> waypoints;
 
   bool get hasOrigin => originLat != null && originLng != null;
   bool get hasPickup => pickupLat != null && pickupLng != null;
+  bool get hasWaypoints => waypoints.length >= 2;
 
   TripMapSeed copyWith({
     String? status,
@@ -749,6 +837,7 @@ class TripMapSeed {
     double? originLng,
     double? pickupLat,
     double? pickupLng,
+    List<TripWaypoint>? waypoints,
   }) {
     return TripMapSeed(
       tripId: tripId,
@@ -758,6 +847,7 @@ class TripMapSeed {
       originLng: originLng ?? this.originLng,
       pickupLat: pickupLat ?? this.pickupLat,
       pickupLng: pickupLng ?? this.pickupLng,
+      waypoints: waypoints ?? this.waypoints,
     );
   }
 
@@ -768,6 +858,9 @@ class TripMapSeed {
       polyline: trip.polyline,
       originLat: trip.originLat,
       originLng: trip.originLng,
+      waypoints: trip.waypoints,
+      pickupLat: trip.suggestedWait?.lat,
+      pickupLng: trip.suggestedWait?.lng,
     );
   }
 }

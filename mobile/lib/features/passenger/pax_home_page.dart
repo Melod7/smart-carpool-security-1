@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../api/models.dart';
 import '../../auth/auth_state.dart';
 import '../../theme/kubix_theme.dart';
 import '../sos/sos_button.dart';
 import '../sos/sos_overlay.dart';
+import '../map/decode_polyline.dart';
+import '../map/map_route.dart';
 import '../map/open_trip_map.dart';
 import '../map/trip_geometry_cache.dart';
+import '../map/trip_map_page.dart' show mapsApiKey;
 import 'passenger_providers.dart';
+import 'suggested_wait_labels.dart';
 import 'trip_labels.dart';
 import 'widgets/eco_widget.dart';
 
@@ -97,8 +102,8 @@ class PaxHomePage extends ConsumerWidget {
               ),
               const Spacer(),
               available.maybeWhen(
-                data: (list) => Text(
-                  '${list.length}',
+                data: (result) => Text(
+                  '${result.trips.length}',
                   style: const TextStyle(color: KubixColors.muted),
                 ),
                 orElse: () => const SizedBox.shrink(),
@@ -107,31 +112,36 @@ class PaxHomePage extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           available.when(
-            data: (list) {
-              if (list.isEmpty) {
-                return const _InfoCard(
-                  title: 'No hay viajes ahora',
-                  subtitle:
-                      'Vuelve más tarde o tira hacia abajo para actualizar.',
-                  icon: Icons.directions_car_outlined,
-                );
-              }
+            data: (result) {
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final trip in list) ...[
-                    _AvailableTripTile(
-                      trip: trip,
-                      onRequest: () => _openRequestSheet(context, ref, trip),
-                      onMap: () => openTripMap(
-                        context,
-                        ref,
-                        tripId: trip.id,
-                        status: trip.status,
-                        available: trip,
-                      ),
-                    ),
+                  if (!result.hasGps && result.gpsMessage != null) ...[
+                    _GpsHintCard(message: result.gpsMessage!),
                     const SizedBox(height: 8),
                   ],
+                  if (result.trips.isEmpty)
+                    const _InfoCard(
+                      title: 'No hay viajes ahora',
+                      subtitle:
+                          'Vuelve más tarde o tira hacia abajo para actualizar.',
+                      icon: Icons.directions_car_outlined,
+                    )
+                  else
+                    for (final trip in result.trips) ...[
+                      _AvailableTripTile(
+                        trip: trip,
+                        onRequest: () => _openRequestSheet(context, ref, trip),
+                        onMap: () => openTripMap(
+                          context,
+                          ref,
+                          tripId: trip.id,
+                          status: trip.status,
+                          available: trip,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                 ],
               );
             },
@@ -151,168 +161,342 @@ class PaxHomePage extends ConsumerWidget {
     WidgetRef ref,
     AvailableTrip trip,
   ) async {
-    final pickupCtrl = TextEditingController(text: trip.originText);
-    final latCtrl = TextEditingController(text: trip.originLat.toString());
-    final lngCtrl = TextEditingController(text: trip.originLng.toString());
-    var submitting = false;
-    String? error;
-
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setState) {
-            final bottom = MediaQuery.of(ctx).viewInsets.bottom;
-            return Padding(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Solicitar viaje',
-                    style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: KubixColors.utnBlue,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Sale ${TripLabels.formatDateTime(trip.departureAt)} · '
-                    '${trip.seatsAvailable} asientos',
-                    style: const TextStyle(color: KubixColors.muted),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: pickupCtrl,
-                    enabled: !submitting,
-                    decoration: const InputDecoration(
-                      labelText: 'Punto de recogida',
-                      hintText: 'Ej. Av. Universitaria y Gaspar de Villarroel',
-                    ),
-                    textCapitalization: TextCapitalization.sentences,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: latCtrl,
-                          enabled: !submitting,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                            signed: true,
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: 'Lat (opcional)',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: lngCtrl,
-                          enabled: !submitting,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                            signed: true,
-                          ),
-                          decoration: const InputDecoration(
-                            labelText: 'Lng (opcional)',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      error!,
-                      style: const TextStyle(color: KubixColors.emergency),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: submitting
-                        ? null
-                        : () async {
-                            final text = pickupCtrl.text.trim();
-                            if (text.isEmpty) {
-                              setState(
-                                () => error = 'Indica el punto de recogida.',
-                              );
-                              return;
-                            }
-                            final lat = double.tryParse(latCtrl.text.trim()) ??
-                                trip.originLat;
-                            final lng = double.tryParse(lngCtrl.text.trim()) ??
-                                trip.originLng;
-                            setState(() {
-                              submitting = true;
-                              error = null;
-                            });
-                            try {
-                              await ref.read(passengerApiProvider).requestRide(
-                                    tripId: trip.id,
-                                    pickupText: text,
-                                    pickupLat: lat,
-                                    pickupLng: lng,
-                                  );
-                              ref
-                                  .read(tripGeometryCacheProvider.notifier)
-                                  .putAvailable(trip);
-                              ref
-                                  .read(tripGeometryCacheProvider.notifier)
-                                  .putPickup(
-                                    tripId: trip.id,
-                                    pickupLat: lat,
-                                    pickupLng: lng,
-                                    status: trip.status,
-                                  );
-                              invalidatePassengerTrips(ref);
-                              if (ctx.mounted) Navigator.pop(ctx);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Solicitud enviada. Espera la confirmación del conductor.',
-                                    ),
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              setState(() {
-                                submitting = false;
-                                error = e.toString();
-                              });
-                            }
-                          },
-                    child: submitting
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text('Enviar solicitud'),
-                  ),
-                ],
-              ),
-            );
-          },
+      builder: (ctx) => _RequestWaitSheet(trip: trip, parentContext: context),
+    );
+  }
+}
+
+class _RequestWaitSheet extends ConsumerStatefulWidget {
+  const _RequestWaitSheet({
+    required this.trip,
+    required this.parentContext,
+  });
+
+  final AvailableTrip trip;
+  final BuildContext parentContext;
+
+  @override
+  ConsumerState<_RequestWaitSheet> createState() => _RequestWaitSheetState();
+}
+
+class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
+  late final TextEditingController _pickupCtrl;
+  late double _waitLat;
+  late double _waitLng;
+  late bool _tooFar;
+  late double? _distanceM;
+  var _submitting = false;
+  String? _error;
+
+  AvailableTrip get trip => widget.trip;
+
+  @override
+  void initState() {
+    super.initState();
+    final wait = trip.suggestedWait;
+    _pickupCtrl = TextEditingController(
+      text: SuggestedWaitLabels.pickupTextDefault(wait),
+    );
+    _waitLat = wait?.lat ?? trip.originLat;
+    _waitLng = wait?.lng ?? trip.originLng;
+    _tooFar = wait?.tooFar ?? false;
+    _distanceM = wait?.distanceM;
+  }
+
+  @override
+  void dispose() {
+    _pickupCtrl.dispose();
+    super.dispose();
+  }
+
+  Set<Marker> get _markers {
+    final markers = <Marker>{
+      Marker(
+        markerId: const MarkerId('wait'),
+        position: LatLng(_waitLat, _waitLng),
+        draggable: !_submitting,
+        infoWindow: const InfoWindow(title: 'Espera aquí'),
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+          BitmapDescriptor.hueOrange,
+        ),
+        onDragEnd: (pos) {
+          setState(() {
+            _waitLat = pos.latitude;
+            _waitLng = pos.longitude;
+          });
+        },
+      ),
+    };
+    for (var i = 0; i < trip.waypoints.length; i++) {
+      markers.add(
+        Marker(
+          markerId: MarkerId('wp-$i'),
+          position: LatLng(trip.waypoints[i].lat, trip.waypoints[i].lng),
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueAzure,
+          ),
+          alpha: 0.65,
+        ),
+      );
+    }
+    return markers;
+  }
+
+  Set<Polyline> get _polylines {
+    final route = buildMapRoute(
+      polyline: trip.polyline,
+      originLat: trip.originLat,
+      originLng: trip.originLng,
+      waypoints: trip.waypoints,
+      pickupLat: _waitLat,
+      pickupLng: _waitLng,
+    );
+    if (!route.isRenderable) {
+      // Si no hay geometría, al menos un segmento corto al punto de espera.
+      if (trip.polyline != null && trip.polyline!.isNotEmpty) {
+        final decoded = decodePolyline(trip.polyline!);
+        if (decoded.length >= 2) {
+          return {
+            Polyline(
+              polylineId: const PolylineId('route'),
+              points: decoded,
+              color: KubixColors.utnBlue,
+              width: 3,
+            ),
+          };
+        }
+      }
+      return {};
+    }
+    return {
+      Polyline(
+        polylineId: const PolylineId('route'),
+        points: route.points,
+        color: KubixColors.utnBlue,
+        width: 3,
+        patterns: route.dashed
+            ? [PatternItem.dash(14), PatternItem.gap(10)]
+            : const [],
+      ),
+    };
+  }
+
+  Future<void> _submit() async {
+    final text = _pickupCtrl.text.trim();
+    if (text.isEmpty) {
+      setState(() => _error = 'Indica una descripción del punto de espera.');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await ref.read(passengerApiProvider).requestRide(
+            tripId: trip.id,
+            pickupText: text,
+            pickupLat: _waitLat,
+            pickupLng: _waitLng,
+          );
+      ref.read(tripGeometryCacheProvider.notifier).putAvailable(trip);
+      ref.read(tripGeometryCacheProvider.notifier).putPickup(
+            tripId: trip.id,
+            pickupLat: _waitLat,
+            pickupLng: _waitLng,
+            status: trip.status,
+          );
+      invalidatePassengerTrips(ref);
+      if (mounted) Navigator.pop(context);
+      if (widget.parentContext.mounted) {
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Solicitud enviada. Espera la confirmación del conductor.',
+            ),
+          ),
         );
-      },
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final waitSummary = _distanceM == null
+        ? null
+        : SuggestedWaitLabels.summary(
+            SuggestedWait(
+              lat: _waitLat,
+              lng: _waitLng,
+              distanceM: _distanceM!,
+              segmentIndex: trip.suggestedWait?.segmentIndex ?? 0,
+              tooFar: _tooFar,
+            ),
+          );
+    final tooFarMsg = SuggestedWaitLabels.tooFarWarning(
+      SuggestedWait(
+        lat: _waitLat,
+        lng: _waitLng,
+        distanceM: _distanceM ?? 0,
+        segmentIndex: 0,
+        tooFar: _tooFar,
+      ),
     );
 
-    pickupCtrl.dispose();
-    latCtrl.dispose();
-    lngCtrl.dispose();
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Confirmar punto de espera',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: KubixColors.utnBlue,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Sale ${TripLabels.formatDateTime(trip.departureAt)} · '
+              '${trip.seatsAvailable} asientos',
+              style: const TextStyle(color: KubixColors.muted),
+            ),
+            if (waitSummary != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                waitSummary,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: KubixColors.utnBlue,
+                ),
+              ),
+            ],
+            if (tooFarMsg != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                tooFarMsg,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: KubixColors.emergency,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 168,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: mapsApiKey.isEmpty
+                    ? Container(
+                        color: KubixColors.background,
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          'Espera aquí\n'
+                          '${_waitLat.toStringAsFixed(5)}, '
+                          '${_waitLng.toStringAsFixed(5)}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: KubixColors.muted),
+                        ),
+                      )
+                    : GoogleMap(
+                        initialCameraPosition: CameraPosition(
+                          target: LatLng(_waitLat, _waitLng),
+                          zoom: 14,
+                        ),
+                        markers: _markers,
+                        polylines: _polylines,
+                        myLocationButtonEnabled: false,
+                        zoomControlsEnabled: false,
+                        mapToolbarEnabled: false,
+                      ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Arrastra el pin naranja si quieres ajustar un poco el punto. '
+              'El servidor lo alineará a la ruta del conductor.',
+              style: TextStyle(fontSize: 12, color: KubixColors.muted),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _pickupCtrl,
+              enabled: !_submitting,
+              decoration: const InputDecoration(
+                labelText: 'Descripción del punto',
+                hintText: 'Ej. Esquina norte del parque',
+              ),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: const TextStyle(color: KubixColors.emergency),
+              ),
+            ],
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: _submitting ? null : _submit,
+              child: _submitting
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Confirmar y solicitar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GpsHintCard extends StatelessWidget {
+  const _GpsHintCard({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: KubixColors.gold.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.location_off, color: KubixColors.gold, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontSize: 13, color: KubixColors.muted),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -403,6 +587,7 @@ class _AvailableTripTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final wait = trip.suggestedWait;
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(12),
@@ -446,6 +631,19 @@ class _AvailableTripTile extends StatelessWidget {
                         color: KubixColors.muted,
                       ),
                     ),
+                    if (wait != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        SuggestedWaitLabels.summary(wait),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: wait.tooFar
+                              ? KubixColors.emergency
+                              : KubixColors.eco,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -11,15 +11,45 @@ class PassengerApi {
 
   Dio get _dio => _client.dio;
 
-  Future<List<AvailableTrip>> getAvailableTrips() async {
+  /// Lista viajes disponibles. Con [lat]/[lng] el server incluye `suggestedWait`.
+  Future<List<AvailableTrip>> getAvailableTrips({
+    double? lat,
+    double? lng,
+  }) async {
     try {
-      final res = await _dio.get<List<dynamic>>('/trips/available');
+      final res = await _dio.get<List<dynamic>>(
+        '/trips/available',
+        queryParameters: {
+          if (lat != null) 'lat': lat,
+          if (lng != null) 'lng': lng,
+        },
+      );
       final list = res.data ?? const [];
       return list
           .map((e) => AvailableTrip.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw mapDioError(e, fallback: 'No se pudieron cargar los viajes.');
+    }
+  }
+
+  /// Recalcula el punto de espera sugerido para un viaje.
+  Future<SuggestedWait> getSuggestedPickup({
+    required String tripId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/trips/$tripId/suggested-pickup',
+        queryParameters: {'lat': lat, 'lng': lng},
+      );
+      return SuggestedWait.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw mapDioError(
+        e,
+        fallback: 'No se pudo calcular el punto de espera.',
+      );
     }
   }
 
