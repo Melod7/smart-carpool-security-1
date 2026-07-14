@@ -85,13 +85,53 @@ try
             };
         });
 
-    var origenWeb = builder.Configuration["Cors:WebOrigin"] ?? "http://localhost:5173";
+    // Web admin (:5173) + Flutter web (puerto aleatorio en localhost/127.0.0.1).
+    // Cors:WebOrigin se mantiene por compatibilidad con docker-compose / .env.
+    var origenes = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+    if (origenes is null || origenes.Length == 0)
+    {
+        var origenWeb = builder.Configuration["Cors:WebOrigin"] ?? "http://localhost:5173";
+        origenes = [origenWeb];
+    }
+
+    static bool EsOrigenLocalDeDesarrollo(string? origin)
+    {
+        if (string.IsNullOrWhiteSpace(origin))
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        if (uri.Scheme is not ("http" or "https"))
+        {
+            return false;
+        }
+
+        // Vite (:5173), Flutter web (puerto efímero) y variantes localhost / 127.0.0.1.
+        return uri.Host is "localhost" or "127.0.0.1" or "[::1]" or "::1";
+    }
+
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("WebApp", policy =>
-            policy.WithOrigins(origenWeb)
-                .AllowAnyHeader()
-                .AllowAnyMethod());
+        {
+            if (builder.Environment.IsDevelopment())
+            {
+                policy.SetIsOriginAllowed(EsOrigenLocalDeDesarrollo)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            }
+            else
+            {
+                policy.WithOrigins(origenes)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            }
+        });
     });
 
     var app = builder.Build();

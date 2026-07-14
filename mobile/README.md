@@ -68,6 +68,8 @@ flutter run -d emulator-5554 --dart-define=API_URL=http://10.0.2.2:8080
 flutter run -d chrome --dart-define=API_URL=http://127.0.0.1:8080
 ```
 
+> **CORS (Chrome):** Flutter web corre en un puerto efímero (`localhost:xxxxx`). En `Development` la API acepta origins `localhost` / `127.0.0.1`. Si ves `CORS error` en Network, reinicia la API tras el fix de CORS y recarga Chrome (no hace falta otro `API_URL`).
+
 También funciona un fragmento único del nombre (`-d chrome`, `-d iphone`).
 
 Si no aparece nada útil:
