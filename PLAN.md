@@ -1,7 +1,7 @@
 # Kubix UTN — Plan de la plataforma Smart Carpool Security
 
-Versión: 2.8 (Planner T1–T8 + cambio de diseño: publicar ruta del conductor por **mapa + waypoints**; pickup sugerido al pasajero)
-Estado: Auditado. v2.1–2.4 como antes. **v2.5–2.6:** Planner T1–T7. **v2.7:** el driver ya no publica con solo texto/origen fijo — dibuja la ruta en el mapa (waypoints); el pasajero puede subir en cualquier punto y el sistema calcula dónde esperar. **v2.8:** se añade tarea Planner **T8** (KBX-32·33).
+Versión: 2.9 (seguimiento en `scheduled`, puntos de abordaje del conductor, Maps iOS/web, preview de ruta)
+Estado: Auditado. v2.1–2.4 como antes. **v2.5–2.6:** Planner T1–T7. **v2.7–2.8:** T8 (KBX-32·33) waypoints + espera. **v2.9:** cierre de huecos de mapa/tracking sin nueva tarea Planner — pings/poll en `scheduled`, puntos de abordaje visibles al conductor (mismo color que el pasajero), `POST /trips/preview-route`, sync Maps iOS/web, picker de campus en super admin.
 Workspace: `/Users/patriciochachalo/jer/fern/smart-carpool-security`
 
 ---
@@ -233,7 +233,7 @@ Reglas adicionales:
 | Super admin | `GET/POST/PUT /super/universities` · `POST /super/universities/{id}/suspend` · `GET/POST/PUT/DELETE /super/universities/{id}/campuses` · `GET/POST /super/universities/{id}/coordinadores` · `POST /super/coordinadores/{id}/reset-password` · `GET /super/stats` |
 | Admin: users | `GET /admin/registration-requests` · `POST /admin/registration-requests/{id}/accept|deny` · `GET /admin/users` (filters: status, role, campus, search) · `POST /admin/users/{id}/block|unblock` · `GET /admin/users/export` |
 | Admin: ops | `GET /admin/dashboard` (KPI cards + active SOS list) · `GET /admin/reports?period=` · `GET /admin/reports/export?format=csv|xlsx|pdf` · `GET /admin/audit-log` · `GET /admin/notifications` · `PUT /admin/notifications/{id}/read` · `PUT /admin/notifications/read-all` · `GET/PUT /admin/settings` · `GET /admin/tracking/active` · `GET /admin/sos` · `POST /admin/sos/{id}/resolve` |
-| Trips (mobile) | `POST /trips` (publish; **v2.7:** body con `waypoints[]` ordenados + campus + time + seats; backend Directions origin=WP0, via=WP1..n-1, dest=campus; persiste `trip_waypoints` + polyline) · `GET /trips/available?lat=&lng=` (passenger: scheduled, own campus, seats>0; **v2.7:** si lat/lng presentes, cada ítem incluye `suggestedWait` {lat,lng,distanceM,segmentIndex}) · `GET /trips/{id}/suggested-pickup?lat=&lng=` (recalcular punto de espera) · `GET /trips/mine` · `POST /trips/{id}/start|complete|cancel` · `POST /trips/{id}/requests` (pickup = punto de espera confirmado) · `GET /trips/{id}/requests` · `POST /requests/{id}/accept|reject|cancel` |
+| Trips (mobile) | `POST /trips` (publish; **v2.7:** body con `waypoints[]` ordenados + campus + time + seats; backend Directions origin=WP0, via=WP1..n-1, dest=campus; persiste `trip_waypoints` + polyline) · `POST /trips/preview-route` (**v2.9:** Directions sin persistir, para preview en publish) · `GET /trips/available?lat=&lng=` (passenger: scheduled, own campus, seats>0; **v2.7:** si lat/lng presentes, cada ítem incluye `suggestedWait` {lat,lng,distanceM,segmentIndex}) · `GET /trips/{id}/suggested-pickup?lat=&lng=` (recalcular punto de espera) · `GET /trips/mine` · `POST /trips/{id}/start|complete|cancel` · `POST /trips/{id}/requests` (pickup = punto de espera confirmado; **v2.9:** re-solicitud tras reject/cancel reutiliza fila → pending) · `GET /trips/{id}/requests` · `POST /requests/{id}/accept|reject|cancel` |
 | Tracking | `POST /trips/{id}/pings` · `GET /trips/{id}/tracking` (visibility-scoped) |
 | Ratings | `POST /trips/{id}/ratings` · `GET /ratings/pending` |
 | EcoTokens | `GET /me/eco` (balance, lifetime, level, progress, `gamificationEnabled`, recent transactions — paginated; works with frozen balance when gamification is off) |
@@ -367,7 +367,7 @@ sequenceDiagram
   API->>DB: ECT awards (driver +8, each passenger +4, streak check) via eco_token_transactions
 ```
 
-Matriz de visibilidad (aplicada server-side en `GET /trips/{id}/tracking`): el passenger ve ruta + ubicación del driver + propia ubicación (nunca otros passengers); el driver ve ruta + propia ubicación + puntos de pickup de passengers accepted; el coordinador ve cada participante de cada trip activo en su universidad. Super_admin no tiene vista de tracking en v1 (sin endpoint ni pantalla de tracking cross-tenant — coherente con que la impersonación está fuera de alcance).
+Matriz de visibilidad (aplicada server-side en `GET /trips/{id}/tracking`): el passenger ve ruta + ubicación del driver + propia ubicación (nunca otros passengers) + su punto de abordaje; el driver ve ruta + propia ubicación + ubicación en vivo de passengers accepted/pending **y** el punto de abordaje de cada uno (mismo color en UI); el coordinador ve cada participante de cada trip activo en su universidad. Tracking/pings permitidos en `scheduled` e `in_progress` (abordaje previo al start). Super_admin no tiene vista de tracking en v1 (sin endpoint ni pantalla de tracking cross-tenant — coherente con que la impersonación está fuera de alcance).
 
 ### 6.5 Alerta SOS
 
@@ -585,7 +585,8 @@ APIs de negocio core: super admin provisiona universidades/campuses/coordinadore
 - [x] KBX-13 — APIs operativas de admin
 - [x] Completions/ratings acreditan ECT; gamificación off = no-op
 - [x] SOS create/close + list/resolve admin; solo tenant
-- [x] Pings en `in_progress`; matriz de visibilidad; admin active trips
+- [x] Pings en `scheduled` e `in_progress`; matriz de visibilidad; admin active trips
+- [x] Conductor ve punto de abordaje (pending/accepted) además del ping en vivo (v2.9)
 - [x] Dashboard KPIs + SOS + xpByCareer; reportes + export CSV/XLSX/PDF
 - [x] Audit log; notifications mark-read; settings GET/PUT
 
@@ -619,6 +620,7 @@ Motor EcoTokens idempotente, alertas SOS, tracking GPS (pings + visibilidad + re
 - [x] KBX-21 — Mapa de tracking en vivo
 - [x] Login/logout/guards; cambio forzado de password; badge notificaciones
 - [x] Super: CRUD universidades/campuses/coordinadores + stats
+- [x] Campus: picker de mapa (Maps JS) al crear/editar ubicación (v2.9 / KBX-15)
 - [x] Panel: KPIs, SOS poll + resolve, XP por carrera
 - [x] Usuarios: cola accept/deny, filtros, block, export
 - [x] Reportes + export; auditoría; settings dirty-state; mapa poll 10s
@@ -653,7 +655,8 @@ Consola Vite/React con auth y shells por rol; super admin (universidades); coord
 - [x] Pasajero: home, available/request, historial, rating, perfil, ayuda
 - [x] Conductor: publish, accept/reject, start/complete, historial, vehículo, ayuda
 - [x] SOS overlay con GPS; visible en admin tras poll
-- [x] Mapa trip: polyline/fallback, markers, pings 10s solo en `in_progress`
+- [x] Mapa trip: polyline/fallback, markers (auto/persona/pin), pings 10s en `scheduled` e `in_progress`
+- [x] Maps: sync key iOS (`MapsSecrets.xcconfig`) + web (`maps_api_key.js`) vía `tool/sync_maps_key_from_env.sh` (v2.9)
 
 **Notas:**
 App Flutter con login/registro (wizard + pending), shells por rol, flujos pasajero y conductor, SOS y mapa en vivo con pings. Copy SOS: “seguridad del campus notificada” (contacts NO se notifican en v1). Map key vía `--dart-define=MAPS_API_KEY=…`. Detalle: PLAN.md → KBX-22…26 · `mobile/README.md`.
@@ -684,9 +687,12 @@ App Flutter con login/registro (wizard + pending), shells por rol, flujos pasaje
 - [x] `GET /trips/available?lat=&lng=` y `GET /trips/{id}/suggested-pickup`
 - [x] Driver: tap/long-press waypoints (2–8), campus/hora/asientos → publicar
 - [x] Pasajero: ve “espera aquí” / tooFar; confirma pickup sobre la ruta
+- [x] (v2.9) `POST /trips/preview-route` + preview de polyline al publicar
+- [x] (v2.9) Re-solicitud tras reject; mapa conductor con pin de abordaje = color del pasajero
+- [x] (v2.9) Squash migración InitialCreate con waypoints/suggested_* / polyline text
 
 **Notas:**
-Delta de diseño v2.7: el conductor dibuja la ruta en el mapa (waypoints); el pasajero puede subir en cualquier punto; el server calcula dónde esperar. Detalle: PLAN.md → KBX-32 · KBX-33 · §6.3. Avance: STATUS.md.
+Delta de diseño v2.7–2.9: el conductor dibuja la ruta en el mapa (waypoints); el pasajero puede subir en cualquier punto; el server calcula dónde esperar; el mapa en vivo cubre abordaje en `scheduled`. **No crear T9 en Planner** por el polish v2.9 — actualizar checklist/notas de T8 (+ ítems T3/T5/T4 arriba). Detalle: PLAN.md → KBX-32 · KBX-33 · KBX-26 · §6.3.
 
 **Datos adjuntos:**
 - Link: `PLAN.md` §6.3 (secuencia publish + suggestedWait)
@@ -871,8 +877,8 @@ Infra de prueba AWS (ECR, App Runner, RDS t4g.micro, S3+CloudFront) y GitHub Act
 **QA:** alerta disparada aparece en el dashboard admin dentro del ciclo de poll; "estoy a salvo" resuelve la alerta del lado admin; el path de permisos GPS denegados muestra fallback (enviar sin coords bloqueado con mensaje); protección anti double-tap.
 
 ### KBX-26 — Mobile: mapa de viaje en vivo y pings
-**Descripción:** Pantalla de mapa del trip (google_maps_flutter): polyline de ruta (línea recta discontinua cuando polyline es null), marker del driver, marker propio; para un trip `scheduled` el mapa muestra solo la ruta y el punto de pickup (aún sin pings); loop de ping en foreground cada 10s mientras el trip está in_progress (driver y passenger); poll de tracking cada 10s renderizando según reglas de visibilidad; pings fallidos durante pérdida de red se descartan (no se encolan); auto-stop en complete/cancel.
-**QA:** dos emuladores (driver+passenger): el passenger ve moverse el marker del driver, nunca ve un tercer participante; trip scheduled renderiza ruta sin markers más allá del pickup; los pings se detienen tras complete; toggle airplane-mode no crashea el loop y se reanuda; battery-safe: sin pings cuando el trip no está active; map key vía dart-define, restringida por app id.
+**Descripción:** Pantalla de mapa del trip (google_maps_flutter): polyline de ruta (línea recta discontinua cuando polyline es null), marker del driver (icono auto), marker de passengers (persona) y pin de abordaje **del mismo color** por pasajero; para un trip `scheduled` el mapa muestra ruta + abordaje + ubicaciones en vivo (pings/poll permitidos); loop de ping en foreground cada 10s mientras el trip está `scheduled` o `in_progress`; poll de tracking cada 10s sin flicker (conserva último valor); pings fallidos durante pérdida de red se descartan; auto-stop en complete/cancel. Keys: `--dart-define=MAPS_API_KEY` + sync iOS/web (`tool/sync_maps_key_from_env.sh`); Flutter web requiere Maps JavaScript API en `web/index.html`.
+**QA:** dos dispositivos (driver+passenger): el passenger ve moverse el marker del driver, nunca ve un tercer participante; trip scheduled renderiza ruta + pin de abordaje; conductor ve persona + pin del mismo color; los pings se detienen tras complete; map key vía dart-define/sync, restringida por app id / HTTP referrer.
 
 ### KBX-27 — QA: suites unitarias y umbrales de cobertura
 **Descripción:** Consolidar testing unit/integration: backend xUnit + Testcontainers (coverage ≥70% Application/Domain), web Vitest+RTL+msw (≥70% src/features), mobile flutter_test+mocktail (≥60%). Cablear reportes de coverage en artefactos de CI.
@@ -894,13 +900,13 @@ Infra de prueba AWS (ECR, App Runner, RDS t4g.micro, S3+CloudFront) y GitHub Act
 **Descripción:** Implementación real de `IEcoTokenEngine` reemplazando el stub no-op cableado en KBX-9/10, aplicando las reglas de la sección 4: eventos de award (driver +8 / passenger +4 en trip completion, +2 en rating, +10 racha semanal en el 5.º trip completed en la semana lun–dom del timezone de la universidad, late-cancel penalty registrado como −min(5, balance) clamped); idempotente vía unique(user_id, type, source_id) donde source_id es trip_id / rating_id / week key ISO por tipo — la week key hace la racha una-vez-por-semana incluso bajo completions concurrentes; la racha cuenta solo filas del ledger `trip_completed_*`; `eco_balance`/`eco_lifetime` desnormalizados actualizados en la misma transacción (la suma del ledger siempre iguala eco_balance); cómputo de level + fórmula de progress (null en Platino); no-op cuando `gamification_enabled = false`; `GET /me/eco` (balance, lifetime, level, progress, `gamificationEnabled`, transacciones paginadas); agregación de montos positivos de la semana actual `xpByCareer` consumida por el dashboard de KBX-13. Pese al número, se ejecuta en el track backend: after KBX-10, before KBX-13.
 **QA:** completar un trip seedeado acredita exactamente +8/+4 una vez (reproducir el evento es no-op, incluido el tipo penalty); dos completions concurrentes del 5.º trip en la misma semana producen exactamente un +10 (constraint unique week-key); late cancel con balance 2 registra −2 y deja eco_lifetime sin cambios; la suma del ledger iguala eco_balance tras cada escenario; límites de level en 100/500/2000 y fórmula de progress (incl. null en Platino) verificados; ventanas week/day respetan `university_settings.timezone`; universidad con gamificación off no acumula nada, sus trips no cuentan hacia rachas, y `/me/eco` devuelve el balance congelado con `gamificationEnabled: false`; xpByCareer suma solo montos positivos de la semana actual y coincide con seeds.
 
-### KBX-32 — Backend: waypoints de ruta + punto de espera sugerido (v2.7)
-**Descripción:** Migración `trip_waypoints`; `POST /trips` acepta `waypoints[]` (≥2, ≤8) + campus; deriva `origin_*` de WP0; Directions WP0→via→campus; persiste waypoints + polyline. `GET /trips/available?lat=&lng=` y `GET /trips/{id}/suggested-pickup` calculan proyección al segmento más cercano (umbral tooFar default 800 m). Extender `ride_requests` con suggested_* opcionales. Seeds/demo con ≥2 waypoints. Compat: body legacy `{originLat,originLng}` se normaliza a waypoints de 2 puntos (origin + midpoint hacia campus) o se rechaza tras cutover documentado en STATUS.
-**QA:** publish con 3 waypoints persiste seq 0..2; Directions mock recibe vias; fallo Directions → polyline null pero waypoints intactos; suggestedWait cae sobre segmento; passenger >800 m → tooFar; tests de tenancy en trip_waypoints; <2 waypoints → 422.
+### KBX-32 — Backend: waypoints de ruta + punto de espera sugerido (v2.7+)
+**Descripción:** Migración `trip_waypoints`; `POST /trips` acepta `waypoints[]` (≥2, ≤8) + campus; deriva `origin_*` de WP0; Directions WP0→via→campus; persiste waypoints + polyline (`text`). `POST /trips/preview-route` (v2.9) calcula polyline sin persistir. `GET /trips/available?lat=&lng=` y `GET /trips/{id}/suggested-pickup` calculan proyección al segmento más cercano (umbral tooFar default 800 m); lazy backfill de polyline si faltaba. Extender `ride_requests` con suggested_* / `distance_to_route_m`; re-solicitud tras reject/cancel. Tracking: pings + `GET tracking` en `scheduled`/`in_progress`; conductor recibe `boarding_point` por cada solicitud pending/accepted.
+**QA:** publish con 3 waypoints persiste seq 0..2; preview no crea trip; fallo Directions → polyline null pero waypoints intactos; suggestedWait cae sobre segmento; passenger >800 m → tooFar; conductor ve boarding_point + ping del mismo pasajero; tests de tenancy en trip_waypoints; <2 waypoints → 422.
 
-### KBX-33 — Mobile: mapa publicar ruta + espera del pasajero (v2.7)
-**Descripción:** Reemplazar `PublishModal` textual como flujo principal: pantalla mapa fullscreen (GPS, recenter, tap/long-press add waypoint, editar/borrar, máx 8), campus/hora/asientos → `POST /trips` con waypoints. Pasajero: available con GPS; card/mapa muestra ruta + “espera aquí” (`suggestedWait`); al solicitar confirma o ajusta pin (server re-snap); driver ve pickups sobre ruta en requests. Mapas scheduled muestran waypoints + campus.
-**QA:** driver dibuja ≥2 puntos y publica; passenger ve suggestedWait coherente con su GPS; tooFar muestra aviso; request confirmado aparece en cola driver con pickup en ruta; sin permiso GPS → mensaje y no inventar coords.
+### KBX-33 — Mobile: mapa publicar ruta + espera del pasajero (v2.7+)
+**Descripción:** Flujo principal publicar: pantalla mapa (GPS, recenter, tap/long-press waypoints, máx 8), preview Directions debounce, campus/hora/asientos → `POST /trips`. Pasajero: available con GPS; sheet de abordaje con “espera aquí” (`suggestedWait`); al solicitar confirma o ajusta pin (server re-snap); tras reject puede re-solicitar. Conductor: cola de requests con “ver en mapa” → pins de abordaje. Panel de asientos colapsable al focus del teclado.
+**QA:** driver dibuja ≥2 puntos, ve preview y publica; passenger ve suggestedWait coherente con su GPS; tooFar muestra aviso; request confirmado aparece en cola driver con pickup en ruta; sin permiso GPS → mensaje y no inventar coords.
 
 
 ---
