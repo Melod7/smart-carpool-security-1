@@ -26,10 +26,10 @@ public sealed class ServicioTracking(
             .FirstOrDefaultAsync(v => v.Id == viajeId, ct)
             ?? throw ExcepcionTracking.NoEncontrado("Trip not found.", "trip_not_found");
 
-        if (viaje.Estado != EstadoViaje.EnCurso)
+        if (viaje.Estado is not (EstadoViaje.Programado or EstadoViaje.EnCurso))
         {
             throw ExcepcionTracking.Conflicto(
-                "Pings are only allowed on in-progress trips.",
+                "Pings are only allowed on scheduled or in-progress trips.",
                 "trip_not_active");
         }
 
@@ -77,24 +77,36 @@ public sealed class ServicioTracking(
 
         var viaje = await db.Viajes
             .AsNoTracking()
+            .Include(v => v.PuntosRuta)
             .FirstOrDefaultAsync(v => v.Id == viajeId, ct)
             ?? throw ExcepcionTracking.NoEncontrado("Trip not found.", "trip_not_found");
 
-        if (viaje.Estado != EstadoViaje.EnCurso)
+        if (viaje.Estado is not (EstadoViaje.Programado or EstadoViaje.EnCurso))
         {
             throw ExcepcionTracking.Conflicto(
-                "Tracking is only available for in-progress trips.",
+                "Tracking is only available for scheduled or in-progress trips.",
                 "trip_not_active");
         }
 
         var esConductor = viaje.ConductorId == usuarioId;
-        var solicitudesAceptadas = await db.SolicitudesViaje
+        var solicitudes = await db.SolicitudesViaje
             .AsNoTracking()
-            .Where(s => s.ViajeId == viaje.Id && s.Estado == EstadoSolicitudViaje.Aceptada)
+            .Where(s =>
+                s.ViajeId == viaje.Id
+                && (s.Estado == EstadoSolicitudViaje.Aceptada
+                    || s.Estado == EstadoSolicitudViaje.Pendiente))
             .ToListAsync(ct);
 
-        var esPasajero = solicitudesAceptadas.Any(s => s.PasajeroId == usuarioId);
-        if (!esConductor && !esPasajero)
+        var aceptadas = solicitudes
+            .Where(s => s.Estado == EstadoSolicitudViaje.Aceptada)
+            .ToList();
+        var pendientes = solicitudes
+            .Where(s => s.Estado == EstadoSolicitudViaje.Pendiente)
+            .ToList();
+
+        var esPasajeroAceptado = aceptadas.Any(s => s.PasajeroId == usuarioId);
+        var esPasajeroPendiente = pendientes.Any(s => s.PasajeroId == usuarioId);
+        if (!esConductor && !esPasajeroAceptado && !esPasajeroPendiente)
         {
             throw ExcepcionTracking.Prohibido(
                 "Only trip participants can view tracking.",
@@ -102,9 +114,10 @@ public sealed class ServicioTracking(
         }
 
         var ultimosPings = await ObtenerUltimosPingsAsync(viaje.Id, ct);
-        var nombres = await ObtenerNombresAsync(
-            [viaje.ConductorId, .. solicitudesAceptadas.Select(s => s.PasajeroId)],
-            ct);
+        var idsNombres = new List<Guid> { viaje.ConductorId };
+        idsNombres.AddRange(aceptadas.Select(s => s.PasajeroId));
+        idsNombres.AddRange(pendientes.Select(s => s.PasajeroId));
+        var nombres = await ObtenerNombresAsync(idsNombres, ct);
 
         var participantes = new List<ParticipanteTrackingDto>();
 
@@ -118,7 +131,7 @@ public sealed class ServicioTracking(
                 ultimosPings,
                 pickup: null);
 
-            foreach (var solicitud in solicitudesAceptadas)
+            foreach (var solicitud in aceptadas)
             {
                 AgregarSiHayUbicacion(
                     participantes,
@@ -127,6 +140,18 @@ public sealed class ServicioTracking(
                     nombres,
                     ultimosPings,
                     pickup: (solicitud.RecogidaLat, solicitud.RecogidaLng));
+            }
+
+            foreach (var solicitud in pendientes)
+            {
+                AgregarSiHayUbicacion(
+                    participantes,
+                    solicitud.PasajeroId,
+                    "boarding",
+                    nombres,
+                    ultimosPings,
+                    pickup: (solicitud.RecogidaLat, solicitud.RecogidaLng),
+                    fuentePickup: "boarding");
             }
         }
         else
@@ -142,10 +167,25 @@ public sealed class ServicioTracking(
             AgregarSiHayUbicacion(
                 participantes,
                 usuarioId,
-                "passenger",
+                esPasajeroPendiente ? "boarding" : "passenger",
                 nombres,
                 ultimosPings,
                 pickup: null);
+
+            var propia = solicitudes.FirstOrDefault(s => s.PasajeroId == usuarioId);
+            if (propia is not null)
+            {
+                participantes.Add(new ParticipanteTrackingDto
+                {
+                    UsuarioId = usuarioId,
+                    Rol = "boarding_point",
+                    Nombre = "Punto de abordaje",
+                    Lat = propia.RecogidaLat,
+                    Lng = propia.RecogidaLng,
+                    RegistradoEn = null,
+                    Fuente = "boarding"
+                });
+            }
         }
 
         return new TrackingViajeDto
@@ -153,6 +193,16 @@ public sealed class ServicioTracking(
             ViajeId = viaje.Id,
             Estado = ConversorEnumDominio.ACadenaDb(viaje.Estado),
             Polilinea = viaje.Polilinea,
+            Waypoints = viaje.PuntosRuta
+                .OrderBy(p => p.Seq)
+                .Select(p => new TrackingWaypointDto
+                {
+                    Seq = p.Seq,
+                    Lat = p.Lat,
+                    Lng = p.Lng,
+                    Etiqueta = p.Etiqueta
+                })
+                .ToList(),
             Participantes = participantes
         };
     }
@@ -168,6 +218,7 @@ public sealed class ServicioTracking(
 
         var viajes = await db.Viajes
             .AsNoTracking()
+            .Include(v => v.PuntosRuta)
             .Where(v => v.Estado == EstadoViaje.EnCurso)
             .OrderByDescending(v => v.IniciadoEn)
             .ToListAsync(ct);
@@ -241,6 +292,16 @@ public sealed class ServicioTracking(
                 ViajeId = viaje.Id,
                 Estado = ConversorEnumDominio.ACadenaDb(viaje.Estado),
                 Polilinea = viaje.Polilinea,
+                Waypoints = viaje.PuntosRuta
+                    .OrderBy(p => p.Seq)
+                    .Select(p => new TrackingWaypointDto
+                    {
+                        Seq = p.Seq,
+                        Lat = p.Lat,
+                        Lng = p.Lng,
+                        Etiqueta = p.Etiqueta
+                    })
+                    .ToList(),
                 Participantes = participantes
             });
         }
@@ -258,7 +319,8 @@ public sealed class ServicioTracking(
         return await db.SolicitudesViaje.AnyAsync(
             s => s.ViajeId == viaje.Id
                  && s.PasajeroId == usuarioId
-                 && s.Estado == EstadoSolicitudViaje.Aceptada,
+                 && (s.Estado == EstadoSolicitudViaje.Aceptada
+                     || s.Estado == EstadoSolicitudViaje.Pendiente),
             ct);
     }
 
@@ -300,27 +362,62 @@ public sealed class ServicioTracking(
         string rol,
         Dictionary<Guid, string> nombres,
         Dictionary<Guid, PingUbicacion> ultimosPings,
-        (double Lat, double Lng)? pickup)
+        (double Lat, double Lng)? pickup,
+        string fuentePickup = "pickup")
     {
         nombres.TryGetValue(usuarioId, out var nombre);
 
         if (ultimosPings.TryGetValue(usuarioId, out var ping))
         {
+            // Ubicación en vivo (conductor / pasajero).
+            var rolVivo = rol == "boarding" ? "passenger" : rol;
             destino.Add(new ParticipanteTrackingDto
             {
                 UsuarioId = usuarioId,
-                Rol = rol,
+                Rol = rolVivo,
                 Nombre = nombre,
                 Lat = ping.Lat,
                 Lng = ping.Lng,
                 RegistradoEn = ping.RegistradoEn,
                 Fuente = "ping"
             });
+
+            // Punto de abordaje siempre visible para el conductor (pendiente o aceptado).
+            if (pickup is { } abordaje && rol is "passenger" or "boarding")
+            {
+                destino.Add(new ParticipanteTrackingDto
+                {
+                    UsuarioId = usuarioId,
+                    Rol = "boarding_point",
+                    Nombre = nombre is null ? "Abordaje" : $"{nombre} · abordaje",
+                    Lat = abordaje.Lat,
+                    Lng = abordaje.Lng,
+                    RegistradoEn = null,
+                    Fuente = "boarding"
+                });
+            }
+
             return;
         }
 
         if (pickup is { } punto)
         {
+            // Sin ping: solo el punto de abordaje (no confundir con ubicación en vivo).
+            if (rol is "passenger" or "boarding")
+            {
+                destino.Add(new ParticipanteTrackingDto
+                {
+                    UsuarioId = usuarioId,
+                    Rol = "boarding_point",
+                    Nombre = nombre is null ? "Abordaje" : $"{nombre} · abordaje",
+                    Lat = punto.Lat,
+                    Lng = punto.Lng,
+                    RegistradoEn = null,
+                    Fuente = "boarding"
+                });
+                return;
+            }
+
             destino.Add(new ParticipanteTrackingDto
             {
                 UsuarioId = usuarioId,
@@ -329,7 +426,7 @@ public sealed class ServicioTracking(
                 Lat = punto.Lat,
                 Lng = punto.Lng,
                 RegistradoEn = null,
-                Fuente = "pickup"
+                Fuente = fuentePickup
             });
         }
     }

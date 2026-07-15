@@ -57,6 +57,21 @@ public sealed class ParticipanteTrackingDto
     public string Fuente { get; set; } = "ping";
 }
 
+public sealed class TrackingWaypointDto
+{
+    [JsonPropertyName("lat")]
+    public double Lat { get; set; }
+
+    [JsonPropertyName("lng")]
+    public double Lng { get; set; }
+
+    [JsonPropertyName("seq")]
+    public int Seq { get; set; }
+
+    [JsonPropertyName("label")]
+    public string? Etiqueta { get; set; }
+}
+
 public sealed class TrackingViajeDto
 {
     [JsonPropertyName("tripId")]
@@ -67,6 +82,9 @@ public sealed class TrackingViajeDto
 
     [JsonPropertyName("polyline")]
     public string? Polilinea { get; set; }
+
+    [JsonPropertyName("waypoints")]
+    public IReadOnlyList<TrackingWaypointDto> Waypoints { get; set; } = [];
 
     [JsonPropertyName("participants")]
     public IReadOnlyList<ParticipanteTrackingDto> Participantes { get; set; } = [];

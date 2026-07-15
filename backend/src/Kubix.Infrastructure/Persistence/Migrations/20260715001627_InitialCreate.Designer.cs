@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Kubix.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ContextoApp))]
-    [Migration("20260712235139_InitialCreate")]
+    [Migration("20260715001627_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -463,6 +463,48 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                     b.ToTable("location_pings", (string)null);
                 });
 
+            modelBuilder.Entity("Kubix.Domain.Entities.PuntoRutaViaje", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Etiqueta")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("label");
+
+                    b.Property<double>("Lat")
+                        .HasColumnType("double precision")
+                        .HasColumnName("lat");
+
+                    b.Property<double>("Lng")
+                        .HasColumnType("double precision")
+                        .HasColumnName("lng");
+
+                    b.Property<int>("Seq")
+                        .HasColumnType("integer")
+                        .HasColumnName("seq");
+
+                    b.Property<Guid>("UniversidadId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("university_id");
+
+                    b.Property<Guid>("ViajeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("trip_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UniversidadId");
+
+                    b.HasIndex("ViajeId", "Seq")
+                        .IsUnique();
+
+                    b.ToTable("trip_waypoints", (string)null);
+                });
+
             modelBuilder.Entity("Kubix.Domain.Entities.SolicitudRegistro", b =>
                 {
                     b.Property<Guid>("Id")
@@ -562,11 +604,23 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<double?>("DistanciaARutaM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("distance_to_route_m");
+
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)")
                         .HasColumnName("status");
+
+                    b.Property<double?>("LatSugerida")
+                        .HasColumnType("double precision")
+                        .HasColumnName("suggested_lat");
+
+                    b.Property<double?>("LngSugerida")
+                        .HasColumnType("double precision")
+                        .HasColumnName("suggested_lng");
 
                     b.Property<Guid>("PasajeroId")
                         .HasColumnType("uuid")
@@ -944,8 +998,7 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                         .HasColumnName("origin_text");
 
                     b.Property<string>("Polilinea")
-                        .HasMaxLength(8000)
-                        .HasColumnType("character varying(8000)")
+                        .HasColumnType("text")
                         .HasColumnName("polyline");
 
                     b.Property<DateTimeOffset>("SaleEn")
@@ -1127,6 +1180,25 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                     b.Navigation("Viaje");
                 });
 
+            modelBuilder.Entity("Kubix.Domain.Entities.PuntoRutaViaje", b =>
+                {
+                    b.HasOne("Kubix.Domain.Entities.Universidad", "Universidad")
+                        .WithMany()
+                        .HasForeignKey("UniversidadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Kubix.Domain.Entities.Viaje", "Viaje")
+                        .WithMany("PuntosRuta")
+                        .HasForeignKey("ViajeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Universidad");
+
+                    b.Navigation("Viaje");
+                });
+
             modelBuilder.Entity("Kubix.Domain.Entities.SolicitudRegistro", b =>
                 {
                     b.HasOne("Kubix.Domain.Entities.Campus", "Campus")
@@ -1287,6 +1359,8 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                     b.Navigation("Calificaciones");
 
                     b.Navigation("PingsUbicacion");
+
+                    b.Navigation("PuntosRuta");
 
                     b.Navigation("SolicitudesViaje");
                 });

@@ -269,6 +269,82 @@ public sealed class ServicioViajes(
         return MapearViaje(viaje);
     }
 
+    public async Task<VistaPreviaRutaDto> PrevisualizarRutaAsync(
+        Guid usuarioId,
+        SolicitudVistaPreviaRuta solicitud,
+        CancellationToken ct = default)
+    {
+        var usuario = await ObtenerUsuarioAsync(usuarioId, ct);
+        AsegurarConductor(usuario);
+
+        if (usuario.UniversidadId is not Guid universidadId)
+        {
+            throw ExcepcionViajes.Validacion("Driver has no university.", "missing_university");
+        }
+
+        var campus = await db.Sedes.AsNoTracking()
+            .FirstOrDefaultAsync(
+                c => c.Id == solicitud.CampusDestinoId && c.UniversidadId == universidadId,
+                ct)
+            ?? throw ExcepcionViajes.Validacion(
+                "Destination campus not found for this university.",
+                "campus_not_found");
+
+        var publicar = new SolicitudPublicarViaje
+        {
+            Waypoints = solicitud.Waypoints,
+            CampusDestinoId = solicitud.CampusDestinoId
+        };
+        var waypoints = NormalizarWaypoints(publicar, campus);
+        ValidarWaypoints(waypoints);
+
+        var wp0 = waypoints[0];
+        var vias = waypoints.Count > 1
+            ? waypoints.Skip(1).Select(w => (w.Lat, w.Lng)).ToList()
+            : new List<(double Lat, double Lng)>();
+
+        try
+        {
+            var resultado = await directions.ObtenerRutaAsync(
+                wp0.Lat,
+                wp0.Lng,
+                campus.Lat,
+                campus.Lng,
+                vias,
+                ct);
+
+            if (resultado is null || string.IsNullOrWhiteSpace(resultado.Polilinea))
+            {
+                return new VistaPreviaRutaDto
+                {
+                    Polilinea = null,
+                    DistanciaKm = DistanciaHaversinePorWaypoints(waypoints, campus),
+                    DirectionsOk = false
+                };
+            }
+
+            return new VistaPreviaRutaDto
+            {
+                Polilinea = resultado.Polilinea,
+                DistanciaKm = resultado.DistanciaKm,
+                DirectionsOk = true
+            };
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return new VistaPreviaRutaDto
+            {
+                Polilinea = null,
+                DistanciaKm = DistanciaHaversinePorWaypoints(waypoints, campus),
+                DirectionsOk = false
+            };
+        }
+    }
+
     public async Task<ViajeDto> IniciarViajeAsync(
         Guid usuarioId,
         Guid viajeId,

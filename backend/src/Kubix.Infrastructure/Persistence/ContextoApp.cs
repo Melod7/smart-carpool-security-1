@@ -356,7 +356,8 @@ public class ContextoApp : DbContext
         e.Property(x => x.OrigenLng).HasColumnName("origin_lng");
         e.Property(x => x.SaleEn).HasColumnName("departure_at");
         e.Property(x => x.AsientosDisponibles).HasColumnName("seats_available");
-        e.Property(x => x.Polilinea).HasColumnName("polyline").HasMaxLength(8000);
+        // overview_polyline de Directions puede superar 8k en rutas largas
+        e.Property(x => x.Polilinea).HasColumnName("polyline").HasColumnType("text");
         e.Property(x => x.DistanciaKm).HasColumnName("distance_km").HasPrecision(10, 3);
         e.Property(x => x.Estado).HasColumnName("status").HasConversion(ConversorEnum<EstadoViaje>()).HasMaxLength(32);
         e.Property(x => x.IniciadoEn).HasColumnName("started_at");

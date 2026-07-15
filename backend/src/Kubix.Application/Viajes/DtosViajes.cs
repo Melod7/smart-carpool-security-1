@@ -77,6 +77,28 @@ public sealed class SolicitudPublicarViaje
     public int AsientosDisponibles { get; set; }
 }
 
+/// Vista previa de Directions sin persistir el viaje (mapa del conductor).
+public sealed class SolicitudVistaPreviaRuta
+{
+    [JsonPropertyName("waypoints")]
+    public List<WaypointDto>? Waypoints { get; set; }
+
+    [JsonPropertyName("destinationCampusId")]
+    public Guid CampusDestinoId { get; set; }
+}
+
+public sealed class VistaPreviaRutaDto
+{
+    [JsonPropertyName("polyline")]
+    public string? Polilinea { get; set; }
+
+    [JsonPropertyName("distanceKm")]
+    public decimal DistanciaKm { get; set; }
+
+    [JsonPropertyName("directionsOk")]
+    public bool DirectionsOk { get; set; }
+}
+
 public sealed class PuntoEsperaSugeridoDto
 {
     [JsonPropertyName("lat")]

@@ -40,6 +40,30 @@ public sealed class ControladorViajes(
         }
     }
 
+    [HttpPost("preview-route")]
+    [Authorize(Policy = NombresPoliticas.SoloConductor)]
+    [ProducesResponseType(typeof(VistaPreviaRutaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> PrevisualizarRuta(
+        [FromBody] SolicitudVistaPreviaRuta solicitud,
+        CancellationToken ct)
+    {
+        try
+        {
+            var preview = await viajes.PrevisualizarRutaAsync(ObtenerUsuarioId(), solicitud, ct);
+            return Ok(preview);
+        }
+        catch (ExcepcionViajes ex)
+        {
+            return ProblemViajes(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
     [HttpGet("available")]
     [Authorize(Policy = NombresPoliticas.SoloPasajero)]
     [ProducesResponseType(typeof(IReadOnlyList<ViajeDto>), StatusCodes.Status200OK)]

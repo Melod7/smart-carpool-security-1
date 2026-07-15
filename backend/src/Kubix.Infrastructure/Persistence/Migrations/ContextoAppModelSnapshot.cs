@@ -601,11 +601,23 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<double?>("DistanciaARutaM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("distance_to_route_m");
+
                     b.Property<string>("Estado")
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)")
                         .HasColumnName("status");
+
+                    b.Property<double?>("LatSugerida")
+                        .HasColumnType("double precision")
+                        .HasColumnName("suggested_lat");
+
+                    b.Property<double?>("LngSugerida")
+                        .HasColumnType("double precision")
+                        .HasColumnName("suggested_lng");
 
                     b.Property<Guid>("PasajeroId")
                         .HasColumnType("uuid")
@@ -624,18 +636,6 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("pickup_text");
-
-                    b.Property<double?>("DistanciaARutaM")
-                        .HasColumnType("double precision")
-                        .HasColumnName("distance_to_route_m");
-
-                    b.Property<double?>("LatSugerida")
-                        .HasColumnType("double precision")
-                        .HasColumnName("suggested_lat");
-
-                    b.Property<double?>("LngSugerida")
-                        .HasColumnType("double precision")
-                        .HasColumnName("suggested_lng");
 
                     b.Property<Guid>("UniversidadId")
                         .HasColumnType("uuid")
@@ -995,8 +995,7 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                         .HasColumnName("origin_text");
 
                     b.Property<string>("Polilinea")
-                        .HasMaxLength(8000)
-                        .HasColumnType("character varying(8000)")
+                        .HasColumnType("text")
                         .HasColumnName("polyline");
 
                     b.Property<DateTimeOffset>("SaleEn")

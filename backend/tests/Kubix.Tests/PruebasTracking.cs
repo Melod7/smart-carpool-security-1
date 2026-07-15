@@ -84,14 +84,35 @@ public class PruebasTracking
         var tracking = await CrearTracking(db, conductor).ObtenerTrackingAsync(conductor.Id, viaje.Id);
 
         var pax1Item = Assert.Single(tracking.Participantes, p => p.UsuarioId == pax1.Id);
-        Assert.Equal("pickup", pax1Item.Fuente);
+        Assert.Equal("boarding_point", pax1Item.Rol);
+        Assert.Equal("boarding", pax1Item.Fuente);
         Assert.Equal(-0.358, pax1Item.Lat);
 
         var pax2Item = Assert.Single(tracking.Participantes, p => p.UsuarioId == pax2.Id);
-        Assert.Equal("pickup", pax2Item.Fuente);
+        Assert.Equal("boarding_point", pax2Item.Rol);
+        Assert.Equal("boarding", pax2Item.Fuente);
         Assert.Equal(-0.37, pax2Item.Lat);
 
         Assert.Contains(tracking.Participantes, p => p.UsuarioId == conductor.Id && p.Fuente == "ping");
+    }
+
+    [Fact]
+    public async Task Conductor_ve_ping_y_abordaje_del_mismo_pasajero()
+    {
+        await using var db = await CrearDbConSeedAsync();
+        var conductor = await db.Usuarios.SingleAsync(u => u.Correo == "driver2@utn.local");
+        var pax1 = await db.Usuarios.SingleAsync(u => u.Correo == "pax1@utn.local");
+        var viaje = await db.Viajes.SingleAsync(v =>
+            v.Estado == EstadoViaje.EnCurso && v.UniversidadId == conductor.UniversidadId);
+
+        var tracking = await CrearTracking(db, conductor).ObtenerTrackingAsync(conductor.Id, viaje.Id);
+
+        Assert.Contains(
+            tracking.Participantes,
+            p => p.UsuarioId == pax1.Id && p.Rol == "passenger" && p.Fuente == "ping");
+        Assert.Contains(
+            tracking.Participantes,
+            p => p.UsuarioId == pax1.Id && p.Rol == "boarding_point" && p.Fuente == "boarding");
     }
 
     [Fact]
@@ -101,6 +122,9 @@ public class PruebasTracking
         var conductor = await db.Usuarios.SingleAsync(u => u.Correo == "driver1@utn.local");
         var viaje = await db.Viajes.FirstAsync(v =>
             v.ConductorId == conductor.Id && v.Estado == EstadoViaje.Programado);
+        viaje.Estado = EstadoViaje.Completado;
+        viaje.CompletadoEn = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
 
         var ex = await Assert.ThrowsAsync<ExcepcionTracking>(() =>
             CrearTracking(db, conductor).RegistrarPingAsync(

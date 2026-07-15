@@ -14,6 +14,12 @@ public interface IServicioViajes
         SolicitudPublicarViaje solicitud,
         CancellationToken ct = default);
 
+    /// <summary>Calcula polilínea válida (Directions) sin guardar el viaje.</summary>
+    Task<VistaPreviaRutaDto> PrevisualizarRutaAsync(
+        Guid usuarioId,
+        SolicitudVistaPreviaRuta solicitud,
+        CancellationToken ct = default);
+
     Task<ViajeDto> IniciarViajeAsync(
         Guid usuarioId,
         Guid viajeId,

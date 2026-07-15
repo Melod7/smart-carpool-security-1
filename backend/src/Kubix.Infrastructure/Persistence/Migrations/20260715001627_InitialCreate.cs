@@ -307,7 +307,7 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                     origin_lng = table.Column<double>(type: "double precision", nullable: false),
                     departure_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     seats_available = table.Column<int>(type: "integer", nullable: false),
-                    polyline = table.Column<string>(type: "character varying(8000)", maxLength: 8000, nullable: true),
+                    polyline = table.Column<string>(type: "text", nullable: true),
                     distance_km = table.Column<decimal>(type: "numeric(10,3)", precision: 10, scale: 3, nullable: false),
                     status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     started_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
@@ -459,6 +459,9 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                     pickup_text = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     pickup_lat = table.Column<double>(type: "double precision", nullable: false),
                     pickup_lng = table.Column<double>(type: "double precision", nullable: false),
+                    suggested_lat = table.Column<double>(type: "double precision", nullable: true),
+                    suggested_lng = table.Column<double>(type: "double precision", nullable: true),
+                    distance_to_route_m = table.Column<double>(type: "double precision", nullable: true),
                     status = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
@@ -521,6 +524,35 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                         name: "FK_sos_alerts_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "trip_waypoints",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    university_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    trip_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    seq = table.Column<int>(type: "integer", nullable: false),
+                    lat = table.Column<double>(type: "double precision", nullable: false),
+                    lng = table.Column<double>(type: "double precision", nullable: false),
+                    label = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_trip_waypoints", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_trip_waypoints_trips_trip_id",
+                        column: x => x.trip_id,
+                        principalTable: "trips",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_trip_waypoints_universities_university_id",
+                        column: x => x.university_id,
+                        principalTable: "universities",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -661,6 +693,17 @@ namespace Kubix.Infrastructure.Persistence.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_trip_waypoints_trip_id_seq",
+                table: "trip_waypoints",
+                columns: new[] { "trip_id", "seq" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_trip_waypoints_university_id",
+                table: "trip_waypoints",
+                column: "university_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_trips_destination_campus_id",
                 table: "trips",
                 column: "destination_campus_id");
@@ -741,6 +784,9 @@ namespace Kubix.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "sos_alerts");
+
+            migrationBuilder.DropTable(
+                name: "trip_waypoints");
 
             migrationBuilder.DropTable(
                 name: "university_settings");

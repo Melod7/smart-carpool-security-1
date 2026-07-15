@@ -11,7 +11,8 @@ namespace Kubix.Infrastructure.Viajes;
 public sealed class ServicioSolicitudesViaje(
     ContextoApp db,
     IContextoInquilino inquilino,
-    IEscritorAuditoria auditoria) : IServicioSolicitudesViaje
+    IEscritorAuditoria auditoria,
+    IServicioDirections directions) : IServicioSolicitudesViaje
 {
     public async Task<IReadOnlyList<ViajeDto>> ListarDisponiblesAsync(
         Guid usuarioId,
@@ -44,7 +45,6 @@ public sealed class ServicioSolicitudesViaje(
 
         var ahora = DateTimeOffset.UtcNow;
         var viajes = await db.Viajes
-            .AsNoTracking()
             .Include(v => v.PuntosRuta)
             .Include(v => v.CampusDestino)
             .Where(v =>
@@ -54,6 +54,11 @@ public sealed class ServicioSolicitudesViaje(
                 && v.SaleEn > ahora)
             .OrderBy(v => v.SaleEn)
             .ToListAsync(ct);
+
+        foreach (var viaje in viajes)
+        {
+            await AsegurarPolilineaAsync(viaje, ct);
+        }
 
         return viajes.Select(v =>
         {
@@ -134,7 +139,10 @@ public sealed class ServicioSolicitudesViaje(
 
         ValidarCoordenadasRecogida(solicitud.RecogidaLat, solicitud.RecogidaLng);
 
-        var viaje = await db.Viajes.FirstOrDefaultAsync(v => v.Id == viajeId, ct)
+        var viaje = await db.Viajes
+            .Include(v => v.PuntosRuta)
+            .Include(v => v.CampusDestino)
+            .FirstOrDefaultAsync(v => v.Id == viajeId, ct)
             ?? throw ExcepcionViajes.NoEncontrado("Trip not found.", "trip_not_found");
 
         if (!EsViajeDisponibleParaPasajero(viaje, campusPasajero))
@@ -144,14 +152,50 @@ public sealed class ServicioSolicitudesViaje(
                 "trip_not_available");
         }
 
-        var duplicada = await db.SolicitudesViaje.AnyAsync(
-            s => s.ViajeId == viajeId && s.PasajeroId == usuarioId,
-            ct);
-        if (duplicada)
+        var espera = CalcularEspera(viaje, solicitud.RecogidaLat, solicitud.RecogidaLng);
+        if (espera.TooFar)
         {
-            throw ExcepcionViajes.Conflicto(
-                "A request for this trip already exists.",
-                "duplicate_request");
+            throw ExcepcionViajes.Validacion(
+                "Pickup is too far from the driver route.",
+                "pickup_too_far");
+        }
+
+        var recogidaLat = espera.Lat;
+        var recogidaLng = espera.Lng;
+
+        var existente = await db.SolicitudesViaje
+            .FirstOrDefaultAsync(s => s.ViajeId == viajeId && s.PasajeroId == usuarioId, ct);
+
+        if (existente is not null)
+        {
+            if (existente.Estado is not (
+                EstadoSolicitudViaje.Rechazada
+                or EstadoSolicitudViaje.CanceladaPorPasajero
+                or EstadoSolicitudViaje.CanceladaPorConductor))
+            {
+                throw ExcepcionViajes.Conflicto(
+                    "A request for this trip already exists.",
+                    "duplicate_request");
+            }
+
+            var ahoraReintento = DateTimeOffset.UtcNow;
+            existente.RecogidaTexto = recogidaTexto;
+            existente.RecogidaLat = recogidaLat;
+            existente.RecogidaLng = recogidaLng;
+            existente.LatSugerida = espera.Lat;
+            existente.LngSugerida = espera.Lng;
+            existente.DistanciaARutaM = espera.DistanciaM;
+            existente.Estado = EstadoSolicitudViaje.Pendiente;
+            existente.ActualizadoEn = ahoraReintento;
+            await db.SaveChangesAsync(ct);
+
+            await IntentarAuditoriaAsync(
+                $"ride_request.recreated:{existente.Id}",
+                universidadId,
+                usuarioId,
+                ct);
+
+            return MapearSolicitud(existente);
         }
 
         var ahora = DateTimeOffset.UtcNow;
@@ -161,8 +205,11 @@ public sealed class ServicioSolicitudesViaje(
             ViajeId = viajeId,
             PasajeroId = usuarioId,
             RecogidaTexto = recogidaTexto,
-            RecogidaLat = solicitud.RecogidaLat,
-            RecogidaLng = solicitud.RecogidaLng,
+            RecogidaLat = recogidaLat,
+            RecogidaLng = recogidaLng,
+            LatSugerida = espera.Lat,
+            LngSugerida = espera.Lng,
+            DistanciaARutaM = espera.DistanciaM,
             Estado = EstadoSolicitudViaje.Pendiente,
             CreadoEn = ahora,
             ActualizadoEn = ahora
@@ -427,6 +474,62 @@ public sealed class ServicioSolicitudesViaje(
         catch
         {
             // Auditoría opcional.
+        }
+    }
+
+    private async Task AsegurarPolilineaAsync(Viaje viaje, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(viaje.Polilinea))
+        {
+            return;
+        }
+
+        var campus = viaje.CampusDestino;
+        if (campus is null)
+        {
+            return;
+        }
+
+        var waypoints = viaje.PuntosRuta.OrderBy(p => p.Seq).ToList();
+        if (waypoints.Count < 2)
+        {
+            return;
+        }
+
+        var wp0 = waypoints[0];
+        var vias = waypoints.Skip(1).Select(w => (w.Lat, w.Lng)).ToList();
+
+        try
+        {
+            var resultado = await directions.ObtenerRutaAsync(
+                wp0.Lat,
+                wp0.Lng,
+                campus.Lat,
+                campus.Lng,
+                vias,
+                ct);
+
+            if (resultado is null || string.IsNullOrWhiteSpace(resultado.Polilinea))
+            {
+                return;
+            }
+
+            viaje.Polilinea = resultado.Polilinea;
+            if (resultado.DistanciaKm > 0)
+            {
+                viaje.DistanciaKm = resultado.DistanciaKm;
+            }
+
+            viaje.ActualizadoEn = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            // Preview diferido: no bloquear el listado si Directions falla.
         }
     }
 
