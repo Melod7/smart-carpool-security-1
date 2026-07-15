@@ -85,7 +85,7 @@ export type TrackingMapProps = {
 
 export function TrackingMap({ apiKey, trips, focusedTripId }: TrackingMapProps) {
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'kubix-admin-tracking',
+    id: 'kubix-google-maps',
     googleMapsApiKey: apiKey,
   })
 

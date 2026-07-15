@@ -3,6 +3,11 @@ import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { superAdminApi } from '../../api/superAdmin'
 import type { Campus, CampusPayload, Coordinador } from '../../api/types'
+import {
+  LocationMapPicker,
+  mapsApiKeyFromEnv,
+  type MapLatLng,
+} from '../../components/LocationMapPicker'
 import { TemporaryPasswordModal } from './TemporaryPasswordModal'
 import {
   DangerButton,
@@ -386,10 +391,12 @@ function CampusFormDialog({
   onClose: () => void
   onSubmit: (payload: CampusPayload) => void | Promise<unknown>
 }) {
+  const mapsKey = mapsApiKeyFromEnv()
   const [name, setName] = useState(initial?.name ?? '')
   const [address, setAddress] = useState(initial?.address ?? '')
-  const [lat, setLat] = useState(initial ? String(initial.lat) : '')
-  const [lng, setLng] = useState(initial ? String(initial.lng) : '')
+  const [point, setPoint] = useState<MapLatLng | null>(
+    initial ? { lat: initial.lat, lng: initial.lng } : null,
+  )
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   async function handleSubmit(e: FormEvent) {
@@ -397,23 +404,21 @@ function CampusFormDialog({
     const next: Record<string, string> = {}
     if (!name.trim()) next.name = 'El nombre es obligatorio.'
     if (!address.trim()) next.address = 'La dirección es obligatoria.'
-    const latNum = Number(lat)
-    const lngNum = Number(lng)
-    if (lat === '' || Number.isNaN(latNum)) next.lat = 'Latitud inválida.'
-    if (lng === '' || Number.isNaN(lngNum)) next.lng = 'Longitud inválida.'
+    if (!point) next.point = 'Selecciona la ubicación en el mapa.'
     setErrors(next)
-    if (Object.keys(next).length > 0) return
+    if (Object.keys(next).length > 0 || !point) return
 
     await onSubmit({
       name: name.trim(),
       address: address.trim(),
-      lat: latNum,
-      lng: lngNum,
+      lat: point.lat,
+      lng: point.lng,
     })
   }
 
   return (
     <Dialog
+      wide
       title={mode === 'create' ? 'Nuevo campus' : 'Editar campus'}
       onClose={onClose}
       footer={
@@ -444,25 +449,25 @@ function CampusFormDialog({
             className={inputClassName}
           />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Latitud" htmlFor="campus-lat" error={errors.lat}>
-            <input
-              id="campus-lat"
-              value={lat}
-              onChange={(e) => setLat(e.target.value)}
-              className={inputClassName}
-              inputMode="decimal"
-            />
-          </Field>
-          <Field label="Longitud" htmlFor="campus-lng" error={errors.lng}>
-            <input
-              id="campus-lng"
-              value={lng}
-              onChange={(e) => setLng(e.target.value)}
-              className={inputClassName}
-              inputMode="decimal"
-            />
-          </Field>
+        <div>
+          <p className="mb-1.5 text-sm font-medium text-slate-700">Ubicación en el mapa</p>
+          <LocationMapPicker
+            apiKey={mapsKey}
+            value={point}
+            onChange={(p) => {
+              setPoint(p)
+              setErrors((prev) => {
+                if (!prev.point) return prev
+                const { point: _removed, ...rest } = prev
+                return rest
+              })
+            }}
+          />
+          {errors.point && (
+            <p className="mt-1 text-sm text-red-600" role="alert">
+              {errors.point}
+            </p>
+          )}
         </div>
         {error && (
           <p className="text-sm text-red-600" role="alert">

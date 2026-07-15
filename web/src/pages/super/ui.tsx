@@ -107,11 +107,14 @@ export function Dialog({
   children,
   onClose,
   footer,
+  wide = false,
 }: {
   title: string
   children: ReactNode
   onClose: () => void
   footer?: ReactNode
+  /** Diálogos con mapa / formularios anchos. */
+  wide?: boolean
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
@@ -121,7 +124,12 @@ export function Dialog({
         aria-label="Cerrar"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-lg rounded-xl border bg-white shadow-lg">
+      <div
+        className={[
+          'relative w-full rounded-xl border bg-white shadow-lg',
+          wide ? 'max-w-2xl' : 'max-w-lg',
+        ].join(' ')}
+      >
         <div className="flex items-center justify-between border-b px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
           <button
@@ -133,7 +141,7 @@ export function Dialog({
             ✕
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="max-h-[min(80vh,720px)] overflow-y-auto px-5 py-4">{children}</div>
         {footer && <div className="flex justify-end gap-2 border-t px-5 py-4">{footer}</div>}
       </div>
     </div>
