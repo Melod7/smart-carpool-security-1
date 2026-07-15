@@ -14,123 +14,87 @@ Ver [PLAN.md](./PLAN.md) y [STATUS.md](./STATUS.md).
 
 - Docker Desktop
 - Node.js 20+
-- .NET SDK 10 (solo si corres la API en el host)
+- .NET SDK 10 (API en el host / `make api`)
 - Flutter 3.x (solo mobile)
+- Make (`make help`)
 
 ```bash
 cp .env.example .env
+# Edita GOOGLE_MAPS_API_KEY y, si hace falta, MOBILE_API_URL
+make sync-env
 ```
 
-## Cómo levantar (elige un modo)
+**Una sola fuente de verdad:** el `.env` raíz. No dupliques claves en `web/.env` ni scripts ad‑hoc.
 
-### A) Desarrollo diario — hot reload (recomendado)
-
-Postgres en Docker; API y web en el host con recarga automática al guardar.
-
-```bash
-# 1) Solo base de datos
-docker compose up -d postgres
-
-# 2) API con hot reload (.NET)
-cd backend
-dotnet watch run --project src/Kubix.Api
-# → http://localhost:8080  ·  Swagger: /swagger
-
-# 3) Web con hot reload (otra terminal)
-cd web
-npm install
-npm run dev
-# → http://localhost:5173
-```
-
-| Servicio | Hot reload |
+| Variable | Uso |
 |---|---|
-| Web (`npm run dev`) | Sí |
-| API (`dotnet watch`) | Sí |
-| API imagen Release de Docker | No |
+| `API_URL` / `API_PORT` | Admin web + docs |
+| `GOOGLE_MAPS_API_KEY` | Directions (API) + Maps JS (web) + SDK mobile |
+| `MOBILE_API_URL` | Override URL Flutter (si vacío, `make mobile` la deduce) |
+| `MOBILE_DEVICE` | Device por defecto para `make mobile` |
+| `POSTGRES_*` | Docker Postgres |
+| `WEB_ORIGIN` / `WEB_PORT` | Vite + CORS |
 
-Connection string local: `localhost:55432` (ya en `appsettings.Development.json`).
+`make sync-env` genera: `web/.env` (VITE_*), `mobile/ios/Flutter/MapsSecrets.xcconfig`, `mobile/web/maps_api_key.js`.
 
-### B) Todo en Docker con hot reload de la API
-
-Monta `./backend` en el contenedor y corre `dotnet watch` (útil si no quieres SDK en el host):
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-# → API http://localhost:8080 (recarga al editar .cs en ./backend)
-```
-
-Web sigue aparte:
+## Cómo levantar
 
 ```bash
-cd web && npm run dev
+make help
+
+# Todo: Postgres + API (watch) + Web (Vite) — Ctrl+C detiene API/Web
+make up
+
+# Individuales
+make db          # solo Postgres
+make api         # dotnet watch :8080
+make web         # Vite :5173
+make mobile      # Flutter (DEVICE=chrome|emulator-5554|<udid>)
+make mobile-chrome
+make mobile-android
+
+make down        # para API/Web pids + docker compose down
 ```
 
-### C) Todo en Docker (sin hot reload — smoke / CI local)
+| Servicio | URL |
+|---|---|
+| API + Swagger | http://localhost:8080/swagger |
+| Web admin | http://localhost:5173 |
+| Postgres | localhost:55432 |
 
-Imagen Release publicada. **Hay que rebuild** tras cada cambio de código:
+### Docker (sin hot reload / smoke)
 
 ```bash
-docker compose up -d --build
-curl http://localhost:8080/health
+make docker        # imagen Release
+make docker-dev    # API con watch dentro del contenedor
+make docker-down
 ```
 
-Si también tenías `dotnet run` / `dotnet watch` en el host, detenlo antes (`Ctrl+C`): el puerto `8080` no puede compartirse.
+### Mobile
+
+```bash
+make mobile DEVICE=chrome
+make mobile DEVICE=emulator-5554
+make mobile DEVICE=00008110-000A7D020140401E   # iPhone: usa IP LAN automáticamente
+# o fija en .env: MOBILE_API_URL=http://192.168.1.180:8080
+```
+
+Detalle de plataformas: [mobile/README.md](./mobile/README.md).
 
 ### Utilidades
 
 ```bash
-# Health
+make tools         # pgAdmin → http://localhost:5050
 curl http://localhost:8080/health
-
-# Swagger
-open http://localhost:8080/swagger
-
-# pgAdmin (opcional)
-docker compose --profile tools up -d
-# → http://localhost:5050  (admin@kubix.local / admin)
-
-# Parar API Docker / stack
-docker compose down
-# (postgres+datos se conservan en el volume kubix_pgdata)
 ```
 
-Tracking en vivo (`/admin/tracking`) requiere `VITE_GOOGLE_MAPS_API_KEY` en `web/.env` (ver `web/.env.example`).
+## Credenciales locales
 
-### Mobile
+Seed (`SEED_ON_STARTUP=true`) solo crea el super admin:
 
-Instalar Flutter 3.x y luego ver [mobile/README.md](./mobile/README.md). Inicio rápido:
-
-```bash
-cd mobile
-flutter pub get
-flutter devices
-
-# Emulador Android (10.0.2.2 → máquina host)
-flutter run -d <android-id> --dart-define=API_URL=http://10.0.2.2:8080
-
-# Simulador iOS
-flutter run -d <simulator-id> --dart-define=API_URL=http://127.0.0.1:8080
-
-# Teléfono físico (misma Wi‑Fi): IP LAN del Mac — ipconfig getifaddr en0
-flutter run -d <device-id> --dart-define=API_URL=http://192.168.x.x:8080
-```
-
-Notas iOS: deployment target mínimo **14.0**; dispositivos físicos necesitan Development Team en Xcode; CocoaPods (`brew install cocoapods`).
-
-## Credenciales locales por defecto
-
-El seed de arranque (`SEED_ON_STARTUP=true`) **solo** crea el super admin (sin universidades ni usuarios demo):
-
-- Super admin: `superadmin@kubix.local` / `ChangeMe123!` (configurable vía `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD`)
-
-El resto (universidades, campuses, coordinadores, drivers/passengers) se crea por API.
-
-### Auth
+- `superadmin@kubix.local` / `ChangeMe123!` (`SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD`)
 
 ```bash
 curl -s http://localhost:8080/auth/login -H 'Content-Type: application/json' \
   -d '{"email":"superadmin@kubix.local","password":"ChangeMe123!"}'
 ```
-
-Endpoints: `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `POST /auth/change-password`, `GET /me` (Bearer JWT).

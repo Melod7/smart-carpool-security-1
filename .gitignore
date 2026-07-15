@@ -11,6 +11,9 @@
 **/.env
 !**/.env.example
 
+# Make / scripts locales
+.run/
+
 # Node
 node_modules/
 web/dist/

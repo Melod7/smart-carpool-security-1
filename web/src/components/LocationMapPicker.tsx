@@ -18,7 +18,7 @@ type LocationMapPickerProps = {
 
 /**
  * Mapa clicable para elegir lat/lng (campus, etc.).
- * Requiere `VITE_GOOGLE_MAPS_API_KEY`.
+ * Requiere `GOOGLE_MAPS_API_KEY` en el `.env` raíz (`make sync-env`).
  */
 export function LocationMapPicker({
   apiKey,
@@ -74,8 +74,9 @@ export function LocationMapPicker({
           className ?? '',
         ].join(' ')}
       >
-        Configura <code className="mx-1 rounded bg-amber-100 px-1">VITE_GOOGLE_MAPS_API_KEY</code> en{' '}
-        <code className="mx-1 rounded bg-amber-100 px-1">web/.env</code> para elegir el punto en el mapa.
+        Configura <code className="mx-1 rounded bg-amber-100 px-1">GOOGLE_MAPS_API_KEY</code> en{' '}
+        <code className="mx-1 rounded bg-amber-100 px-1">.env</code> (raíz) y corre{' '}
+        <code className="mx-1 rounded bg-amber-100 px-1">make sync-env</code>.
       </div>
     )
   }

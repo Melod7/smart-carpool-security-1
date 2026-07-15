@@ -46,12 +46,12 @@ describe('TrackingPage', () => {
     expect(screen.getByText('Viajes activos')).toBeInTheDocument()
   })
 
-  it('muestra aviso cuando falta VITE_GOOGLE_MAPS_API_KEY', async () => {
+  it('muestra aviso cuando falta GOOGLE_MAPS_API_KEY', async () => {
     getActiveTracking.mockResolvedValue({ trips: [] })
 
     renderPage()
 
     expect(await screen.findByText('Falta la clave de Google Maps')).toBeInTheDocument()
-    expect(screen.getByText(/VITE_GOOGLE_MAPS_API_KEY/)).toBeInTheDocument()
+    expect(screen.getByText(/GOOGLE_MAPS_API_KEY/)).toBeInTheDocument()
   })
 })

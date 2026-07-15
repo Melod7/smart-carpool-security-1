@@ -461,7 +461,7 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
                 child: const Padding(
                   padding: EdgeInsets.all(10),
                   child: Text(
-                    'Falta MAPS_API_KEY. El mapa puede no renderizar tiles.',
+                    'Falta GOOGLE_MAPS_API_KEY. Corre: make sync-env',
                     style: TextStyle(
                       fontSize: 12,
                       color: KubixColors.emergency,

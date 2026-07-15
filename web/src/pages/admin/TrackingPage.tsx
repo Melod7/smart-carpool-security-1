@@ -173,8 +173,9 @@ export function TrackingPage() {
               <div className="flex h-full min-h-[420px] flex-col justify-center rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-950">
                 <p className="font-semibold">Falta la clave de Google Maps</p>
                 <p className="mt-2 text-amber-900">
-                  Configura <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">VITE_GOOGLE_MAPS_API_KEY</code>{' '}
-                  en <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">web/.env</code> y reinicia el
+                  Configura <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">GOOGLE_MAPS_API_KEY</code>{' '}
+                  en <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">.env</code> (raíz), corre{' '}
+                  <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">make sync-env</code> y reinicia el
                   servidor de desarrollo para ver el mapa. La lista de viajes sigue disponible a la
                   izquierda.
                 </p>

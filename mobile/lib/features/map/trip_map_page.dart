@@ -14,9 +14,12 @@ import 'map_route.dart';
 import 'tracking_providers.dart';
 import 'trip_geometry_cache.dart';
 
-/// Clave Maps inyectada con `--dart-define=MAPS_API_KEY=...`.
-/// También debe configurarse en AndroidManifest / AppDelegate (ver README).
-const mapsApiKey = String.fromEnvironment('MAPS_API_KEY', defaultValue: '');
+/// Clave Maps: `--dart-define=GOOGLE_MAPS_API_KEY=...` (o legacy `MAPS_API_KEY`).
+/// Preferir `make mobile` / `make sync-env` desde el .env raíz.
+const mapsApiKey = String.fromEnvironment(
+  'GOOGLE_MAPS_API_KEY',
+  defaultValue: String.fromEnvironment('MAPS_API_KEY', defaultValue: ''),
+);
 
 const _defaultCenter = LatLng(-0.1807, -78.4678);
 
@@ -419,8 +422,7 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
               color: KubixColors.emergency.withValues(alpha: 0.1),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: const Text(
-                'Falta MAPS_API_KEY. Usa --dart-define=MAPS_API_KEY=... '
-                'y configúrala en Android/iOS (ver mobile/README).',
+                'Falta GOOGLE_MAPS_API_KEY. Corre: make sync-env && make mobile',
                 style: TextStyle(fontSize: 13, color: KubixColors.emergency),
               ),
             ),

@@ -49,9 +49,15 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        val fromDart = dartDefinesMap()["MAPS_API_KEY"]
-        val fromEnv = System.getenv("MAPS_API_KEY")
-        val fromProps = (project.findProperty("MAPS_API_KEY") as? String)?.trim()
+        val fromDart =
+            dartDefinesMap()["GOOGLE_MAPS_API_KEY"]
+                ?: dartDefinesMap()["MAPS_API_KEY"]
+        val fromEnv =
+            System.getenv("GOOGLE_MAPS_API_KEY")
+                ?: System.getenv("MAPS_API_KEY")
+        val fromProps =
+            (project.findProperty("GOOGLE_MAPS_API_KEY") as? String)?.trim()
+                ?: (project.findProperty("MAPS_API_KEY") as? String)?.trim()
         val mapsApiKey = listOf(fromDart, fromEnv, fromProps)
             .firstOrNull { !it.isNullOrBlank() }
             ?: ""

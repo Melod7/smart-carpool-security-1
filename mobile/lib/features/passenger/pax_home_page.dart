@@ -614,7 +614,7 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
                       alignment: Alignment.center,
                       color: KubixColors.background,
                       child: const Text(
-                        'Falta MAPS_API_KEY en el run de Flutter.',
+                        'Falta GOOGLE_MAPS_API_KEY. Usa: make mobile',
                         textAlign: TextAlign.center,
                       ),
                     )

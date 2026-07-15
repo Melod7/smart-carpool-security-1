@@ -2,203 +2,67 @@
 
 App Flutter para conductores y pasajeros.
 
-La Fase 1 entregó el shell + `API_URL`. **KBX-22+** (bucket B5): auth, registro y shells por rol.
+## Arranque recomendado (monorepo)
 
-## Requisitos previos
-
-- [Flutter](https://docs.flutter.dev/get-started/install) 3.x (`flutter doctor` limpio para las plataformas que necesites)
-- API local corriendo en el puerto `8080` (ver [README](../README.md) raíz)
-- **iOS:** Xcode, CocoaPods (`brew install cocoapods`), Apple ID para firmar dispositivos
-- **Android:** Android Studio / SDK + un emulador o dispositivo USB con depuración USB
-
-El deployment target mínimo de iOS es **14.0** (`google_maps_flutter_ios`).
-
-## Configuración
+Desde la **raíz** del repo (no desde `mobile/`):
 
 ```bash
-cd mobile
-flutter pub get
+cp .env.example .env          # una vez
+# Edita GOOGLE_MAPS_API_KEY (y MOBILE_API_URL si el auto-detect falla)
+
+make sync-env                 # Maps iOS + Flutter web + web/.env
+make up                       # API + web en otra terminal, o ya corriendo
+make mobile DEVICE=chrome
+make mobile DEVICE=emulator-5554
+make mobile DEVICE=<udid-iphone>
 ```
 
-Si faltan `android/` o `ios/`:
+Variables relevantes en el `.env` **raíz**:
 
-```bash
-flutter create . --project-name kubix_mobile --platforms=android,ios
-```
-
-Luego vuelve a aplicar iOS 14.0 en `ios/Podfile` (`platform :ios, '14.0'`) si Flutter regeneró un target más antiguo.
-
-## API URL por dispositivo
-
-| Target | `API_URL` |
+| Variable | Rol |
 |---|---|
-| Emulador Android | `http://10.0.2.2:8080` |
-| iOS Simulator | `http://127.0.0.1:8080` |
-| Teléfono físico (misma Wi‑Fi que el Mac) | `http://<MAC_LAN_IP>:8080` |
+| `GOOGLE_MAPS_API_KEY` | Maps SDK + dart-define (única clave) |
+| `MOBILE_API_URL` | Override; si vacío, se deduce por device |
+| `MOBILE_DEVICE` | Default para `make mobile` |
+| `API_PORT` | Puerto de la API (default 8080) |
 
-Obtener la IP LAN del Mac:
+URL automática si `MOBILE_API_URL` está vacío:
 
-```bash
-ipconfig getifaddr en0
-```
+| Device | URL |
+|---|---|
+| Emulador Android (`*emulator*`, `*gphone*`) | `http://10.0.2.2:8080` |
+| Chrome / simulador iOS / macOS | `http://127.0.0.1:8080` |
+| iPhone/Android físico | `http://<IP-LAN-Mac>:8080` |
 
-## IDs de dispositivo (`-d`)
+## Requisitos
 
-Listar dispositivos conectados; el **id** es la segunda columna (entre `•`):
-
-```bash
-flutter devices
-```
-
-Ejemplo de salida:
-
-```text
-Fernando’s iPhone (mobile) • 00008110-000A7D020140401E • ios            • iOS 26.5
-sdk gphone64 arm64         • emulator-5554              • android-arm64  • Android 15
-iPhone 16 (mobile)         • A1B2C3D4-E5F6-...          • ios            • com.apple.CoreSimulator...
-macOS (desktop)            • macos                      • darwin-arm64   • macOS ...
-Chrome (web)               • chrome                     • web-javascript • Google Chrome ...
-```
-
-Usar ese id con `-d`:
+- Flutter 3.x (`flutter doctor`)
+- API local (`make api` o `make up`)
+- iOS: Xcode + CocoaPods; Android: SDK/emulador
+- Deployment target iOS **14.0**
 
 ```bash
-flutter run -d 00008110-000A7D020140401E --dart-define=API_URL=http://192.168.0.106:8080
-flutter run -d emulator-5554 --dart-define=API_URL=http://10.0.2.2:8080
-flutter run -d chrome --dart-define=API_URL=http://127.0.0.1:8080
+cd mobile && flutter pub get
 ```
 
-> **CORS (Chrome):** Flutter web corre en un puerto efímero (`localhost:xxxxx`). En `Development` la API acepta origins `localhost` / `127.0.0.1`. Si ves `CORS error` en Network, reinicia la API tras el fix de CORS y recarga Chrome (no hace falta otro `API_URL`).
-
-También funciona un fragmento único del nombre (`-d chrome`, `-d iphone`).
-
-Si no aparece nada útil:
+## Manual (sin Make)
 
 ```bash
-# Emuladores Android
-flutter emulators
-flutter emulators --launch <emulator_id>
-flutter devices
-
-# iOS Simulator (requiere un runtime iOS en Xcode → Settings → Platforms)
-open -a Simulator
-flutter devices
-```
-
-## Android (Mac → teléfono o emulador)
-
-### Teléfono físico (recomendado)
-
-1. En el Android: **Ajustes → Acerca del teléfono** → toca 7× **Número de compilación** (activa opciones de desarrollador).
-2. **Ajustes → Opciones de desarrollador** → activa **Depuración USB**.
-3. Conecta el USB al Mac; acepta “¿Permitir depuración USB?” en el teléfono.
-4. Misma Wi‑Fi que el Mac. La API debe estar arriba (`http://<IP-Mac>:8080/health`).
-5. Corre:
-
-```bash
-# IP LAN del Mac (ej. en0)
-ipconfig getifaddr en0
-
-adb devices          # debe listar el dispositivo (no "unauthorized")
-flutter devices
-
+# desde la raíz
+./scripts/sync-env.sh
+set -a && source .env && set +a
 cd mobile
-flutter run -d <android-id> \
-  --dart-define=API_URL=http://192.168.1.180:8080
+flutter run -d chrome \
+  --dart-define=API_URL=http://127.0.0.1:8080 \
+  --dart-define=GOOGLE_MAPS_API_KEY="$GOOGLE_MAPS_API_KEY"
 ```
 
-Sustituye `192.168.1.180` por tu IP real. **No uses** `127.0.0.1` ni `localhost` en el teléfono (eso apunta al propio Android).
+`./tool/sync_maps_key_from_env.sh` es un alias de `scripts/sync-env.sh`.
 
-Si `adb devices` está vacío: prueba otro cable/puerto, o **Revocar autorizaciones USB** en opciones de desarrollador y reconecta.
-
-### Emulador Android
-
-`10.0.2.2` es el alias del localhost del Mac desde el emulador:
-
-```bash
-flutter emulators
-flutter emulators --launch <emulator_id>
-flutter run -d emulator-5554 --dart-define=API_URL=http://10.0.2.2:8080
-```
-
-Si no hay AVDs: instala **Android Studio → Device Manager → Create Device**, o SDK Platform + Emulator vía `sdkmanager`.
-
-## iOS
-
-### Simulador
-
-Instalar un runtime iOS en **Xcode → Settings → Platforms**, luego:
-
-```bash
-open -a Simulator
-flutter devices
-flutter run -d <simulator-id> --dart-define=API_URL=http://127.0.0.1:8080
-```
-
-### iPhone físico (firmado de una sola vez)
-
-1. Abrir el workspace y configurar un Development Team:
-
-```bash
-open ios/Runner.xcworkspace
-```
-
-En Xcode: **Runner → Signing & Capabilities → Team** (iniciar sesión con tu Apple ID). Usar un Bundle ID único si hace falta.
-
-2. Confiar el certificado de desarrollador en el teléfono: **Settings → General → VPN & Device Management**.
-
-3. Ejecutar (teléfono y Mac en la misma Wi‑Fi):
+## IDs de dispositivo
 
 ```bash
 flutter devices
-flutter run -d <iphone-id> --dart-define=API_URL=http://192.168.x.x:8080
 ```
 
-Si `pod install` falla después de clonar:
-
-```bash
-cd ios && pod install --repo-update && cd ..
-```
-
-### Android + iPhone a la vez
-
-Deja el Android corriendo en una terminal y abre **otra** terminal para el iPhone (misma `API_URL` = IP LAN del Mac):
-
-```bash
-# Terminal A (Android) — ya lo tienes
-flutter run -d R5CXC28VKTF --dart-define=API_URL=http://192.168.1.180:8080
-
-# Terminal B (iPhone wireless)
-flutter run -d 00008110-000A7D020140401E --dart-define=API_URL=http://192.168.1.180:8080
-```
-
-Cada sesión tiene su propio hot reload (`r` / `R` en esa terminal). La API en el Mac atiende a ambos.
-## Notas
-
-- Sin `-d`, Flutter puede elegir un iPhone físico y fallar si el firmado no está configurado. Preferir `flutter devices` y luego un `-d` explícito.
-- `127.0.0.1` en un teléfono físico es el propio teléfono, no tu Mac.
-- CocoaPods es obligatorio para builds de plugins iOS/macOS; Chrome/web no lo necesita.
-
-## Google Maps (`MAPS_API_KEY`)
-
-Pon la clave en el `.env` raíz (`GOOGLE_MAPS_API_KEY=...`). En Google Cloud activa:
-
-- **Maps SDK for iOS** (bundle `com.example.kubixMobile`)
-- **Maps JavaScript API** (obligatorio si corres en **Chrome / Flutter web**)
-- **Maps SDK for Android** si usas emulador/dispositivo Android
-
-```bash
-# 1) Inyecta la clave a iOS nativo + web/maps_api_key.js
-./tool/sync_maps_key_from_env.sh
-
-# 2) Corre con la misma clave en Dart (y Android manifest)
-set -a && source ../.env && set +a
-flutter run -d <device-id|chrome> \
-  --dart-define=API_URL=http://192.168.x.x:8080 \
-  --dart-define=MAPS_API_KEY="$GOOGLE_MAPS_API_KEY"
-```
-
-- **iOS:** el sync escribe `ios/Flutter/MapsSecrets.xcconfig` (gitignored). Sin ese paso el SDK nativo crashea.
-- **Web (Chrome):** el sync escribe `web/maps_api_key.js` (gitignored). Sin eso verás `Cannot read properties of undefined (reading 'maps')`.
-- **Android:** `build.gradle.kts` toma `MAPS_API_KEY` del dart-define / env.
-- Tras cambiar la clave: sync + rebuild completo (`q` y volver a `flutter run`).
+> **CORS (Chrome):** Flutter web usa un puerto efímero; en Development la API acepta `localhost` / `127.0.0.1`.
