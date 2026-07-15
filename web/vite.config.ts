@@ -32,6 +32,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     server: {
       port: Number(rootEnv.WEB_PORT || webEnv.WEB_PORT || 5173),
+      strictPort: true,
+      host: true,
     },
     define: {
       'import.meta.env.VITE_API_URL': JSON.stringify(apiUrl),

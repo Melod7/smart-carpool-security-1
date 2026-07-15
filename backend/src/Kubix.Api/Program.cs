@@ -85,7 +85,7 @@ try
             };
         });
 
-    // Web admin (:5173) + Flutter web (puerto aleatorio en localhost/127.0.0.1).
+    // Puertos fijos locales: Vite :5173, Flutter web :5055.
     // Cors:WebOrigin se mantiene por compatibilidad con docker-compose / .env.
     var origenes = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
     if (origenes is null || origenes.Length == 0)
@@ -111,7 +111,7 @@ try
             return false;
         }
 
-        // Vite (:5173), Flutter web (puerto efímero) y variantes localhost / 127.0.0.1.
+        // Solo hosts loopback en Development (puertos fijos preferidos: 5173 / 5055).
         return uri.Host is "localhost" or "127.0.0.1" or "[::1]" or "::1";
     }
 

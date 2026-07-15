@@ -24,7 +24,8 @@ Variables relevantes en el `.env` **raíz**:
 | `GOOGLE_MAPS_API_KEY` | Maps SDK + dart-define (única clave) |
 | `MOBILE_API_URL` | Override; si vacío, se deduce por device |
 | `MOBILE_DEVICE` | Default para `make mobile` |
-| `API_PORT` | Puerto de la API (default 8080) |
+| `API_PORT` | Puerto de la API (fijo **8080**) |
+| `FLUTTER_WEB_PORT` | Flutter Chrome (fijo **5055**) |
 
 URL automática si `MOBILE_API_URL` está vacío:
 

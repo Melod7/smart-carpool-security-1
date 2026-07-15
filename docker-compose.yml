@@ -29,6 +29,10 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:-kubix};Username=${POSTGRES_USER:-kubix};Password=${POSTGRES_PASSWORD:-kubix}
       Cors__WebOrigin: ${WEB_ORIGIN:-http://localhost:5173}
+      Cors__AllowedOrigins__0: ${WEB_ORIGIN:-http://localhost:5173}
+      Cors__AllowedOrigins__1: http://127.0.0.1:5173
+      Cors__AllowedOrigins__2: ${FLUTTER_WEB_ORIGIN:-http://localhost:5055}
+      Cors__AllowedOrigins__3: http://127.0.0.1:5055
       Database__MigrateOnStartup: ${MIGRATE_ON_STARTUP:-true}
       Database__SeedOnStartup: ${SEED_ON_STARTUP:-true}
       SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-superadmin@kubix.local}

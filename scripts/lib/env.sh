@@ -2,10 +2,20 @@
 # Helpers para cargar el .env raíz de Kubix.
 # Uso: source "$(dirname "$0")/lib/env.sh"  ó  source scripts/lib/env.sh
 
+# Directorio de este archivo (robusto en bash; make siempre usa bash).
+_kubix_lib_dir() {
+  local src="${BASH_SOURCE[0]:-}"
+  if [[ -z "$src" ]]; then
+    src="$0"
+  fi
+  cd "$(dirname "$src")" && pwd
+}
+
 kubix_root() {
-  local here
-  here="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-  echo "$here"
+  # scripts/lib → raíz del monorepo
+  local lib
+  lib="$(_kubix_lib_dir)"
+  cd "${lib}/../.." && pwd
 }
 
 # Carga KEY=VALUE del .env raíz (ignora comentarios / vacías). Exporta a entorno.
@@ -33,6 +43,8 @@ kubix_load_env() {
   : "${API_URL:=http://localhost:${API_PORT}}"
   : "${WEB_PORT:=5173}"
   : "${WEB_ORIGIN:=http://localhost:${WEB_PORT}}"
+  : "${FLUTTER_WEB_PORT:=5055}"
+  : "${FLUTTER_WEB_ORIGIN:=http://localhost:${FLUTTER_WEB_PORT}}"
   : "${MIGRATE_ON_STARTUP:=true}"
   : "${SEED_ON_STARTUP:=true}"
 
@@ -49,12 +61,14 @@ kubix_load_env() {
 
   export POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD POSTGRES_PORT
   export API_PORT API_URL WEB_PORT WEB_ORIGIN
+  export FLUTTER_WEB_PORT FLUTTER_WEB_ORIGIN
   export MIGRATE_ON_STARTUP SEED_ON_STARTUP
   export GOOGLE_MAPS_API_KEY
   export MOBILE_API_URL MOBILE_DEVICE
   export SUPER_ADMIN_EMAIL SUPER_ADMIN_PASSWORD
   export PGADMIN_EMAIL PGADMIN_PASSWORD PGADMIN_PORT
   export WEB_ORIGIN
+  export ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}"
 }
 
 # Connection string host → Postgres Docker publicado.

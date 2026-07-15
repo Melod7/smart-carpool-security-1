@@ -28,12 +28,13 @@ make sync-env
 
 | Variable | Uso |
 |---|---|
-| `API_URL` / `API_PORT` | Admin web + docs |
+| `API_URL` / `API_PORT` | Admin web + docs (**fijo** `:8080`) |
 | `GOOGLE_MAPS_API_KEY` | Directions (API) + Maps JS (web) + SDK mobile |
 | `MOBILE_API_URL` | Override URL Flutter (si vacío, `make mobile` la deduce) |
 | `MOBILE_DEVICE` | Device por defecto para `make mobile` |
 | `POSTGRES_*` | Docker Postgres |
-| `WEB_ORIGIN` / `WEB_PORT` | Vite + CORS |
+| `WEB_ORIGIN` / `WEB_PORT` | Vite (**fijo** `:5173`, `strictPort`) |
+| `FLUTTER_WEB_PORT` | Flutter Chrome (**fijo** `:5055`) |
 
 `make sync-env` genera: `web/.env` (VITE_*), `mobile/ios/Flutter/MapsSecrets.xcconfig`, `mobile/web/maps_api_key.js`.
 
@@ -47,19 +48,20 @@ make up
 
 # Individuales
 make db          # solo Postgres
-make api         # dotnet watch :8080
-make web         # Vite :5173
+make api         # dotnet watch :8080 (Development + CORS)
+make web         # Vite :5173 (falla si el puerto está ocupado)
 make mobile      # Flutter (DEVICE=chrome|emulator-5554|<udid>)
-make mobile-chrome
+make mobile-chrome   # → http://localhost:5055
 make mobile-android
 
 make down        # para API/Web pids + docker compose down
 ```
 
-| Servicio | URL |
+| Servicio | URL fija |
 |---|---|
 | API + Swagger | http://localhost:8080/swagger |
 | Web admin | http://localhost:5173 |
+| Flutter web | http://localhost:5055 |
 | Postgres | localhost:55432 |
 
 ### Docker (sin hot reload / smoke)

@@ -59,20 +59,25 @@ tools: ## pgAdmin (profile tools)
 
 api: sync-env db ## API con hot reload (dotnet watch)
 	@source $(SCRIPTS)/lib/env.sh && kubix_load_env && \
-	  echo "→ API $$API_URL  Maps key len=$${#GOOGLE_MAPS_API_KEY}" && \
+	  echo "→ API $$API_URL  env=$$ASPNETCORE_ENVIRONMENT  Maps key len=$${#GOOGLE_MAPS_API_KEY}" && \
 	  cd $(ROOT)/backend && \
+	  ASPNETCORE_ENVIRONMENT="$$ASPNETCORE_ENVIRONMENT" \
 	  ConnectionStrings__Default="$$(kubix_connection_string)" \
 	  GoogleMaps__ApiKey="$$GOOGLE_MAPS_API_KEY" \
 	  Cors__WebOrigin="$$WEB_ORIGIN" \
+	  Cors__AllowedOrigins__0="$$WEB_ORIGIN" \
+	  Cors__AllowedOrigins__1="http://127.0.0.1:$$WEB_PORT" \
+	  Cors__AllowedOrigins__2="$$FLUTTER_WEB_ORIGIN" \
+	  Cors__AllowedOrigins__3="http://127.0.0.1:$$FLUTTER_WEB_PORT" \
 	  Database__MigrateOnStartup="$$MIGRATE_ON_STARTUP" \
 	  Database__SeedOnStartup="$$SEED_ON_STARTUP" \
 	  ASPNETCORE_URLS="http://0.0.0.0:$$API_PORT" \
 	  dotnet watch run --project src/Kubix.Api --no-launch-profile
 
-web: sync-env ## Admin web (Vite)
+web: sync-env ## Admin web (Vite :5173 strict)
 	@source $(SCRIPTS)/lib/env.sh && kubix_load_env && \
 	  if [[ ! -d $(ROOT)/web/node_modules ]]; then cd $(ROOT)/web && npm install; fi && \
-	  cd $(ROOT)/web && npm run dev -- --port "$$WEB_PORT" --host
+	  cd $(ROOT)/web && npm run dev -- --port "$$WEB_PORT" --strictPort --host
 
 mobile: sync-env ## Flutter (DEVICE=… o MOBILE_DEVICE en .env)
 	@$(SCRIPTS)/mobile-run.sh $(DEVICE)

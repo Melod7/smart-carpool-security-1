@@ -44,12 +44,17 @@ done
 
 CS="$(kubix_connection_string)"
 
-echo "→ API (dotnet watch) :${API_PORT}"
+echo "→ API (dotnet watch) :${API_PORT}  [ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}]"
 (
   cd "${ROOT}/backend"
+  export ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}"
   export ConnectionStrings__Default="$CS"
   export GoogleMaps__ApiKey="${GOOGLE_MAPS_API_KEY:-}"
   export Cors__WebOrigin="${WEB_ORIGIN}"
+  export Cors__AllowedOrigins__0="${WEB_ORIGIN}"
+  export Cors__AllowedOrigins__1="http://127.0.0.1:${WEB_PORT}"
+  export Cors__AllowedOrigins__2="${FLUTTER_WEB_ORIGIN}"
+  export Cors__AllowedOrigins__3="http://127.0.0.1:${FLUTTER_WEB_PORT}"
   export Database__MigrateOnStartup="${MIGRATE_ON_STARTUP}"
   export Database__SeedOnStartup="${SEED_ON_STARTUP}"
   export SUPER_ADMIN_EMAIL SUPER_ADMIN_PASSWORD
@@ -63,18 +68,19 @@ if [[ ! -d "${ROOT}/web/node_modules" ]]; then
   (cd "${ROOT}/web" && npm install)
 fi
 
-echo "→ Web (Vite) :${WEB_PORT}"
+echo "→ Web (Vite) :${WEB_PORT} (strict)"
 (
   cd "${ROOT}/web"
-  exec npm run dev -- --port "${WEB_PORT}" --host
+  exec npm run dev -- --port "${WEB_PORT}" --strictPort --host
 ) > >(sed -u 's/^/[web] /') 2>&1 &
 echo $! >"${ROOT}/.run/web.pid"
 
 echo ""
-echo "Listo:"
-echo "  API    ${API_URL}  (Swagger ${API_URL}/swagger)"
-echo "  Web    ${WEB_ORIGIN}"
-echo "  Maps   GOOGLE_MAPS_API_KEY len=${#GOOGLE_MAPS_API_KEY}"
+echo "Listo (puertos fijos):"
+echo "  API         ${API_URL}  (Swagger ${API_URL}/swagger)"
+echo "  Web admin   ${WEB_ORIGIN}"
+echo "  Flutter web http://localhost:${FLUTTER_WEB_PORT}  (make mobile-chrome)"
+echo "  Maps key    len=${#GOOGLE_MAPS_API_KEY}"
 echo ""
 echo "Ctrl+C para detener API+Web. Postgres: make down"
 echo ""
