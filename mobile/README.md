@@ -32,7 +32,7 @@ URL automática si `MOBILE_API_URL` está vacío:
 | Device | URL |
 |---|---|
 | Emulador Android (`*emulator*`, `*gphone*`) | `http://10.0.2.2:8080` |
-| Chrome / simulador iOS / macOS | `http://127.0.0.1:8080` |
+| Chrome / simulador iOS / macOS | `http://localhost:8080` (no uses `127.0.0.1`) |
 | iPhone/Android físico | `http://<IP-LAN-Mac>:8080` |
 
 ## Requisitos

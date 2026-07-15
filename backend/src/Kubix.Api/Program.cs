@@ -137,6 +137,27 @@ try
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();
+
+    // Chrome Private Network Access: preflight con
+    // Access-Control-Request-Private-Network cuando la página es localhost
+    // y la API se llama por 127.0.0.1 (u otro loopback distinto).
+    if (app.Environment.IsDevelopment())
+    {
+        app.Use(async (context, next) =>
+        {
+            if (HttpMethods.IsOptions(context.Request.Method) &&
+                string.Equals(
+                    context.Request.Headers["Access-Control-Request-Private-Network"],
+                    "true",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.Headers["Access-Control-Allow-Private-Network"] = "true";
+            }
+
+            await next();
+        });
+    }
+
     app.UseCors("WebApp");
 
     if (app.Environment.IsDevelopment() ||

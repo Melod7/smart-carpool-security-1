@@ -100,9 +100,10 @@ kubix_mobile_api_url() {
     return 0
   fi
 
-  # Chrome / desktop / simulador iOS
+  # Chrome / desktop / simulador iOS → mismo hostname que la página (localhost),
+  # no 127.0.0.1: Chrome trata localhost→127.0.0.1 como Private Network Access/CORS.
   if [[ "$lower" == chrome || "$lower" == *web-javascript* || "$lower" == macos || "$lower" == *simulator* ]]; then
-    echo "http://127.0.0.1:${API_PORT}"
+    echo "http://localhost:${API_PORT}"
     return 0
   fi
 

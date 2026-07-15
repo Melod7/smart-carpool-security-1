@@ -12,9 +12,10 @@ import 'auth_repository.dart';
 import 'token_storage.dart';
 
 /// URL base inyectada por `--dart-define=API_URL=...`.
+/// En Flutter web usar `http://localhost:8080` (no 127.0.0.1) para evitar CORS/PNA en Chrome.
 const apiUrl = String.fromEnvironment(
   'API_URL',
-  defaultValue: 'http://127.0.0.1:8080',
+  defaultValue: 'http://localhost:8080',
 );
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
