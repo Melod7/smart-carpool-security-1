@@ -31,6 +31,31 @@
 
   <title>Kubix UTN</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    Google Maps JS (obligatorio en Flutter web).
+    La clave se escribe en maps_api_key.js con:
+      ./tool/sync_maps_key_from_env.sh
+    Activa "Maps JavaScript API" en Google Cloud.
+  -->
+  <script src="maps_api_key.js"></script>
+  <script>
+    (function () {
+      var key = window.__KUBIX_MAPS_API_KEY__;
+      if (typeof key !== 'string' || !key) {
+        console.error(
+          '[Kubix] Falta maps_api_key.js. Corre: ./tool/sync_maps_key_from_env.sh'
+        );
+        return;
+      }
+      // document.write en <head> carga el SDK de forma síncrona (antes de Flutter).
+      document.write(
+        '<script src="https://maps.googleapis.com/maps/api/js?key=' +
+          encodeURIComponent(key) +
+          '"><\/script>'
+      );
+    })();
+  </script>
 </head>
 <body>
   <!--

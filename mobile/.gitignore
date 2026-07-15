@@ -44,3 +44,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Google Maps API key (generado por tool/sync_maps_key_from_env.sh)
+/web/maps_api_key.js

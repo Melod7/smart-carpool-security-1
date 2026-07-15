@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../api/models.dart';
 import '../../auth/auth_state.dart';
 import '../../theme/kubix_theme.dart';
+import '../map/decode_polyline.dart';
+import '../map/map_camera.dart';
 import '../map/trip_geometry_cache.dart';
 import '../map/trip_map_page.dart' show mapsApiKey;
 import '../passenger/trip_labels.dart';
@@ -31,6 +35,7 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
   String? _campusId;
   DateTime _departureAt = DateTime.now().add(const Duration(hours: 1));
   final _seatsCtrl = TextEditingController(text: '3');
+  final _seatsFocus = FocusNode();
   Vehicle? _vehicle;
   List<CampusPublic> _campuses = const [];
   bool _loadingGps = true;
@@ -38,6 +43,9 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
   bool _submitting = false;
   String? _error;
   bool _panelExpanded = true;
+  String? _previewPolyline;
+  bool _previewLoading = false;
+  Timer? _previewDebounce;
 
   @override
   void initState() {
@@ -49,6 +57,11 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
       _departureAt.hour,
       _departureAt.minute,
     );
+    _seatsFocus.addListener(() {
+      if (_seatsFocus.hasFocus && _panelExpanded) {
+        setState(() => _panelExpanded = false);
+      }
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _bootstrap();
     });
@@ -56,7 +69,9 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
 
   @override
   void dispose() {
+    _previewDebounce?.cancel();
     _seatsCtrl.dispose();
+    _seatsFocus.dispose();
     _mapController?.dispose();
     super.dispose();
   }
@@ -120,9 +135,76 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
     }
   }
 
+  void _schedulePreview() {
+    _previewDebounce?.cancel();
+    if (_waypoints.length < 2 || _campusId == null) {
+      setState(() {
+        _previewPolyline = null;
+        _previewLoading = false;
+      });
+      return;
+    }
+    setState(() => _previewLoading = true);
+    _previewDebounce = Timer(const Duration(milliseconds: 550), () {
+      unawaited(_fetchPreview());
+    });
+  }
+
+  Future<void> _fetchPreview() async {
+    final campusId = _campusId;
+    if (campusId == null || _waypoints.length < 2) return;
+    final snapshot = List<TripWaypoint>.of(_waypoints);
+    try {
+      final preview = await ref.read(driverApiProvider).previewRoute(
+            destinationCampusId: campusId,
+            waypoints: snapshot,
+          );
+      if (!mounted) return;
+      if (snapshot.length != _waypoints.length) return;
+      setState(() {
+        _previewPolyline = preview.polyline;
+        _previewLoading = false;
+        if (!preview.directionsOk || preview.polyline == null) {
+          _error =
+              'Directions no devolvió ruta. Se muestra trazo aproximado entre puntos. '
+              'Revisa GoogleMaps__ApiKey / Directions API.';
+        } else {
+          // Limpia aviso previo de preview si ya hay ruta válida.
+          if (_error != null && _error!.contains('Directions')) {
+            _error = null;
+          }
+        }
+      });
+      await _fitPreviewCamera();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _previewPolyline = null;
+        _previewLoading = false;
+        _error = 'No se pudo calcular la ruta: $e';
+      });
+    }
+  }
+
+  Future<void> _fitPreviewCamera() async {
+    final points = <LatLng>[
+      for (final w in _waypoints) LatLng(w.lat, w.lng),
+    ];
+    final encoded = _previewPolyline;
+    if (encoded != null && encoded.isNotEmpty) {
+      points
+        ..clear()
+        ..addAll(decodePolyline(encoded));
+    }
+    await fitMapToPoints(_mapController, points, padding: 64);
+  }
+
   void _addWaypoint(LatLng pos) {
     if (!PublishRouteValidation.canAddWaypoint(_waypoints.length)) {
-      setState(() => _error = 'Máximo ${PublishRouteValidation.maxWaypoints} waypoints.');
+      setState(
+        () => _error =
+            'Máximo ${PublishRouteValidation.maxWaypoints} waypoints.',
+      );
       return;
     }
     setState(() {
@@ -137,6 +219,7 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
         ),
       );
     });
+    _schedulePreview();
   }
 
   void _removeWaypoint(int index) {
@@ -157,6 +240,7 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
         );
       }
     });
+    _schedulePreview();
   }
 
   Set<Marker> get _markers {
@@ -177,6 +261,20 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
   }
 
   Set<Polyline> get _polylines {
+    final encoded = _previewPolyline;
+    if (encoded != null && encoded.isNotEmpty) {
+      final decoded = decodePolyline(encoded);
+      if (decoded.length >= 2) {
+        return {
+          Polyline(
+            polylineId: const PolylineId('valid'),
+            points: decoded,
+            color: KubixColors.utnBlue,
+            width: 5,
+          ),
+        };
+      }
+    }
     if (_waypoints.length < 2) return {};
     return {
       Polyline(
@@ -184,7 +282,7 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
         points: [
           for (final w in _waypoints) LatLng(w.lat, w.lng),
         ],
-        color: KubixColors.utnBlue,
+        color: KubixColors.utnBlue.withValues(alpha: 0.55),
         width: 4,
         patterns: [
           PatternItem.dash(16),
@@ -296,10 +394,30 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final panelBottom = (_panelExpanded ? 220.0 : 96.0) +
+        keyboard.clamp(0, 120) +
+        MediaQuery.paddingOf(context).bottom;
+
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text('Publicar ruta'),
         actions: [
+          if (_previewLoading)
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
           IconButton(
             tooltip: 'Centrar en GPS',
             onPressed: _loadingGps ? null : _recenterOnGps,
@@ -322,11 +440,14 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
             initialCameraPosition: CameraPosition(target: _center, zoom: 14),
             markers: _markers,
             polylines: _polylines,
-            myLocationEnabled: false,
+            myLocationEnabled: true,
             myLocationButtonEnabled: false,
             compassEnabled: true,
             mapToolbarEnabled: false,
-            onMapCreated: (c) => _mapController = c,
+            onMapCreated: (c) {
+              _mapController = c;
+              unawaited(_fitPreviewCamera());
+            },
             onTap: _submitting ? null : _addWaypoint,
             onLongPress: _submitting ? null : _addWaypoint,
           ),
@@ -372,8 +493,7 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
             ),
           Positioned(
             right: 16,
-            bottom: (_panelExpanded ? 280 : 88) +
-                MediaQuery.of(context).padding.bottom,
+            bottom: panelBottom,
             child: FloatingActionButton.small(
               heroTag: 'recenter',
               tooltip: 'Recentrar',
@@ -391,14 +511,20 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
               onRemoveWaypoint: _removeWaypoint,
               campuses: _campuses,
               campusId: _campusId,
-              onCampusChanged: (v) => setState(() => _campusId = v),
+              onCampusChanged: (v) {
+                setState(() => _campusId = v);
+                _schedulePreview();
+              },
               departureAt: _departureAt,
               onPickDeparture: _pickDeparture,
               seatsCtrl: _seatsCtrl,
+              seatsFocus: _seatsFocus,
               maxSeats: _vehicle?.seatsTotal,
               submitting: _submitting,
               error: _error,
               onPublish: _publish,
+              hasValidRoute:
+                  _previewPolyline != null && _previewPolyline!.isNotEmpty,
             ),
           ),
         ],
@@ -419,10 +545,12 @@ class _PublishPanel extends StatelessWidget {
     required this.departureAt,
     required this.onPickDeparture,
     required this.seatsCtrl,
+    required this.seatsFocus,
     required this.maxSeats,
     required this.submitting,
     required this.error,
     required this.onPublish,
+    required this.hasValidRoute,
   });
 
   final bool expanded;
@@ -435,155 +563,165 @@ class _PublishPanel extends StatelessWidget {
   final DateTime departureAt;
   final VoidCallback onPickDeparture;
   final TextEditingController seatsCtrl;
+  final FocusNode seatsFocus;
   final int? maxSeats;
   final bool submitting;
   final String? error;
   final VoidCallback onPublish;
+  final bool hasValidRoute;
 
   @override
   Widget build(BuildContext context) {
+    final maxH = MediaQuery.sizeOf(context).height * 0.42;
     return Material(
       elevation: 8,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       color: Colors.white,
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              GestureDetector(
-                onTap: onToggle,
-                behavior: HitTestBehavior.opaque,
-                child: Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: KubixColors.muted.withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(2),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxH),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                GestureDetector(
+                  onTap: onToggle,
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: KubixColors.muted.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Toca el mapa para añadir puntos '
-                            '(${waypoints.length}/${PublishRouteValidation.maxWaypoints})',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: KubixColors.utnBlue,
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              hasValidRoute
+                                  ? 'Ruta válida calculada · '
+                                      '${waypoints.length} puntos'
+                                  : 'Toca el mapa para añadir puntos '
+                                      '(${waypoints.length}/${PublishRouteValidation.maxWaypoints})',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: KubixColors.utnBlue,
+                              ),
                             ),
                           ),
-                        ),
-                        Icon(
-                          expanded
-                              ? Icons.keyboard_arrow_down
-                              : Icons.keyboard_arrow_up,
-                          color: KubixColors.muted,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              if (waypoints.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 36,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: waypoints.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 6),
-                    itemBuilder: (_, i) {
-                      final w = waypoints[i];
-                      return InputChip(
-                        label: Text('${i + 1}. ${w.label ?? 'Punto'}'),
-                        onDeleted:
-                            submitting ? null : () => onRemoveWaypoint(i),
-                        deleteIconColor: KubixColors.emergency,
-                      );
-                    },
-                  ),
-                ),
-              ],
-              if (expanded) ...[
-                const SizedBox(height: 12),
-                if (campuses.isEmpty)
-                  const Text(
-                    'No hay campuses disponibles.',
-                    style: TextStyle(color: KubixColors.emergency),
-                  )
-                else
-                  DropdownButtonFormField<String>(
-                    initialValue: campusId,
-                    decoration: const InputDecoration(
-                      labelText: 'Campus destino',
-                      isDense: true,
-                    ),
-                    items: [
-                      for (final c in campuses)
-                        DropdownMenuItem(value: c.id, child: Text(c.name)),
+                          Icon(
+                            expanded
+                                ? Icons.keyboard_arrow_down
+                                : Icons.keyboard_arrow_up,
+                            color: KubixColors.muted,
+                          ),
+                        ],
+                      ),
                     ],
-                    onChanged: submitting ? null : onCampusChanged,
-                  ),
-                const SizedBox(height: 8),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  leading: const Icon(
-                    Icons.schedule,
-                    color: KubixColors.utnBlue,
-                  ),
-                  title: Text(TripLabels.formatDateTime(departureAt)),
-                  subtitle: const Text('Salida'),
-                  trailing: TextButton(
-                    onPressed: submitting ? null : onPickDeparture,
-                    child: const Text('Cambiar'),
                   ),
                 ),
-                TextField(
-                  controller: seatsCtrl,
-                  enabled: !submitting,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Asientos disponibles',
-                    isDense: true,
-                    helperText: maxSeats == null
-                        ? null
-                        : 'Máx. $maxSeats (capacidad del vehículo)',
+                if (waypoints.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 36,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: waypoints.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 6),
+                      itemBuilder: (_, i) {
+                        final w = waypoints[i];
+                        return InputChip(
+                          label: Text('${i + 1}. ${w.label ?? 'Punto'}'),
+                          onDeleted:
+                              submitting ? null : () => onRemoveWaypoint(i),
+                          deleteIconColor: KubixColors.emergency,
+                        );
+                      },
+                    ),
                   ),
+                ],
+                if (expanded) ...[
+                  const SizedBox(height: 12),
+                  if (campuses.isEmpty)
+                    const Text(
+                      'No hay campuses disponibles.',
+                      style: TextStyle(color: KubixColors.emergency),
+                    )
+                  else
+                    DropdownButtonFormField<String>(
+                      initialValue: campusId,
+                      decoration: const InputDecoration(
+                        labelText: 'Campus destino',
+                        isDense: true,
+                      ),
+                      items: [
+                        for (final c in campuses)
+                          DropdownMenuItem(value: c.id, child: Text(c.name)),
+                      ],
+                      onChanged: submitting ? null : onCampusChanged,
+                    ),
+                  const SizedBox(height: 8),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: const Icon(
+                      Icons.schedule,
+                      color: KubixColors.utnBlue,
+                    ),
+                    title: Text(TripLabels.formatDateTime(departureAt)),
+                    subtitle: const Text('Salida'),
+                    trailing: TextButton(
+                      onPressed: submitting ? null : onPickDeparture,
+                      child: const Text('Cambiar'),
+                    ),
+                  ),
+                  TextField(
+                    controller: seatsCtrl,
+                    focusNode: seatsFocus,
+                    enabled: !submitting,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Asientos disponibles',
+                      isDense: true,
+                      helperText: maxSeats == null
+                          ? 'Toca ↑ para reducir el panel'
+                          : 'Máx. $maxSeats · toca ↑ para achicar el panel',
+                    ),
+                  ),
+                ],
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    error!,
+                    style: const TextStyle(
+                      color: KubixColors.emergency,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                FilledButton(
+                  onPressed: submitting ? null : onPublish,
+                  child: submitting
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Publicar ruta'),
                 ),
               ],
-              if (error != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  error!,
-                  style: const TextStyle(
-                    color: KubixColors.emergency,
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 10),
-              FilledButton(
-                onPressed: submitting ? null : onPublish,
-                child: submitting
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Publicar ruta'),
-              ),
-            ],
+            ),
           ),
         ),
       ),

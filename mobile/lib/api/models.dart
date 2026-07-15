@@ -757,7 +757,11 @@ class TrackingParticipant {
   final String source;
 
   bool get isDriver => role == 'driver';
-  bool get isPickup => source == 'pickup';
+  bool get isPickup => source == 'pickup' || source == 'boarding';
+  bool get isBoardingPoint =>
+      role == 'boarding_point' || source == 'boarding';
+  bool get isLivePassenger =>
+      role == 'passenger' || role == 'boarding';
 
   factory TrackingParticipant.fromJson(Map<String, dynamic> json) {
     return TrackingParticipant(
@@ -774,29 +778,35 @@ class TrackingParticipant {
   }
 }
 
-/// Estado de tracking (GET /trips/{id}/tracking) — solo trips `in_progress`.
+/// Estado de tracking (GET /trips/{id}/tracking) — scheduled o in_progress.
 class TripTracking {
   const TripTracking({
     required this.tripId,
     required this.status,
     required this.participants,
     this.polyline,
+    this.waypoints = const [],
   });
 
   final String tripId;
   final String status;
   final String? polyline;
+  final List<TripWaypoint> waypoints;
   final List<TrackingParticipant> participants;
 
-  bool get isActive => status == 'in_progress';
+  bool get isActive => status == 'in_progress' || status == 'scheduled';
   bool get isTerminal => status == 'completed' || status == 'cancelled';
 
   factory TripTracking.fromJson(Map<String, dynamic> json) {
     final raw = json['participants'] as List<dynamic>? ?? const [];
+    final wp = json['waypoints'] as List<dynamic>? ?? const [];
     return TripTracking(
       tripId: json['tripId'] as String,
       status: json['status'] as String? ?? 'in_progress',
       polyline: json['polyline'] as String?,
+      waypoints: wp
+          .map((e) => TripWaypoint.fromJson(e as Map<String, dynamic>))
+          .toList(),
       participants: raw
           .map((e) => TrackingParticipant.fromJson(e as Map<String, dynamic>))
           .toList(),

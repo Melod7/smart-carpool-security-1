@@ -181,14 +181,24 @@ Cada sesión tiene su propio hot reload (`r` / `R` en esa terminal). La API en e
 
 ## Google Maps (`MAPS_API_KEY`)
 
-La pantalla de mapa de viaje (KBX-26) usa `google_maps_flutter`. Pasa la clave en el run:
+Pon la clave en el `.env` raíz (`GOOGLE_MAPS_API_KEY=...`). En Google Cloud activa:
+
+- **Maps SDK for iOS** (bundle `com.example.kubixMobile`)
+- **Maps JavaScript API** (obligatorio si corres en **Chrome / Flutter web**)
+- **Maps SDK for Android** si usas emulador/dispositivo Android
 
 ```bash
-flutter run -d <device-id> \
-  --dart-define=API_URL=http://127.0.0.1:8080 \
-  --dart-define=MAPS_API_KEY=AIza...
+# 1) Inyecta la clave a iOS nativo + web/maps_api_key.js
+./tool/sync_maps_key_from_env.sh
+
+# 2) Corre con la misma clave en Dart (y Android manifest)
+set -a && source ../.env && set +a
+flutter run -d <device-id|chrome> \
+  --dart-define=API_URL=http://192.168.x.x:8080 \
+  --dart-define=MAPS_API_KEY="$GOOGLE_MAPS_API_KEY"
 ```
 
-- **Android:** `build.gradle.kts` inyecta `MAPS_API_KEY` desde dart-define (o env / `-PMAPS_API_KEY=`) en el `AndroidManifest`.
-- **iOS:** define `MAPS_API_KEY` en el esquema Xcode / `xcconfig` para que `Info.plist` (`GMSApiKey`) y `AppDelegate` la reciban. Restringe la clave por bundle id.
-- Sin clave, la app arranca pero el mapa muestra un aviso y el tile nativo fallará.
+- **iOS:** el sync escribe `ios/Flutter/MapsSecrets.xcconfig` (gitignored). Sin ese paso el SDK nativo crashea.
+- **Web (Chrome):** el sync escribe `web/maps_api_key.js` (gitignored). Sin eso verás `Cannot read properties of undefined (reading 'maps')`.
+- **Android:** `build.gradle.kts` toma `MAPS_API_KEY` del dart-define / env.
+- Tras cambiar la clave: sync + rebuild completo (`q` y volver a `flutter run`).

@@ -376,11 +376,29 @@ class _RequestsSection extends ConsumerWidget {
                     request: r,
                     onAccept: () => _respond(context, ref, r, accept: true),
                     onReject: () => _respond(context, ref, r, accept: false),
+                    onOpenMap: () => openTripMap(
+                      context,
+                      ref,
+                      tripId: tripId,
+                      status: 'scheduled',
+                      pickupLat: r.pickupLat,
+                      pickupLng: r.pickupLng,
+                    ),
                   ),
                   const SizedBox(height: 8),
                 ],
                 for (final r in accepted) ...[
-                  _RequestCard(request: r),
+                  _RequestCard(
+                    request: r,
+                    onOpenMap: () => openTripMap(
+                      context,
+                      ref,
+                      tripId: tripId,
+                      status: 'scheduled',
+                      pickupLat: r.pickupLat,
+                      pickupLng: r.pickupLng,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                 ],
               ],
@@ -440,11 +458,13 @@ class _RequestCard extends StatelessWidget {
     required this.request,
     this.onAccept,
     this.onReject,
+    this.onOpenMap,
   });
 
   final RideRequest request;
   final VoidCallback? onAccept;
   final VoidCallback? onReject;
+  final VoidCallback? onOpenMap;
 
   @override
   Widget build(BuildContext context) {
@@ -489,6 +509,18 @@ class _RequestCard extends StatelessWidget {
             '${request.pickupLng.toStringAsFixed(4)}',
             style: const TextStyle(fontSize: 12, color: KubixColors.muted),
           ),
+          if (onOpenMap != null) ...[
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: onOpenMap,
+              icon: const Icon(Icons.map_outlined, size: 18),
+              label: Text(
+                pending
+                    ? 'Ver en mapa (pasajero + abordaje)'
+                    : 'Ver en mapa',
+              ),
+            ),
+          ],
           if (pending && onAccept != null && onReject != null) ...[
             const SizedBox(height: 12),
             Row(

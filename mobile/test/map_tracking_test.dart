@@ -72,11 +72,11 @@ void main() {
   });
 
   group('shouldSendPings / shouldPollTracking', () {
-    test('solo in_progress (battery-safe)', () {
+    test('scheduled e in_progress (abordaje + viaje activo)', () {
       expect(shouldSendPings('in_progress'), isTrue);
       expect(shouldPollTracking('in_progress'), isTrue);
-      expect(shouldSendPings('scheduled'), isFalse);
-      expect(shouldPollTracking('scheduled'), isFalse);
+      expect(shouldSendPings('scheduled'), isTrue);
+      expect(shouldPollTracking('scheduled'), isTrue);
       expect(shouldSendPings('completed'), isFalse);
       expect(shouldSendPings('cancelled'), isFalse);
     });

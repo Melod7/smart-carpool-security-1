@@ -67,8 +67,10 @@ MapRoutePath buildMapRoute({
   return MapRoutePath(points: points, dashed: true);
 }
 
-/// ¿Se deben enviar pings? Solo en `in_progress` (battery-safe).
-bool shouldSendPings(String status) => status == 'in_progress';
+/// ¿Se deben enviar pings? En scheduled (abordaje) e in_progress.
+bool shouldSendPings(String status) =>
+    status == 'in_progress' || status == 'scheduled';
 
 /// ¿Se debe hacer poll de tracking?
-bool shouldPollTracking(String status) => status == 'in_progress';
+bool shouldPollTracking(String status) =>
+    status == 'in_progress' || status == 'scheduled';

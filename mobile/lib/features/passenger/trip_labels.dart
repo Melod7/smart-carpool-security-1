@@ -73,7 +73,9 @@ abstract final class TripLabels {
     return trips.any(
       (t) =>
           t.isUpcoming &&
-          (t.requestStatus == 'pending' || t.requestStatus == 'accepted'),
+          (t.requestStatus == 'pending' ||
+              t.requestStatus == 'accepted' ||
+              t.requestStatus == 'rejected'),
     );
   }
 

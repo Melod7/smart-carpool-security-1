@@ -18,41 +18,96 @@ class TrackingPollResult {
   final bool tripNoLongerActive;
 }
 
-/// Poll de tracking cada 10s mientras el trip esté `in_progress`.
-final tripTrackingProvider =
-    FutureProvider.autoDispose.family<TrackingPollResult, String>(
-        (ref, tripId) async {
-  final seed = ref.watch(tripGeometryCacheProvider)[tripId];
-  final status = seed?.status;
-
-  // Sin pings/poll si no está activo (battery-safe).
-  if (status != null && !shouldPollTracking(status)) {
-    return TrackingPollResult(
-      tripNoLongerActive: status == 'completed' || status == 'cancelled',
-    );
+/// Poll de tracking sin flicker de loading ni bucles por la caché de geometría.
+///
+/// Importante: no hacer `ref.watch(tripGeometryCacheProvider)` aquí — este
+/// provider escribe en esa caché; un watch provoca re-fetch infinito.
+class TripTrackingPoll
+    extends StateNotifier<AsyncValue<TrackingPollResult>> {
+  TripTrackingPoll(this.ref, this.tripId) : super(const AsyncLoading()) {
+    unawaited(refresh(isInitial: true));
   }
 
-  try {
-    final tracking = await ref.watch(trackingApiProvider).getTracking(tripId);
-    ref.read(tripGeometryCacheProvider.notifier).put(
-          TripMapSeed(
-            tripId: tracking.tripId,
-            status: tracking.status,
-            polyline: tracking.polyline,
-          ),
+  final Ref ref;
+  final String tripId;
+  Timer? _timer;
+  bool _disposed = false;
+
+  Future<void> refresh({bool isInitial = false}) async {
+    if (_disposed) return;
+
+    final seed = ref.read(tripGeometryCacheProvider)[tripId];
+    final status = seed?.status;
+    if (status != null && !shouldPollTracking(status)) {
+      state = AsyncData(
+        TrackingPollResult(
+          tripNoLongerActive:
+              status == 'completed' || status == 'cancelled',
+        ),
+      );
+      return;
+    }
+
+    // Solo el primer load muestra loading; los polls mantienen el valor previo.
+    if (isInitial && !state.hasValue) {
+      state = const AsyncLoading();
+    }
+
+    try {
+      final tracking =
+          await ref.read(trackingApiProvider).getTracking(tripId);
+      if (_disposed) return;
+
+      ref.read(tripGeometryCacheProvider.notifier).put(
+            TripMapSeed(
+              tripId: tracking.tripId,
+              status: tracking.status,
+              polyline: tracking.polyline,
+              waypoints: tracking.waypoints,
+            ),
+          );
+
+      state = AsyncData(TrackingPollResult(tracking: tracking));
+      _scheduleNext(tracking.status);
+    } on ApiException catch (e, st) {
+      if (_disposed) return;
+      if (e.code == 'trip_not_active' || e.statusCode == 409) {
+        state = const AsyncData(
+          TrackingPollResult(tripNoLongerActive: true),
         );
-    if (shouldPollTracking(tracking.status)) {
-      final timer = Timer(trackingPollInterval, () {
-        ref.invalidateSelf();
-      });
-      ref.onDispose(timer.cancel);
+        return;
+      }
+      if (!state.hasValue) {
+        state = AsyncError(e, st);
+      }
+      // Si ya había datos, conservar y reintentar en el próximo tick.
+      _scheduleNext(status ?? 'scheduled');
+    } catch (e, st) {
+      if (_disposed) return;
+      if (!state.hasValue) {
+        state = AsyncError(e, st);
+      }
+      _scheduleNext(status ?? 'scheduled');
     }
-    return TrackingPollResult(tracking: tracking);
-  } on ApiException catch (e) {
-    // trip_not_active → complete/cancel o scheduled; detener loops.
-    if (e.code == 'trip_not_active' || e.statusCode == 409) {
-      return const TrackingPollResult(tripNoLongerActive: true);
-    }
-    rethrow;
   }
-});
+
+  void _scheduleNext(String status) {
+    _timer?.cancel();
+    if (_disposed || !shouldPollTracking(status)) return;
+    _timer = Timer(trackingPollInterval, () {
+      unawaited(refresh());
+    });
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _timer?.cancel();
+    super.dispose();
+  }
+}
+
+final tripTrackingProvider = StateNotifierProvider.autoDispose
+    .family<TripTrackingPoll, AsyncValue<TrackingPollResult>, String>(
+  (ref, tripId) => TripTrackingPoll(ref, tripId),
+);

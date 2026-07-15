@@ -1,0 +1,3 @@
+// Copia a maps_api_key.js (gitignored) o corre:
+//   ./tool/sync_maps_key_from_env.sh
+window.__KUBIX_MAPS_API_KEY__ = 'YOUR_GOOGLE_MAPS_API_KEY';

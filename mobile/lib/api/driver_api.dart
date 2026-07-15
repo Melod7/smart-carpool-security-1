@@ -55,6 +55,31 @@ class DriverApi {
     }
   }
 
+  /// Vista previa Directions (sin persistir) para el mapa de publicación.
+  Future<({String? polyline, double distanceKm, bool directionsOk})>
+      previewRoute({
+    required String destinationCampusId,
+    required List<TripWaypoint> waypoints,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/trips/preview-route',
+        data: {
+          'destinationCampusId': destinationCampusId,
+          'waypoints': waypoints.map((w) => w.toJson()).toList(),
+        },
+      );
+      final data = res.data ?? const {};
+      return (
+        polyline: data['polyline'] as String?,
+        distanceKm: (data['distanceKm'] as num?)?.toDouble() ?? 0,
+        directionsOk: data['directionsOk'] as bool? ?? false,
+      );
+    } on DioException catch (e) {
+      throw mapDioError(e, fallback: 'No se pudo calcular la ruta.');
+    }
+  }
+
   Future<AvailableTrip> startTrip(String tripId) async {
     try {
       final res = await _dio.post<Map<String, dynamic>>('/trips/$tripId/start');

@@ -9,6 +9,7 @@ import '../../auth/auth_state.dart';
 import '../../theme/kubix_theme.dart';
 import '../passenger/trip_labels.dart';
 import '../sos/sos_location.dart';
+import 'map_marker_icons.dart';
 import 'map_route.dart';
 import 'tracking_providers.dart';
 import 'trip_geometry_cache.dart';
@@ -40,6 +41,8 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
   String _status = 'scheduled';
   bool _pingsStopped = false;
   LatLng? _ownPosition;
+  bool _didFitCamera = false;
+  TripTracking? _lastTracking;
 
   @override
   void initState() {
@@ -54,6 +57,11 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncLoops();
     });
+    unawaited(
+      MapMarkerIcons.ensureLoaded().then((_) {
+        if (mounted) setState(() {});
+      }),
+    );
   }
 
   @override
@@ -140,6 +148,7 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
       controller.animateCamera(
         CameraUpdate.newLatLngZoom(list.first, 14),
       );
+      _didFitCamera = true;
       return;
     }
     var minLat = list.first.latitude;
@@ -152,6 +161,15 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
       if (p.longitude < minLng) minLng = p.longitude;
       if (p.longitude > maxLng) maxLng = p.longitude;
     }
+    // Evitar bounds degenerados (web hace zoom-out al mundo).
+    if ((maxLat - minLat).abs() < 1e-6) {
+      minLat -= 0.002;
+      maxLat += 0.002;
+    }
+    if ((maxLng - minLng).abs() < 1e-6) {
+      minLng -= 0.002;
+      maxLng += 0.002;
+    }
     controller.animateCamera(
       CameraUpdate.newLatLngBounds(
         LatLngBounds(
@@ -161,6 +179,19 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
         56,
       ),
     );
+    _didFitCamera = true;
+  }
+
+  void _scheduleFit(List<LatLng> points, {bool force = false}) {
+    if (points.isEmpty) return;
+    if (_didFitCamera && !force) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || _mapController == null) return;
+      // En web el HtmlElementView necesita un frame con tamaño real.
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      if (!mounted) return;
+      _fitBounds(points);
+    });
   }
 
   @override
@@ -183,8 +214,29 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
           _onTerminalStatus('completed');
         }
         final tracking = result.tracking;
+        if (tracking != null) {
+          _lastTracking = tracking;
+        }
         if (tracking != null && tracking.isTerminal) {
           _onTerminalStatus(tracking.status);
+        }
+        // Primera geometría útil: ajustar cámara una sola vez.
+        if (tracking != null && !_didFitCamera) {
+          final pts = <LatLng>[];
+          final poly = tracking.polyline ?? seed?.polyline;
+          if (poly != null && poly.isNotEmpty) {
+            pts.addAll(buildMapRoute(polyline: poly).points);
+          }
+          for (final w in tracking.waypoints) {
+            pts.add(LatLng(w.lat, w.lng));
+          }
+          for (final p in tracking.participants) {
+            pts.add(LatLng(p.lat, p.lng));
+          }
+          if (pts.isEmpty && seed?.hasPickup == true) {
+            pts.add(LatLng(seed!.pickupLat!, seed.pickupLng!));
+          }
+          _scheduleFit(pts);
         }
       },
     );
@@ -193,11 +245,14 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
         ? ref.watch(tripTrackingProvider(widget.tripId))
         : const AsyncValue<TrackingPollResult>.data(TrackingPollResult());
 
-    final tracking = trackingAsync.asData?.value.tracking;
+    final tracking =
+        trackingAsync.asData?.value.tracking ?? _lastTracking;
     final participants = tracking?.participants ?? const <TrackingParticipant>[];
     final polyline = tracking?.polyline ?? seed?.polyline;
 
-    final waypoints = seed?.waypoints ?? const <TripWaypoint>[];
+    final waypoints = (tracking?.waypoints.isNotEmpty == true)
+        ? tracking!.waypoints
+        : (seed?.waypoints ?? const <TripWaypoint>[]);
     final route = buildMapRoute(
       polyline: polyline,
       originLat: seed?.originLat,
@@ -211,51 +266,11 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
     final markers = <Marker>{};
     final boundsPoints = <LatLng>[...route.points];
 
+    final hasBoardingFromTracking = participants.any(
+      (p) => p.isBoardingPoint || p.isPickup || p.source == 'boarding',
+    );
+
     if (shouldPollTracking(status)) {
-      for (final p in participants) {
-        final pos = LatLng(p.lat, p.lng);
-        boundsPoints.add(pos);
-        final isSelf = user != null && p.userId == user.id;
-        markers.add(
-          Marker(
-            markerId: MarkerId('p-${p.userId}'),
-            position: pos,
-            infoWindow: InfoWindow(
-              title: isSelf
-                  ? 'Tú'
-                  : (p.name?.trim().isNotEmpty == true
-                      ? p.name!
-                      : (p.isDriver ? 'Conductor' : 'Pasajero')),
-              snippet: p.isPickup ? 'Punto de recogida' : null,
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              p.isDriver
-                  ? BitmapDescriptor.hueAzure
-                  : (isSelf
-                      ? BitmapDescriptor.hueGreen
-                      : BitmapDescriptor.hueOrange),
-            ),
-            zIndexInt: p.isDriver ? 2 : 1,
-          ),
-        );
-      }
-      if (_ownPosition != null &&
-          (user == null ||
-              !participants.any((p) => p.userId == user.id))) {
-        boundsPoints.add(_ownPosition!);
-        markers.add(
-          Marker(
-            markerId: const MarkerId('own'),
-            position: _ownPosition!,
-            infoWindow: const InfoWindow(title: 'Tú'),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueGreen,
-            ),
-          ),
-        );
-      }
-    } else {
-      // scheduled: waypoints numerados + pickup / origen (sin pings en vivo).
       for (var i = 0; i < waypoints.length; i++) {
         final w = waypoints[i];
         final pos = LatLng(w.lat, w.lng);
@@ -268,39 +283,85 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
               title: '${i + 1}. ${w.label ?? (i == 0 ? 'Inicio' : 'Punto')}',
             ),
             icon: BitmapDescriptor.defaultMarkerWithHue(
-              i == 0 ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueAzure,
+              i == 0 ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueCyan,
             ),
+            alpha: 0.7,
+            zIndexInt: 0,
           ),
         );
       }
-      if (seed?.hasPickup == true) {
-        final pickup = LatLng(seed!.pickupLat!, seed.pickupLng!);
-        boundsPoints.add(pickup);
+      for (final p in participants) {
+        final pos = LatLng(p.lat, p.lng);
+        boundsPoints.add(pos);
+        final isSelf = user != null && p.userId == user.id && !p.isBoardingPoint;
+        final title = p.isBoardingPoint
+            ? (p.name ?? 'Punto de abordaje')
+            : (isSelf
+                ? 'Tú'
+                : (p.name?.trim().isNotEmpty == true
+                    ? p.name!
+                    : (p.isDriver ? 'Conductor' : 'Pasajero')));
         markers.add(
           Marker(
-            markerId: const MarkerId('pickup'),
-            position: pickup,
-            infoWindow: const InfoWindow(title: 'Punto de espera / recogida'),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueOrange,
+            markerId: MarkerId('${p.role}-${p.userId}-${p.source}'),
+            position: pos,
+            infoWindow: InfoWindow(
+              title: title,
+              snippet: p.isBoardingPoint
+                  ? 'Abordaje solicitado'
+                  : (p.isPickup ? 'Punto de recogida' : null),
             ),
-            zIndexInt: 3,
-          ),
-        );
-      } else if (waypoints.isEmpty && seed?.hasOrigin == true) {
-        final origin = LatLng(seed!.originLat!, seed.originLng!);
-        boundsPoints.add(origin);
-        markers.add(
-          Marker(
-            markerId: const MarkerId('origin'),
-            position: origin,
-            infoWindow: const InfoWindow(title: 'Origen / recogida'),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueOrange,
+            icon: MapMarkerIcons.forParticipant(
+              userId: p.userId,
+              isDriver: p.isDriver,
+              isBoardingPoint: p.isBoardingPoint,
+              isSelf: isSelf,
             ),
+            zIndexInt: p.isDriver ? 3 : (p.isBoardingPoint ? 2 : 1),
+            anchor: p.isBoardingPoint
+                ? const Offset(0.5, 1.0)
+                : const Offset(0.5, 0.5),
           ),
         );
       }
+      if (_ownPosition != null &&
+          (user == null ||
+              !participants.any(
+                (p) => p.userId == user.id && !p.isBoardingPoint,
+              ))) {
+        boundsPoints.add(_ownPosition!);
+        final ownIsDriver = user?.isDriver == true;
+        markers.add(
+          Marker(
+            markerId: const MarkerId('own'),
+            position: _ownPosition!,
+            infoWindow: const InfoWindow(title: 'Tú'),
+            icon: MapMarkerIcons.forParticipant(
+              userId: user?.id ?? 'own',
+              isDriver: ownIsDriver,
+              isBoardingPoint: false,
+              isSelf: true,
+            ),
+            anchor: const Offset(0.5, 0.5),
+          ),
+        );
+      }
+    }
+
+    // Semilla de abordaje: visible de inmediato (antes de que responda tracking).
+    if (seed?.hasPickup == true && !hasBoardingFromTracking) {
+      final pickup = LatLng(seed!.pickupLat!, seed.pickupLng!);
+      boundsPoints.add(pickup);
+      markers.add(
+        Marker(
+          markerId: const MarkerId('pickup'),
+          position: pickup,
+          infoWindow: const InfoWindow(title: 'Punto de abordaje'),
+          icon: MapMarkerIcons.defaultBoardingPin(),
+          zIndexInt: 2,
+          anchor: const Offset(0.5, 1.0),
+        ),
+      );
     }
 
     final polylines = <Polyline>{};
@@ -323,7 +384,14 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
 
     final initial = boundsPoints.isNotEmpty
         ? boundsPoints.first
-        : _defaultCenter;
+        : (seed?.hasPickup == true
+            ? LatLng(seed!.pickupLat!, seed.pickupLng!)
+            : _defaultCenter);
+
+    // No bloquear el mapa mientras carga el tracking (pedido de abordaje).
+    final trackingLoading =
+        trackingAsync.isLoading && !trackingAsync.hasValue;
+    final trackingError = trackingAsync.asError?.error;
 
     return Scaffold(
       appBar: AppBar(
@@ -364,56 +432,98 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
               child: Text(
                 _pingsStopped
                     ? 'Seguimiento detenido.'
-                    : 'Viaje programado: se muestra la ruta y el punto de '
-                        'recogida. Los pings empiezan al iniciar el viaje.',
+                    : 'Sin seguimiento activo para este estado.',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: KubixColors.muted,
+                ),
+              ),
+            )
+          else
+            Container(
+              width: double.infinity,
+              color: KubixColors.utnBlue.withValues(alpha: 0.08),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Text(
+                status == 'scheduled'
+                    ? 'Ruta + punto de abordaje. Ubicaciones en vivo cada 10 s.'
+                    : 'Seguimiento en vivo cada 10 s.',
                 style: const TextStyle(
                   fontSize: 13,
                   color: KubixColors.muted,
                 ),
               ),
             ),
-          Expanded(
-            child: trackingAsync.when(
-              data: (_) => GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: initial,
-                  zoom: 13,
-                ),
-                markers: markers,
-                polylines: polylines,
-                myLocationEnabled: false,
-                myLocationButtonEnabled: false,
-                compassEnabled: true,
-                mapToolbarEnabled: false,
-                onMapCreated: (controller) {
-                  _mapController = controller;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _fitBounds(boundsPoints);
-                  });
-                },
+          if (trackingError != null)
+            Container(
+              width: double.infinity,
+              color: KubixColors.emergency.withValues(alpha: 0.08),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Tracking: $trackingError',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: KubixColors.emergency,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => ref
+                        .read(tripTrackingProvider(widget.tripId).notifier)
+                        .refresh(isInitial: true),
+                    child: const Text('Reintentar'),
+                  ),
+                ],
               ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        e.toString(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: KubixColors.emergency),
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        onPressed: () =>
-                            ref.invalidate(tripTrackingProvider(widget.tripId)),
-                        child: const Text('Reintentar'),
-                      ),
-                    ],
+            ),
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: GoogleMap(
+                    key: ValueKey('trip-map-${widget.tripId}'),
+                    initialCameraPosition: CameraPosition(
+                      target: initial,
+                      zoom: 14,
+                    ),
+                    markers: markers,
+                    polylines: polylines,
+                    myLocationEnabled: false,
+                    myLocationButtonEnabled: false,
+                    compassEnabled: false,
+                    mapToolbarEnabled: false,
+                    zoomControlsEnabled: true,
+                    onMapCreated: (controller) {
+                      _mapController = controller;
+                      final points = boundsPoints.isNotEmpty
+                          ? boundsPoints
+                          : <LatLng>[initial];
+                      _scheduleFit(points, force: true);
+                    },
                   ),
                 ),
-              ),
+                if (trackingLoading)
+                  const Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Material(
+                      elevation: 2,
+                      color: Colors.white,
+                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                      child: Padding(
+                        padding: EdgeInsets.all(10),
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],

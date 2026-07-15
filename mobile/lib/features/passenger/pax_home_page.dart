@@ -7,7 +7,7 @@ import '../../auth/auth_state.dart';
 import '../../theme/kubix_theme.dart';
 import '../sos/sos_button.dart';
 import '../sos/sos_overlay.dart';
-import '../map/decode_polyline.dart';
+import '../map/map_camera.dart';
 import '../map/map_route.dart';
 import '../map/open_trip_map.dart';
 import '../map/trip_geometry_cache.dart';
@@ -17,15 +17,38 @@ import 'suggested_wait_labels.dart';
 import 'trip_labels.dart';
 import 'widgets/eco_widget.dart';
 
-class PaxHomePage extends ConsumerWidget {
+class PaxHomePage extends ConsumerStatefulWidget {
   const PaxHomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PaxHomePage> createState() => _PaxHomePageState();
+}
+
+class _PaxHomePageState extends ConsumerState<PaxHomePage> {
+  final Set<String> _rejectAlertsShown = {};
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final mine = ref.watch(myTripsProvider('total'));
     final available = ref.watch(availableTripsProvider);
     final eco = ref.watch(ecoSummaryProvider);
+
+    ref.listen(myTripsProvider('total'), (prev, next) {
+      final trips = next.asData?.value.trips;
+      if (trips == null) return;
+      final rejected = trips.where(
+        (t) => t.isUpcoming && t.requestStatus == 'rejected',
+      );
+      for (final t in rejected) {
+        if (_rejectAlertsShown.contains(t.id)) continue;
+        _rejectAlertsShown.add(t.id);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _showRejectedDialog(t);
+        });
+      }
+    });
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -57,7 +80,8 @@ class PaxHomePage extends ConsumerWidget {
           const SizedBox(height: 16),
           SosButton(
             onPressed: () {
-              final trips = ref.read(myTripsProvider('total')).asData?.value.trips;
+              final trips =
+                  ref.read(myTripsProvider('total')).asData?.value.trips;
               final active = trips == null
                   ? null
                   : TripLabels.activeTripForSos(trips, asDriver: false);
@@ -68,63 +92,74 @@ class PaxHomePage extends ConsumerWidget {
           mine.when(
             data: (data) {
               final next = TripLabels.nextAcceptedTrip(data.trips);
-              if (next == null) {
-                return const _InfoCard(
-                  title: 'Sin viaje confirmado',
-                  subtitle:
-                      'Cuando un conductor acepte tu solicitud, aparecerá aquí.',
-                  icon: Icons.event_busy_outlined,
-                );
-              }
-              return _NextTripCard(
-                trip: next,
-                onOpenMap: () => openTripMapFromMyTrip(context, ref, next),
+              final rejected = data.trips
+                  .where(
+                    (t) => t.isUpcoming && t.requestStatus == 'rejected',
+                  )
+                  .toList();
+              return Column(
+                children: [
+                  if (rejected.isNotEmpty) ...[
+                    for (final t in rejected) ...[
+                      _RejectedBanner(
+                        trip: t,
+                        onRetry: () => _retryRejected(t),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ],
+                  if (next == null)
+                    const _InfoCard(
+                      title: 'Sin viaje confirmado',
+                      subtitle:
+                          'Cuando un conductor acepte tu solicitud, aparecerá aquí.',
+                      icon: Icons.event_busy_outlined,
+                    )
+                  else
+                    _NextTripCard(
+                      trip: next,
+                      onOpenMap: () =>
+                          openTripMapFromMyTrip(context, ref, next),
+                    ),
+                ],
               );
             },
-            loading: () => const _LoadingCard(),
-            error: (e, _) => _ErrorCard(message: e.toString()),
+            loading: () => const SizedBox(
+              height: 88,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Text(
+              e.toString(),
+              style: const TextStyle(color: KubixColors.emergency),
+            ),
           ),
           const SizedBox(height: 16),
           eco.when(
-            data: (data) => EcoWidget(eco: data),
+            data: (summary) => EcoWidget(eco: summary),
             loading: () => const SizedBox.shrink(),
             error: (_, __) => const SizedBox.shrink(),
           ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Text(
-                'Viajes disponibles',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: KubixColors.utnBlue,
-                    ),
-              ),
-              const Spacer(),
-              available.maybeWhen(
-                data: (result) => Text(
-                  '${result.trips.length}',
-                  style: const TextStyle(color: KubixColors.muted),
+          const SizedBox(height: 16),
+          Text(
+            'Viajes disponibles',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: KubixColors.utnBlue,
                 ),
-                orElse: () => const SizedBox.shrink(),
-              ),
-            ],
           ),
           const SizedBox(height: 8),
           available.when(
             data: (result) {
               return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!result.hasGps && result.gpsMessage != null) ...[
+                  if (!result.hasGps && result.gpsMessage != null)
                     _GpsHintCard(message: result.gpsMessage!),
-                    const SizedBox(height: 8),
-                  ],
                   if (result.trips.isEmpty)
                     const _InfoCard(
                       title: 'No hay viajes ahora',
                       subtitle:
-                          'Vuelve más tarde o tira hacia abajo para actualizar.',
+                          'Cuando un conductor publique una ruta a tu campus, '
+                          'aparecerá aquí.',
                       icon: Icons.directions_car_outlined,
                     )
                   else
@@ -149,11 +184,78 @@ class PaxHomePage extends ConsumerWidget {
               padding: EdgeInsets.all(24),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (e, _) => _ErrorCard(message: e.toString()),
+            error: (e, _) => Text(
+              e.toString(),
+              style: const TextStyle(color: KubixColors.emergency),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _showRejectedDialog(MyTrip trip) async {
+    final retry = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Abordaje rechazado'),
+        content: Text(
+          'El conductor rechazó tu punto de abordaje para '
+          '${trip.originText.isEmpty ? 'el viaje' : trip.originText}. '
+          'Puedes elegir otro punto sobre la misma ruta.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Después'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Elegir otro punto'),
+          ),
+        ],
+      ),
+    );
+    if (retry == true && mounted) {
+      await _retryRejected(trip);
+    }
+  }
+
+  Future<void> _retryRejected(MyTrip trip) async {
+    final available =
+        ref.read(availableTripsProvider).asData?.value.trips ?? const [];
+    AvailableTrip? match;
+    for (final t in available) {
+      if (t.id == trip.id) {
+        match = t;
+        break;
+      }
+    }
+    if (match == null) {
+      ref.invalidate(availableTripsProvider);
+      try {
+        final result = await ref.read(availableTripsProvider.future);
+        for (final t in result.trips) {
+          if (t.id == trip.id) {
+            match = t;
+            break;
+          }
+        }
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    if (match == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Ese viaje ya no está disponible. Busca otro en la lista.',
+          ),
+        ),
+      );
+      return;
+    }
+    _rejectAlertsShown.remove(trip.id);
+    await _openRequestSheet(context, ref, match);
   }
 
   Future<void> _openRequestSheet(
@@ -168,6 +270,54 @@ class PaxHomePage extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) => _RequestWaitSheet(trip: trip, parentContext: context),
+    );
+  }
+}
+
+class _RejectedBanner extends StatelessWidget {
+  const _RejectedBanner({required this.trip, required this.onRetry});
+
+  final MyTrip trip;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: KubixColors.emergency.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: KubixColors.emergency.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Abordaje rechazado',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: KubixColors.emergency,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'El conductor rechazó tu punto. Puedes pedir otro sobre la ruta.',
+            style: TextStyle(
+              fontSize: 13,
+              color: KubixColors.muted,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.tonal(
+              onPressed: onRetry,
+              child: const Text('Elegir otro punto'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -192,7 +342,10 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
   late bool _tooFar;
   late double? _distanceM;
   var _submitting = false;
+  var _snapping = false;
   String? _error;
+  GoogleMapController? _mapController;
+  bool _mapReady = false;
 
   AvailableTrip get trip => widget.trip;
 
@@ -212,7 +365,57 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
   @override
   void dispose() {
     _pickupCtrl.dispose();
+    _mapController?.dispose();
     super.dispose();
+  }
+
+  MapRoutePath get _route => buildMapRoute(
+        polyline: trip.polyline,
+        originLat: trip.originLat,
+        originLng: trip.originLng,
+        waypoints: trip.waypoints,
+        pickupLat: _waitLat,
+        pickupLng: _waitLng,
+      );
+
+  Future<void> _fitCamera() async {
+    final points = <LatLng>[
+      ..._route.points,
+      LatLng(_waitLat, _waitLng),
+      for (final w in trip.waypoints) LatLng(w.lat, w.lng),
+    ];
+    await fitMapToPoints(_mapController, points, padding: 48);
+  }
+
+  Future<void> _snapToRoute(double lat, double lng) async {
+    setState(() {
+      _snapping = true;
+      _error = null;
+    });
+    try {
+      final wait = await ref.read(passengerApiProvider).getSuggestedPickup(
+            tripId: trip.id,
+            lat: lat,
+            lng: lng,
+          );
+      if (!mounted) return;
+      setState(() {
+        _waitLat = wait.lat;
+        _waitLng = wait.lng;
+        _tooFar = wait.tooFar;
+        _distanceM = wait.distanceM;
+        _snapping = false;
+      });
+      await _fitCamera();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _waitLat = lat;
+        _waitLng = lng;
+        _snapping = false;
+        _error = e.toString();
+      });
+    }
   }
 
   Set<Marker> get _markers {
@@ -220,17 +423,13 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
       Marker(
         markerId: const MarkerId('wait'),
         position: LatLng(_waitLat, _waitLng),
-        draggable: !_submitting,
+        draggable: !_submitting && !_snapping,
         infoWindow: const InfoWindow(title: 'Espera aquí'),
         icon: BitmapDescriptor.defaultMarkerWithHue(
           BitmapDescriptor.hueOrange,
         ),
-        onDragEnd: (pos) {
-          setState(() {
-            _waitLat = pos.latitude;
-            _waitLng = pos.longitude;
-          });
-        },
+        zIndexInt: 5,
+        onDragEnd: (pos) => _snapToRoute(pos.latitude, pos.longitude),
       ),
     };
     for (var i = 0; i < trip.waypoints.length; i++) {
@@ -238,10 +437,13 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
         Marker(
           markerId: MarkerId('wp-$i'),
           position: LatLng(trip.waypoints[i].lat, trip.waypoints[i].lng),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueAzure,
+          infoWindow: InfoWindow(
+            title: '${i + 1}. ${trip.waypoints[i].label ?? 'Ruta'}',
           ),
-          alpha: 0.65,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            i == 0 ? BitmapDescriptor.hueGreen : BitmapDescriptor.hueAzure,
+          ),
+          zIndexInt: 1,
         ),
       );
     }
@@ -249,39 +451,16 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
   }
 
   Set<Polyline> get _polylines {
-    final route = buildMapRoute(
-      polyline: trip.polyline,
-      originLat: trip.originLat,
-      originLng: trip.originLng,
-      waypoints: trip.waypoints,
-      pickupLat: _waitLat,
-      pickupLng: _waitLng,
-    );
-    if (!route.isRenderable) {
-      // Si no hay geometría, al menos un segmento corto al punto de espera.
-      if (trip.polyline != null && trip.polyline!.isNotEmpty) {
-        final decoded = decodePolyline(trip.polyline!);
-        if (decoded.length >= 2) {
-          return {
-            Polyline(
-              polylineId: const PolylineId('route'),
-              points: decoded,
-              color: KubixColors.utnBlue,
-              width: 3,
-            ),
-          };
-        }
-      }
-      return {};
-    }
+    final route = _route;
+    if (!route.isRenderable) return {};
     return {
       Polyline(
         polylineId: const PolylineId('route'),
         points: route.points,
         color: KubixColors.utnBlue,
-        width: 3,
+        width: 5,
         patterns: route.dashed
-            ? [PatternItem.dash(14), PatternItem.gap(10)]
+            ? [PatternItem.dash(16), PatternItem.gap(10)]
             : const [],
       ),
     };
@@ -291,6 +470,13 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
     final text = _pickupCtrl.text.trim();
     if (text.isEmpty) {
       setState(() => _error = 'Indica una descripción del punto de espera.');
+      return;
+    }
+    if (!_route.isRenderable) {
+      setState(
+        () => _error =
+            'Este viaje no tiene geometría de ruta. Pide al conductor republicarlo.',
+      );
       return;
     }
     setState(() {
@@ -333,7 +519,8 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    final height = MediaQuery.sizeOf(context).height * 0.92;
     final waitSummary = _distanceM == null
         ? null
         : SuggestedWaitLabels.summary(
@@ -354,14 +541,31 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
         tooFar: _tooFar,
       ),
     );
+    final hasRoute = _route.isRenderable;
+    final routeHint = !hasRoute
+        ? 'Sin ruta en este viaje (polyline/waypoints vacíos).'
+        : (trip.polyline == null || trip.polyline!.isEmpty)
+            ? 'Ruta aproximada por puntos del conductor.'
+            : 'Ruta válida del conductor.';
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottom),
-      child: SingleChildScrollView(
+    return SizedBox(
+      height: height,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottom),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: KubixColors.muted.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             Text(
               'Confirmar punto de espera',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -376,7 +580,7 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
               style: const TextStyle(color: KubixColors.muted),
             ),
             if (waitSummary != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Text(
                 waitSummary,
                 style: const TextStyle(
@@ -385,8 +589,15 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
                 ),
               ),
             ],
+            Text(
+              routeHint,
+              style: TextStyle(
+                fontSize: 12,
+                color: hasRoute ? KubixColors.muted : KubixColors.emergency,
+              ),
+            ),
             if (tooFarMsg != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 tooFarMsg,
                 style: const TextStyle(
@@ -395,73 +606,105 @@ class _RequestWaitSheetState extends ConsumerState<_RequestWaitSheet> {
                 ),
               ),
             ],
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 168,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: mapsApiKey.isEmpty
-                    ? Container(
-                        color: KubixColors.background,
-                        alignment: Alignment.center,
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          'Espera aquí\n'
-                          '${_waitLat.toStringAsFixed(5)}, '
-                          '${_waitLng.toStringAsFixed(5)}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: KubixColors.muted),
-                        ),
-                      )
-                    : GoogleMap(
-                        initialCameraPosition: CameraPosition(
-                          target: LatLng(_waitLat, _waitLng),
-                          zoom: 14,
-                        ),
-                        markers: _markers,
-                        polylines: _polylines,
-                        myLocationButtonEnabled: false,
-                        zoomControlsEnabled: false,
-                        mapToolbarEnabled: false,
-                      ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Arrastra el pin naranja si quieres ajustar un poco el punto. '
-              'El servidor lo alineará a la ruta del conductor.',
-              style: TextStyle(fontSize: 12, color: KubixColors.muted),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _pickupCtrl,
-              enabled: !_submitting,
-              decoration: const InputDecoration(
-                labelText: 'Descripción del punto',
-                hintText: 'Ej. Esquina norte del parque',
-              ),
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _error!,
-                style: const TextStyle(color: KubixColors.emergency),
-              ),
-            ],
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _submitting ? null : _submit,
-              child: _submitting
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+            const SizedBox(height: 10),
+            Expanded(
+              flex: 3,
+              child: mapsApiKey.isEmpty
+                  ? Container(
+                      alignment: Alignment.center,
+                      color: KubixColors.background,
+                      child: const Text(
+                        'Falta MAPS_API_KEY en el run de Flutter.',
+                        textAlign: TextAlign.center,
                       ),
                     )
-                  : const Text('Confirmar y solicitar'),
+                  : DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: KubixColors.utnBlue.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: GoogleMap(
+                          initialCameraPosition: CameraPosition(
+                            target: LatLng(_waitLat, _waitLng),
+                            zoom: 13.5,
+                          ),
+                          markers: _mapReady ? _markers : _markers,
+                          polylines: _mapReady ? _polylines : _polylines,
+                          myLocationEnabled: true,
+                          myLocationButtonEnabled: true,
+                          zoomControlsEnabled: false,
+                          mapToolbarEnabled: false,
+                          compassEnabled: true,
+                          onMapCreated: (c) async {
+                            _mapController = c;
+                            setState(() => _mapReady = true);
+                            await Future<void>.delayed(
+                              const Duration(milliseconds: 250),
+                            );
+                            if (mounted) await _fitCamera();
+                          },
+                          onTap: (_submitting || _snapping)
+                              ? null
+                              : (pos) =>
+                                  _snapToRoute(pos.latitude, pos.longitude),
+                        ),
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _snapping
+                  ? 'Alineando punto a la ruta…'
+                  : 'Pin naranja = abordaje. Azules = ruta del conductor. '
+                      'Toca el mapa o arrastra el pin.',
+              style: const TextStyle(fontSize: 12, color: KubixColors.muted),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              flex: 2,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _pickupCtrl,
+                      enabled: !_submitting,
+                      decoration: const InputDecoration(
+                        labelText: 'Descripción del punto',
+                        hintText: 'Ej. Esquina norte del parque',
+                        isDense: true,
+                      ),
+                      textCapitalization: TextCapitalization.sentences,
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _error!,
+                        style: const TextStyle(color: KubixColors.emergency),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed:
+                          (_submitting || _snapping || _tooFar) ? null : _submit,
+                      child: _submitting
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Confirmar y solicitar'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
