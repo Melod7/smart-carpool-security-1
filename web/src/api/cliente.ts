@@ -7,6 +7,20 @@ const STORAGE_ACCESS = 'kubix.accessToken'
 const STORAGE_REFRESH = 'kubix.refreshToken'
 const STORAGE_USER = 'kubix.user'
 
+function parseAuthUser(data: unknown): AuthUser {
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    typeof (data as AuthUser).id === 'string' &&
+    typeof (data as AuthUser).email === 'string' &&
+    typeof (data as AuthUser).role === 'string'
+  ) {
+    return data as AuthUser
+  }
+
+  throw new Error('La API devolvió una respuesta inválida para /me.')
+}
+
 export const tokenStorage = {
   getAccessToken: () => localStorage.getItem(STORAGE_ACCESS),
   getRefreshToken: () => localStorage.getItem(STORAGE_REFRESH),
@@ -111,8 +125,8 @@ export const authApi = {
     await api.post('/auth/change-password', { currentPassword, newPassword })
   },
   me: async () => {
-    const { data } = await api.get<AuthUser>('/me')
-    return data
+    const { data } = await api.get<unknown>('/me')
+    return parseAuthUser(data)
   },
 }
 
