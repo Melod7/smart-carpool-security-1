@@ -16,7 +16,8 @@ DEVICE ?=
 	db db-down tools \
 	api web mobile mobile-chrome mobile-android mobile-ios \
 	up down docker docker-dev docker-down \
-	logs logs-api logs-web
+	logs logs-api logs-web \
+	test test-be test-web test-mobile coverage
 
 help: ## Muestra targets disponibles
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## .*$$' $(ROOT)/Makefile | \
@@ -122,3 +123,37 @@ logs-api: ## Últimas líneas log API local (.run)
 
 logs-web: ## Últimas líneas log Web local (.run)
 	@tail -n 80 -f $(ROOT)/.run/web.log 2>/dev/null || echo "Sin .run/web.log — usa make up / make web en primer plano"
+
+# --- QA / KBX-27 ---
+
+test: test-be test-web test-mobile ## Corre suites + umbrales de cobertura (KBX-27)
+	@echo "OK make test"
+
+test-be: ## Backend xUnit + cobertura Application/Domain ≥70%
+	@mkdir -p $(ROOT)/qa/results/backend-coverage $(ROOT)/backend/TestResults
+	@rm -rf $(ROOT)/backend/TestResults/*
+	cd $(ROOT)/backend && \
+	  dotnet test tests/Kubix.Tests/Kubix.Tests.csproj \
+	    --settings coverage.runsettings \
+	    --results-directory $(ROOT)/backend/TestResults \
+	    --collect:"XPlat Code Coverage"
+	@COV=$$(find $(ROOT)/backend/TestResults -name 'coverage.cobertura.xml' | head -1) && \
+	  test -n "$$COV" && \
+	  cp "$$COV" $(ROOT)/qa/results/backend-coverage/coverage.cobertura.xml && \
+	  $(ROOT)/scripts/check-cobertura-threshold.sh "$$COV" 70 'Kubix\.(Application|Domain)'
+
+test-web: ## Web Vitest + cobertura pages/auth/lib ≥70%
+	@mkdir -p $(ROOT)/qa/results/web-coverage
+	@if [[ ! -d $(ROOT)/web/node_modules ]]; then cd $(ROOT)/web && npm install; fi
+	cd $(ROOT)/web && npm run test:coverage
+
+test-mobile: ## Mobile flutter_test + cobertura filtrada ≥60%
+	@mkdir -p $(ROOT)/qa/results/mobile-coverage
+	cd $(ROOT)/mobile && flutter test --coverage
+	@$(ROOT)/scripts/check-mobile-coverage.sh \
+	  $(ROOT)/mobile/coverage/lcov.info 60 \
+	  $(ROOT)/mobile/coverage/lcov.filtered.info
+	@cp $(ROOT)/mobile/coverage/lcov.filtered.info $(ROOT)/qa/results/mobile-coverage/lcov.filtered.info
+	@cp $(ROOT)/mobile/coverage/lcov.info $(ROOT)/qa/results/mobile-coverage/lcov.info
+
+coverage: test ## Alias de test (publica artefactos en qa/results/)

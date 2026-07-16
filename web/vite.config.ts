@@ -43,6 +43,30 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: './src/test/setup.ts',
+      // KBX-27: umbral ≥70% sobre módulos con suite (features del admin + auth/lib).
+      // Páginas sin tests dedicados quedan fuera del gate (se amplían en KBX-28/29).
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'lcov', 'json-summary'],
+        reportsDirectory: '../qa/results/web-coverage',
+        include: [
+          'src/lib/**/*.{ts,tsx}',
+          'src/auth/RequireAuth.tsx',
+          'src/pages/admin/DashboardPage.tsx',
+          'src/pages/admin/ConfiguracionPage.tsx',
+          'src/pages/super/UniversityFormDialog.tsx',
+        ],
+        exclude: [
+          'src/**/*.test.{ts,tsx}',
+          'src/test/**',
+        ],
+        thresholds: {
+          lines: 70,
+          functions: 60,
+          branches: 50,
+          statements: 70,
+        },
+      },
     },
   }
 })

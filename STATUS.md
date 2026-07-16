@@ -1,7 +1,7 @@
 # Kubix UTN — Smart Carpool Security · STATUS
 
-Última actualización: 2026-07-13
-Plan: [PLAN.md](PLAN.md) (v2.8 — **T1–T8**; waypoints + espera; §10.1) · Auditorías: [docs/audit-report-v2.md](docs/audit-report-v2.md) → [docs/audit-report-v3.md](docs/audit-report-v3.md) → [docs/audit-report-v4-delta.md](docs/audit-report-v4-delta.md); **v2.4** `university_admin` → `coordinador`
+Última actualización: 2026-07-16
+Plan: [PLAN.md](PLAN.md) (v2.9 — **T1–T8**; waypoints + espera; §10.1) · Auditorías: [docs/audit-report-v2.md](docs/audit-report-v2.md) → [docs/audit-report-v3.md](docs/audit-report-v3.md) → [docs/audit-report-v4-delta.md](docs/audit-report-v4-delta.md); **v2.4** `university_admin` → `coordinador`
 
 ## Fase
 
@@ -13,8 +13,8 @@ Plan: [PLAN.md](PLAN.md) (v2.8 — **T1–T8**; waypoints + espera; §10.1) · A
 | Plan v2.5–v2.6 (Planner T1–T7 + campos) | Hecho |
 | Plan v2.7 (diseño waypoints + espera) | Hecho (doc) |
 | Plan v2.8 (tarea Planner **T8** = KBX-32·33) | Hecho |
-| Artefactos de stories | No iniciado (bajo demanda) |
-| Implementación | T1–T5 + **T8** hechos; **siguiente: T6 / KBX-27** |
+| Artefactos de stories | Parcial (INFORME.md) |
+| Implementación | T1–T5 + T8 + **T6/KBX-27** hechos; **siguiente: T7 / KBX-30** (KBX-28/29 opcionales en paralelo) |
 
 ## Planner (8 tareas · 2 semanas · ancla D1=2026-07-06)
 
@@ -25,9 +25,9 @@ Plan: [PLAN.md](PLAN.md) (v2.8 — **T1–T8**; waypoints + espera; §10.1) · A
 | **T3** Backend ops + Eco | Importante | 07-10 | 07-12 | 31, 11–13 | hecho |
 | **T4** Web admin | Importante | 07-11 | 07-15 | 14–21 | hecho |
 | **T5** Mobile | Importante | 07-13 | 07-17 | 22–26 | hecho |
-| **T8** Ruta por waypoints | Importante | 07-13 | 07-17 | 32–33 | **hecho** |
-| **T6** QA | Importante | 07-15 | 07-18 | 27–29 | **siguiente** |
-| **T7** Deploy | Media | 07-17 | 07-19 | 30 | pendiente |
+| **T8** Ruta por waypoints | Importante | 07-13 | 07-17 | 32–33 | hecho |
+| **T6** QA | Importante | 07-15 | 07-18 | 27–29 | **KBX-27 hecho**; 28–29 pendientes |
+| **T7** Deploy | Media | 07-17 | 07-19 | 30 | **siguiente** |
 
 ## Tablero KBX (detalle interno)
 
@@ -59,15 +59,15 @@ Plan: [PLAN.md](PLAN.md) (v2.8 — **T1–T8**; waypoints + espera; §10.1) · A
 | KBX-24 | Mobile: flujos de conductor | hecho |
 | KBX-25 | Mobile: flujo SOS | hecho |
 | KBX-26 | Mobile: mapa de viaje en vivo y pings | hecho |
-| KBX-27 | QA: suites unitarias y umbrales de cobertura | **siguiente** |
+| KBX-27 | QA: suites unitarias y umbrales de cobertura | **hecho** |
 | KBX-28 | QA: colección Postman, pruebas de carga y plan JMeter | pendiente |
 | KBX-29 | QA: Selenium, TestLink, SonarCloud, MantisBT, SAST | pendiente |
-| KBX-30 | Despliegue: infraestructura AWS y CI/CD | pendiente |
+| KBX-30 | Despliegue: infraestructura AWS y CI/CD | **siguiente** |
 | KBX-31 | Motor EcoTokens y API | hecho |
 | KBX-32 | Backend: waypoints de ruta + punto de espera sugerido (v2.7) | hecho |
 | KBX-33 | Mobile: mapa publicar ruta + espera del pasajero (v2.7) | hecho |
 
-Orden: T1→T5 + **T8** hechos · **T6** (27→29) · T7 Deploy.
+Orden: T1→T5 + T8 + **KBX-27** hechos · **T7 Deploy (KBX-30)** siguiente · KBX-28/29 pendientes.
 
 ## Log de decisiones clave
 

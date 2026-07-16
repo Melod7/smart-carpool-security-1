@@ -710,7 +710,7 @@ Delta de diseño v2.7–2.9: el conductor dibuja la ruta en el mapa (waypoints);
 | **Fecha de vencimiento** | 2026-07-18 (D13) |
 
 **Lista de comprobación:**
-- [ ] KBX-27 — Suites unitarias y umbrales de cobertura
+- [x] KBX-27 — Suites unitarias y umbrales de cobertura
 - [ ] KBX-28 — Postman, Newman, load y JMeter
 - [ ] KBX-29 — Selenium, TestLink, SonarCloud, MantisBT, SAST
 - [ ] Coverage gates: BE ≥70% App/Domain, web ≥70% features, mobile ≥60%
