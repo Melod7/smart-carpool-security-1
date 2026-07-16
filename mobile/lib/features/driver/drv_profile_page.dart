@@ -16,30 +16,7 @@ class DrvProfilePage extends ConsumerStatefulWidget {
 }
 
 class _DrvProfilePageState extends ConsumerState<DrvProfilePage> {
-  final _makeCtrl = TextEditingController();
-  final _plateCtrl = TextEditingController();
-  final _colorCtrl = TextEditingController();
-  final _seatsCtrl = TextEditingController();
-  var _vehicleLoaded = false;
-  var _savingVehicle = false;
-
-  @override
-  void dispose() {
-    _makeCtrl.dispose();
-    _plateCtrl.dispose();
-    _colorCtrl.dispose();
-    _seatsCtrl.dispose();
-    super.dispose();
-  }
-
-  void _syncVehicle(Vehicle vehicle) {
-    if (_vehicleLoaded) return;
-    _makeCtrl.text = vehicle.makeModel;
-    _plateCtrl.text = vehicle.plate;
-    _colorCtrl.text = vehicle.color;
-    _seatsCtrl.text = '${vehicle.seatsTotal}';
-    _vehicleLoaded = true;
-  }
+  var _submittingChange = false;
 
   @override
   Widget build(BuildContext context) {
@@ -89,59 +66,37 @@ class _DrvProfilePageState extends ConsumerState<DrvProfilePage> {
         ),
         const SizedBox(height: 16),
         vehicleAsync.when(
-          data: (vehicle) {
-            _syncVehicle(vehicle);
-            return _SectionCard(
-              title: 'Vehículo',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextField(
-                    controller: _makeCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Marca y modelo',
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _plateCtrl,
-                    decoration: const InputDecoration(labelText: 'Placa'),
-                    textCapitalization: TextCapitalization.characters,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _colorCtrl,
-                    decoration: const InputDecoration(labelText: 'Color'),
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _seatsCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Asientos totales',
-                      helperText: 'Entre 1 y 8',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: _savingVehicle ? null : _saveVehicle,
-                    child: _savingVehicle
-                        ? const SizedBox(
-                            height: 22,
-                            width: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text('Guardar vehículo'),
-                  ),
-                ],
-              ),
-            );
-          },
+          data: (vehicle) => _SectionCard(
+            title: 'Vehículo',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _ReadOnlyRow(label: 'Marca y modelo', value: vehicle.makeModel),
+                const SizedBox(height: 8),
+                _ReadOnlyRow(label: 'Placa', value: vehicle.plate),
+                const SizedBox(height: 8),
+                _ReadOnlyRow(label: 'Color', value: vehicle.color),
+                const SizedBox(height: 8),
+                _ReadOnlyRow(
+                  label: 'Asientos totales',
+                  value: '${vehicle.seatsTotal}',
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Los cambios requieren aprobación del coordinador.',
+                  style: TextStyle(fontSize: 12, color: KubixColors.muted),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _submittingChange
+                      ? null
+                      : () => _openEditVehicle(vehicle),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Solicitar edición'),
+                ),
+              ],
+            ),
+          ),
           loading: () => const SizedBox.shrink(),
           error: (e, _) => _SectionCard(
             title: 'Vehículo',
@@ -262,11 +217,81 @@ class _DrvProfilePageState extends ConsumerState<DrvProfilePage> {
     );
   }
 
-  Future<void> _saveVehicle() async {
-    final make = _makeCtrl.text.trim();
-    final plate = _plateCtrl.text.trim();
-    final color = _colorCtrl.text.trim();
-    final seats = int.tryParse(_seatsCtrl.text.trim());
+  Future<void> _openEditVehicle(Vehicle vehicle) async {
+    final makeCtrl = TextEditingController(text: vehicle.makeModel);
+    final plateCtrl = TextEditingController(text: vehicle.plate);
+    final colorCtrl = TextEditingController(text: vehicle.color);
+    final seatsCtrl = TextEditingController(text: '${vehicle.seatsTotal}');
+
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Editar vehículo'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Se enviará una solicitud al coordinador. '
+                  'Los datos actuales no cambian hasta que apruebe.',
+                  style: TextStyle(fontSize: 13, color: KubixColors.muted),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: makeCtrl,
+                  decoration: const InputDecoration(labelText: 'Marca y modelo'),
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: plateCtrl,
+                  decoration: const InputDecoration(labelText: 'Placa'),
+                  textCapitalization: TextCapitalization.characters,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: colorCtrl,
+                  decoration: const InputDecoration(labelText: 'Color'),
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: seatsCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Asientos totales',
+                    helperText: 'Entre 1 y 8',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Enviar solicitud'),
+            ),
+          ],
+        );
+      },
+    );
+
+    final make = makeCtrl.text.trim();
+    final plate = plateCtrl.text.trim();
+    final color = colorCtrl.text.trim();
+    final seats = int.tryParse(seatsCtrl.text.trim());
+    makeCtrl.dispose();
+    plateCtrl.dispose();
+    colorCtrl.dispose();
+    seatsCtrl.dispose();
+
+    if (submitted != true || !mounted) return;
+
     if (make.isEmpty || plate.isEmpty || color.isEmpty) {
       _snack('Completa marca, placa y color.');
       return;
@@ -275,27 +300,54 @@ class _DrvProfilePageState extends ConsumerState<DrvProfilePage> {
       _snack('Asientos entre 1 y 8.');
       return;
     }
-    setState(() => _savingVehicle = true);
+
+    setState(() => _submittingChange = true);
     try {
-      await ref.read(driverApiProvider).updateVehicle(
+      final pending = await ref.read(driverApiProvider).requestVehicleChange(
             makeModel: make,
             plate: plate,
             color: color,
             seatsTotal: seats,
           );
-      _vehicleLoaded = false;
-      ref.invalidate(driverVehicleProvider);
-      _snack('Vehículo actualizado.');
+      _snack(
+        pending?.message ??
+            'Solicitud enviada. El coordinador debe aprobar el cambio.',
+      );
     } catch (e) {
       _snack(e.toString());
     } finally {
-      if (mounted) setState(() => _savingVehicle = false);
+      if (mounted) setState(() => _submittingChange = false);
     }
   }
 
   void _snack(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+}
+
+class _ReadOnlyRow extends StatelessWidget {
+  const _ReadOnlyRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: KubixColors.muted),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+        ),
+      ],
+    );
   }
 }
 
@@ -313,6 +365,7 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: KubixColors.secondary.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,7 +374,7 @@ class _SectionCard extends StatelessWidget {
             title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: KubixColors.utnBlue,
+                  color: KubixColors.primary,
                 ),
           ),
           const SizedBox(height: 12),
@@ -347,7 +400,7 @@ class _StaticRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: KubixColors.utnBlue),
+        Icon(icon, color: KubixColors.primary),
         const SizedBox(width: 12),
         Expanded(
           child: Column(

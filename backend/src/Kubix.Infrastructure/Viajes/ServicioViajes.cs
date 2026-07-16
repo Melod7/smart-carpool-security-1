@@ -30,7 +30,7 @@ public sealed class ServicioViajes(
         return MapearVehiculo(vehiculo);
     }
 
-    public async Task<VehiculoDto> UpsertVehiculoAsync(
+    public async Task<ResultadoUpsertVehiculo> UpsertVehiculoAsync(
         Guid usuarioId,
         SolicitudUpsertVehiculo solicitud,
         CancellationToken ct = default)
@@ -41,6 +41,11 @@ public sealed class ServicioViajes(
         if (usuario.UniversidadId is not Guid universidadId)
         {
             throw ExcepcionViajes.Validacion("Driver has no university.", "missing_university");
+        }
+
+        if (usuario.CampusId is not Guid campusId)
+        {
+            throw ExcepcionViajes.Validacion("Driver has no campus.", "missing_campus");
         }
 
         var marca = (solicitud.MarcaModelo ?? string.Empty).Trim();
@@ -72,6 +77,7 @@ public sealed class ServicioViajes(
         var vehiculo = await db.Vehiculos.FirstOrDefaultAsync(v => v.UsuarioId == usuarioId, ct);
         var ahora = DateTimeOffset.UtcNow;
 
+        // Primera alta: se crea directo. Cambios posteriores requieren aprobación del coordinador.
         if (vehiculo is null)
         {
             vehiculo = new Vehiculo
@@ -86,19 +92,75 @@ public sealed class ServicioViajes(
                 ActualizadoEn = ahora
             };
             db.Vehiculos.Add(vehiculo);
-        }
-        else
-        {
-            vehiculo.UniversidadId = universidadId;
-            vehiculo.MarcaModelo = marca;
-            vehiculo.Placa = placa;
-            vehiculo.Color = color;
-            vehiculo.AsientosTotales = solicitud.AsientosTotales;
-            vehiculo.ActualizadoEn = ahora;
+            await db.SaveChangesAsync(ct);
+            return new ResultadoUpsertVehiculo { Vehiculo = MapearVehiculo(vehiculo) };
         }
 
+        if (await db.SolicitudesRegistro.AnyAsync(
+                s => s.UniversidadId == universidadId
+                     && s.Correo == usuario.Correo
+                     && s.Estado == EstadoSolicitudRegistro.Pendiente
+                     && s.HashContrasena == MarcadoresSolicitud.CambioVehiculo,
+                ct))
+        {
+            throw ExcepcionViajes.Conflicto(
+                "Ya tienes un cambio de vehículo pendiente de aprobación.",
+                "vehicle_change_pending");
+        }
+
+        var vehiculoJson = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            makeModel = marca,
+            plate = placa,
+            color,
+            seatsTotal = solicitud.AsientosTotales
+        });
+
+        var solicitudCambio = new SolicitudRegistro
+        {
+            UniversidadId = universidadId,
+            CampusId = campusId,
+            Nombre = usuario.Nombre,
+            Correo = usuario.Correo,
+            HashContrasena = MarcadoresSolicitud.CambioVehiculo,
+            Rol = RolUsuario.Conductor,
+            Carrera = usuario.Carrera,
+            NumeroIdentificacion = usuario.NumeroIdentificacion,
+            VehiculoJson = vehiculoJson,
+            Estado = EstadoSolicitudRegistro.Pendiente,
+            CreadoEn = ahora,
+            ActualizadoEn = ahora
+        };
+        db.SolicitudesRegistro.Add(solicitudCambio);
+
+        db.Notificaciones.Add(new Notificacion
+        {
+            UniversidadId = universidadId,
+            RolDestinatario = RolUsuario.Coordinador,
+            Tipo = TipoNotificacion.Auth,
+            Titulo = "Cambio de vehículo pendiente",
+            Cuerpo = $"{usuario.Nombre} solicitó actualizar los datos de su vehículo.",
+            CreadoEn = ahora
+        });
+
         await db.SaveChangesAsync(ct);
-        return MapearVehiculo(vehiculo);
+
+        await auditoria.EscribirAsync(
+            "vehicle.change_requested",
+            TipoEventoAuditoria.Auth,
+            SeveridadAuditoria.Media,
+            universidadId: universidadId,
+            usuarioId: usuarioId,
+            ct: ct);
+
+        return new ResultadoUpsertVehiculo
+        {
+            CambioPendiente = new CambioVehiculoPendienteDto
+            {
+                Id = solicitudCambio.Id,
+                Estado = ConversorEnumDominio.ACadenaDb(solicitudCambio.Estado)
+            }
+        };
     }
 
     public async Task<ViajeDto> PublicarViajeAsync(

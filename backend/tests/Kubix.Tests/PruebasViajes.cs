@@ -1,5 +1,6 @@
 using Kubix.Application.Tenancy;
 using Kubix.Application.Viajes;
+using Kubix.Domain;
 using Kubix.Domain.Enums;
 using Kubix.Infrastructure.EcoTokens;
 using Kubix.Infrastructure.Persistence;
@@ -189,13 +190,14 @@ public class PruebasViajes
     }
 
     [Fact]
-    public async Task Vehiculo_get_put_round_trip()
+    public async Task Vehiculo_put_con_vehiculo_existente_crea_solicitud_pendiente()
     {
         await using var db = await CrearDbConSeedAsync();
         var conductor = await db.Usuarios.SingleAsync(u => u.Correo == "driver3@utn.local");
         var servicio = CrearServicio(db, conductor, new DirectionsMock());
+        var antes = await servicio.ObtenerVehiculoAsync(conductor.Id);
 
-        var actualizado = await servicio.UpsertVehiculoAsync(conductor.Id, new SolicitudUpsertVehiculo
+        var resultado = await servicio.UpsertVehiculoAsync(conductor.Id, new SolicitudUpsertVehiculo
         {
             MarcaModelo = "Mazda 3",
             Placa = "PBA-7777",
@@ -203,17 +205,19 @@ public class PruebasViajes
             AsientosTotales = 4
         });
 
-        Assert.Equal("Mazda 3", actualizado.MarcaModelo);
-        Assert.Equal("PBA-7777", actualizado.Placa);
-        Assert.Equal("Rojo", actualizado.Color);
-        Assert.Equal(4, actualizado.AsientosTotales);
-        Assert.Equal(conductor.UniversidadId, actualizado.UniversidadId);
+        Assert.Null(resultado.Vehiculo);
+        Assert.NotNull(resultado.CambioPendiente);
+        Assert.Equal("pending", resultado.CambioPendiente!.Estado);
+        Assert.Equal("vehicle_change", resultado.CambioPendiente.Tipo);
 
         var leido = await servicio.ObtenerVehiculoAsync(conductor.Id);
-        Assert.Equal(actualizado.Id, leido.Id);
-        Assert.Equal("Mazda 3", leido.MarcaModelo);
-        Assert.Equal("PBA-7777", leido.Placa);
-        Assert.Equal(4, leido.AsientosTotales);
+        Assert.Equal(antes.MarcaModelo, leido.MarcaModelo);
+        Assert.Equal(antes.Placa, leido.Placa);
+
+        Assert.True(await db.SolicitudesRegistro.AnyAsync(s =>
+            s.Id == resultado.CambioPendiente.Id
+            && s.HashContrasena == MarcadoresSolicitud.CambioVehiculo
+            && s.Estado == EstadoSolicitudRegistro.Pendiente));
     }
 
     private static IServicioViajes CrearServicio(

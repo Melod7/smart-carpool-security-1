@@ -8,13 +8,13 @@ const DEFAULT_CENTER = { lat: -0.1807, lng: -78.4678 }
 const DEFAULT_ZOOM = 12
 
 const SOLID_ROUTE = {
-  strokeColor: '#003087',
+  strokeColor: '#ce2727',
   strokeOpacity: 0.85,
   strokeWeight: 4,
 }
 
 const DASHED_ROUTE = {
-  strokeColor: '#003087',
+  strokeColor: '#ce2727',
   strokeOpacity: 0,
   strokeWeight: 4,
   icons: [
@@ -22,7 +22,7 @@ const DASHED_ROUTE = {
       icon: {
         path: 'M 0,-1 0,1',
         strokeOpacity: 0.9,
-        strokeColor: '#003087',
+        strokeColor: '#ce2727',
         scale: 3,
       },
       offset: '0',
@@ -70,7 +70,7 @@ function markerIcon(role: string): google.maps.Symbol | undefined {
   return {
     path: google.maps.SymbolPath.CIRCLE,
     scale: isDriver ? 9 : 7,
-    fillColor: isDriver ? '#003087' : '#2E7D32',
+    fillColor: isDriver ? '#ce2727' : '#181212',
     fillOpacity: 1,
     strokeColor: '#ffffff',
     strokeWeight: 2,

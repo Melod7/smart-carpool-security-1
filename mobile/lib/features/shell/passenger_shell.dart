@@ -17,7 +17,7 @@ class PassengerShell extends ConsumerStatefulWidget {
 class _PassengerShellState extends ConsumerState<PassengerShell> {
   int _index = 0;
 
-  static const _titles = ['Inicio', 'Mis Viajes', 'Perfil', 'Ayuda'];
+  static const _titles = ['Inicio', 'Mis Viajes', 'Ayuda', 'Perfil'];
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,7 @@ class _PassengerShellState extends ConsumerState<PassengerShell> {
       appBar: AppBar(
         title: Text(_titles[_index]),
         actions: [
-          if (_index == 2)
+          if (_index == 3)
             IconButton(
               tooltip: 'Cerrar sesión',
               onPressed: () => ref.read(authProvider.notifier).logout(),
@@ -38,8 +38,8 @@ class _PassengerShellState extends ConsumerState<PassengerShell> {
         children: const [
           PaxHomePage(),
           PaxTripsPage(),
-          PaxProfilePage(),
           PaxHelpPage(),
+          PaxProfilePage(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -57,14 +57,14 @@ class _PassengerShellState extends ConsumerState<PassengerShell> {
             label: 'Mis Viajes',
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Perfil',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.help_outline),
             selectedIcon: Icon(Icons.help),
             label: 'Ayuda',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Perfil',
           ),
         ],
       ),

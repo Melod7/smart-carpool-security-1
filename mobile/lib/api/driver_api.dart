@@ -140,7 +140,7 @@ class DriverApi {
     }
   }
 
-  Future<Vehicle> updateVehicle({
+  Future<VehicleChangeRequest?> requestVehicleChange({
     required String makeModel,
     required String plate,
     required String color,
@@ -156,9 +156,16 @@ class DriverApi {
           'seatsTotal': seatsTotal,
         },
       );
-      return Vehicle.fromJson(res.data!);
+      // 200 = alta directa (sin vehículo previo); 202 = pendiente de aprobación
+      if (res.statusCode == 202 || res.data?['kind'] == 'vehicle_change') {
+        return VehicleChangeRequest.fromJson(res.data!);
+      }
+      return null;
     } on DioException catch (e) {
-      throw mapDioError(e, fallback: 'No se pudo actualizar el vehículo.');
+      throw mapDioError(
+        e,
+        fallback: 'No se pudo solicitar el cambio de vehículo.',
+      );
     }
   }
 

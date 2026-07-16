@@ -1,31 +1,39 @@
 import 'package:flutter/material.dart';
 
-/// Paleta Kubix UTN (design tokens mobile).
+/// Paleta kubix 2.0
 abstract final class KubixColors {
-  static const Color utnBlue = Color(0xFF003087);
-  static const Color background = Color(0xFFF0F4FA);
-  static const Color emergency = Color(0xFFC8102E);
+  static const Color text = Color(0xFF050315);
+  static const Color background = Color(0xFFFBFBFE);
+  static const Color primary = Color(0xFFCE2727);
+  static const Color secondary = Color(0xFFE9B3B3);
+  static const Color accent = Color(0xFF181212);
+
+  /// Alias legacy → nueva paleta (evita romper imports existentes).
+  static const Color utnBlue = primary;
+  static const Color emergency = primary;
   static const Color eco = Color(0xFF2E7D32);
   static const Color gold = Color(0xFFF9A825);
-  static const Color muted = Color(0xFF5A6A8A);
+  static const Color muted = Color(0xFF6B6570);
   static const Color surface = Colors.white;
 }
 
 ThemeData buildKubixTheme() {
-  const seed = KubixColors.utnBlue;
+  const seed = KubixColors.primary;
   final scheme = ColorScheme.fromSeed(
     seedColor: seed,
     primary: seed,
+    secondary: KubixColors.secondary,
     surface: KubixColors.surface,
-    error: KubixColors.emergency,
+    error: KubixColors.primary,
+    onPrimary: Colors.white,
+    onSurface: KubixColors.text,
   );
 
-  // Tipografía limpia estilo Inter (Material 3 sans, sin dependencia extra).
   final textTheme = Typography.material2021(platform: TargetPlatform.android)
       .black
       .apply(
-        bodyColor: const Color(0xFF1A2438),
-        displayColor: KubixColors.utnBlue,
+        bodyColor: KubixColors.text,
+        displayColor: KubixColors.accent,
         fontFamily: 'Roboto',
       );
 
@@ -35,10 +43,14 @@ ThemeData buildKubixTheme() {
     scaffoldBackgroundColor: KubixColors.background,
     textTheme: textTheme,
     appBarTheme: const AppBarTheme(
-      backgroundColor: KubixColors.utnBlue,
+      backgroundColor: KubixColors.primary,
       foregroundColor: Colors.white,
       elevation: 0,
       centerTitle: false,
+    ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: KubixColors.primary,
+      foregroundColor: Colors.white,
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -46,17 +58,17 @@ ThemeData buildKubixTheme() {
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Color(0xFFD0D7E6)),
+        borderSide: const BorderSide(color: KubixColors.secondary),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: KubixColors.utnBlue, width: 1.5),
+        borderSide: const BorderSide(color: KubixColors.primary, width: 1.5),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: KubixColors.utnBlue,
+        backgroundColor: KubixColors.primary,
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(48),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -65,21 +77,21 @@ ThemeData buildKubixTheme() {
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: KubixColors.utnBlue,
+        foregroundColor: KubixColors.primary,
         minimumSize: const Size.fromHeight(48),
-        side: const BorderSide(color: KubixColors.utnBlue),
+        side: const BorderSide(color: KubixColors.primary),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: Colors.white,
-      indicatorColor: KubixColors.utnBlue.withValues(alpha: 0.12),
+      indicatorColor: KubixColors.primary.withValues(alpha: 0.12),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         final selected = states.contains(WidgetState.selected);
         return TextStyle(
           fontSize: 12,
           fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-          color: selected ? KubixColors.utnBlue : KubixColors.muted,
+          color: selected ? KubixColors.primary : KubixColors.muted,
         );
       }),
     ),

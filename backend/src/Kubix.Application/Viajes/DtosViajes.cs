@@ -38,6 +38,29 @@ public sealed class SolicitudUpsertVehiculo
     public int AsientosTotales { get; set; }
 }
 
+/// <summary>Respuesta cuando el cambio de vehículo queda pendiente de aprobación.</summary>
+public sealed class CambioVehiculoPendienteDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Estado { get; set; } = "pending";
+
+    [JsonPropertyName("kind")]
+    public string Tipo { get; set; } = "vehicle_change";
+
+    [JsonPropertyName("message")]
+    public string Mensaje { get; set; } =
+        "Cambio de vehículo enviado al coordinador para aprobación.";
+}
+
+public sealed class ResultadoUpsertVehiculo
+{
+    public VehiculoDto? Vehiculo { get; set; }
+    public CambioVehiculoPendienteDto? CambioPendiente { get; set; }
+}
+
 public sealed class WaypointDto
 {
     [JsonPropertyName("lat")]

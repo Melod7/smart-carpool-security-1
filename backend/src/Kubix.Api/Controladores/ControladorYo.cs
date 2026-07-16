@@ -194,7 +194,9 @@ public sealed class ControladorYo(
     [HttpPut("vehicle")]
     [Authorize(Policy = NombresPoliticas.SoloConductor)]
     [ProducesResponseType(typeof(VehiculoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CambioVehiculoPendienteDto), StatusCodes.Status202Accepted)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> UpsertVehiculo(
         [FromBody] SolicitudUpsertVehiculo solicitud,
@@ -202,8 +204,13 @@ public sealed class ControladorYo(
     {
         try
         {
-            var vehiculo = await viajes.UpsertVehiculoAsync(ObtenerUsuarioId(), solicitud, ct);
-            return Ok(vehiculo);
+            var resultado = await viajes.UpsertVehiculoAsync(ObtenerUsuarioId(), solicitud, ct);
+            if (resultado.CambioPendiente is not null)
+            {
+                return Accepted(resultado.CambioPendiente);
+            }
+
+            return Ok(resultado.Vehiculo);
         }
         catch (ExcepcionViajes ex)
         {

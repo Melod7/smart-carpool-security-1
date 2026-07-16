@@ -109,6 +109,10 @@ public sealed class SolicitudRegistroResumenDto
     [JsonPropertyName("vehicleJson")]
     public string? VehiculoJson { get; set; }
 
+    /// <summary>registration | vehicle_change</summary>
+    [JsonPropertyName("kind")]
+    public string Tipo { get; set; } = "registration";
+
     [JsonPropertyName("status")]
     public string Estado { get; set; } = string.Empty;
 

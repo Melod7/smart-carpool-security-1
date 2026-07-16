@@ -901,3 +901,27 @@ class Vehicle {
     );
   }
 }
+
+/// Respuesta 202 al solicitar cambio de vehículo.
+class VehicleChangeRequest {
+  const VehicleChangeRequest({
+    required this.id,
+    required this.status,
+    required this.kind,
+    this.message,
+  });
+
+  final String id;
+  final String status;
+  final String kind;
+  final String? message;
+
+  factory VehicleChangeRequest.fromJson(Map<String, dynamic> json) {
+    return VehicleChangeRequest(
+      id: json['id'] as String? ?? '',
+      status: json['status'] as String? ?? 'pending',
+      kind: json['kind'] as String? ?? 'vehicle_change',
+      message: json['message'] as String?,
+    );
+  }
+}

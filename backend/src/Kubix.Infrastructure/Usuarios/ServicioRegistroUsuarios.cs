@@ -200,6 +200,9 @@ public sealed class ServicioRegistroUsuarios(
             CampusId = s.CampusId,
             NombreCampus = s.Campus?.Nombre,
             VehiculoJson = s.VehiculoJson,
+            Tipo = s.HashContrasena == MarcadoresSolicitud.CambioVehiculo
+                ? "vehicle_change"
+                : "registration",
             Estado = ConversorEnumDominio.ACadenaDb(s.Estado),
             CreadoEn = s.CreadoEn
         }).ToList();
@@ -219,9 +222,76 @@ public sealed class ServicioRegistroUsuarios(
                 "request_not_pending");
         }
 
-        if (await db.Usuarios.AnyAsync(
-                u => u.Correo == solicitud.Correo && u.UniversidadId == solicitud.UniversidadId,
-                ct))
+        var esCambioVehiculo = solicitud.HashContrasena == MarcadoresSolicitud.CambioVehiculo;
+        var usuarioExistente = await db.Usuarios.FirstOrDefaultAsync(
+            u => u.Correo == solicitud.Correo && u.UniversidadId == solicitud.UniversidadId,
+            ct);
+
+        if (esCambioVehiculo)
+        {
+            if (usuarioExistente is null || usuarioExistente.Rol != RolUsuario.Conductor)
+            {
+                throw ExcepcionRegistroUsuarios.NoEncontrado(
+                    "Driver not found for vehicle change request.");
+            }
+
+            var vehiculoDto = DeserializarVehiculo(solicitud.VehiculoJson);
+            var ahoraCambio = DateTimeOffset.UtcNow;
+            var vehiculo = await db.Vehiculos.FirstOrDefaultAsync(
+                v => v.UsuarioId == usuarioExistente.Id,
+                ct);
+
+            if (vehiculo is null)
+            {
+                db.Vehiculos.Add(new Vehiculo
+                {
+                    UniversidadId = solicitud.UniversidadId,
+                    UsuarioId = usuarioExistente.Id,
+                    MarcaModelo = vehiculoDto.MarcaModelo,
+                    Placa = vehiculoDto.Placa,
+                    Color = vehiculoDto.Color,
+                    AsientosTotales = vehiculoDto.AsientosTotales,
+                    CreadoEn = ahoraCambio,
+                    ActualizadoEn = ahoraCambio
+                });
+            }
+            else
+            {
+                vehiculo.MarcaModelo = vehiculoDto.MarcaModelo;
+                vehiculo.Placa = vehiculoDto.Placa;
+                vehiculo.Color = vehiculoDto.Color;
+                vehiculo.AsientosTotales = vehiculoDto.AsientosTotales;
+                vehiculo.ActualizadoEn = ahoraCambio;
+            }
+
+            solicitud.Estado = EstadoSolicitudRegistro.Aceptada;
+            solicitud.DecididoPor = inquilino.UsuarioId;
+            solicitud.DecididoEn = ahoraCambio;
+            solicitud.ActualizadoEn = ahoraCambio;
+
+            db.Notificaciones.Add(new Notificacion
+            {
+                UniversidadId = solicitud.UniversidadId,
+                UsuarioDestinatarioId = usuarioExistente.Id,
+                Tipo = TipoNotificacion.Auth,
+                Titulo = "Cambio de vehículo aprobado",
+                Cuerpo = "El coordinador aprobó los nuevos datos de tu vehículo.",
+                CreadoEn = ahoraCambio
+            });
+
+            await db.SaveChangesAsync(ct);
+
+            await auditoria.EscribirAsync(
+                "vehicle.change_accepted",
+                TipoEventoAuditoria.Admin,
+                SeveridadAuditoria.Media,
+                universidadId: solicitud.UniversidadId,
+                usuarioId: usuarioExistente.Id,
+                ct: ct);
+            return;
+        }
+
+        if (usuarioExistente is not null)
         {
             throw ExcepcionRegistroUsuarios.Conflicto("Email is already registered.", "email_taken");
         }

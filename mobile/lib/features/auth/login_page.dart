@@ -73,7 +73,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Kubix UTN',
+                      'kubix 2.0',
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.w800,
                             color: KubixColors.utnBlue,

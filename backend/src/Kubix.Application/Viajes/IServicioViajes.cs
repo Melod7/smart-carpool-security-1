@@ -4,7 +4,7 @@ public interface IServicioViajes
 {
     Task<VehiculoDto> ObtenerVehiculoAsync(Guid usuarioId, CancellationToken ct = default);
 
-    Task<VehiculoDto> UpsertVehiculoAsync(
+    Task<ResultadoUpsertVehiculo> UpsertVehiculoAsync(
         Guid usuarioId,
         SolicitudUpsertVehiculo solicitud,
         CancellationToken ct = default);

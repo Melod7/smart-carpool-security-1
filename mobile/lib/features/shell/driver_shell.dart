@@ -18,7 +18,7 @@ class DriverShell extends ConsumerStatefulWidget {
 class _DriverShellState extends ConsumerState<DriverShell> {
   int _index = 0;
 
-  static const _titles = ['Inicio', 'Mis Viajes', 'Perfil', 'Ayuda'];
+  static const _titles = ['Inicio', 'Mis Viajes', 'Ayuda', 'Perfil'];
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +26,7 @@ class _DriverShellState extends ConsumerState<DriverShell> {
       appBar: AppBar(
         title: Text(_titles[_index]),
         actions: [
-          if (_index == 2)
+          if (_index == 3)
             IconButton(
               tooltip: 'Cerrar sesión',
               onPressed: () => ref.read(authProvider.notifier).logout(),
@@ -39,8 +39,8 @@ class _DriverShellState extends ConsumerState<DriverShell> {
         children: const [
           DrvHomePage(),
           DrvTripsPage(),
-          DrvProfilePage(),
           DrvHelpPage(),
+          DrvProfilePage(),
         ],
       ),
       floatingActionButton: _index == 0
@@ -65,14 +65,14 @@ class _DriverShellState extends ConsumerState<DriverShell> {
             label: 'Mis Viajes',
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Perfil',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.help_outline),
             selectedIcon: Icon(Icons.help),
             label: 'Ayuda',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Perfil',
           ),
         ],
       ),

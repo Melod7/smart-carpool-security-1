@@ -260,9 +260,9 @@ export function UsuariosPage() {
 
       <section>
         <div className="mb-3">
-          <h2 className="text-lg font-semibold text-slate-900">Solicitudes de registro</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Solicitudes pendientes</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Revisa documentos e información del vehículo antes de aceptar o denegar.
+            Altas de usuario y cambios de vehículo. Revisa la información antes de aceptar o denegar.
           </p>
         </div>
 
@@ -280,6 +280,7 @@ export function UsuariosPage() {
             <table className="min-w-full text-left text-sm">
               <thead className="border-b bg-slate-50 text-slate-600">
                 <tr>
+                  <th className="px-4 py-3 font-medium">Tipo</th>
                   <th className="px-4 py-3 font-medium">Nombre</th>
                   <th className="px-4 py-3 font-medium">Rol</th>
                   <th className="px-4 py-3 font-medium">Campus</th>
@@ -291,6 +292,17 @@ export function UsuariosPage() {
               <tbody>
                 {requests.data.map((req) => (
                   <tr key={req.id} className="border-b last:border-0">
+                    <td className="px-4 py-3">
+                      <span
+                        className={
+                          req.kind === 'vehicle_change'
+                            ? 'rounded-full bg-[var(--secondary)] px-2 py-0.5 text-xs font-medium text-[var(--accent)]'
+                            : 'rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700'
+                        }
+                      >
+                        {req.kind === 'vehicle_change' ? 'Cambio vehículo' : 'Registro'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-slate-900">{req.name}</div>
                       <div className="text-xs text-slate-500">{req.email}</div>
@@ -546,7 +558,11 @@ function RequestDetailDialog({
 
   return (
     <Dialog
-      title="Detalle de solicitud"
+      title={
+        request.kind === 'vehicle_change'
+          ? 'Detalle · cambio de vehículo'
+          : 'Detalle de solicitud'
+      }
       onClose={onClose}
       footer={
         <>

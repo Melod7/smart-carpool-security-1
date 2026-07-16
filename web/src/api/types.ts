@@ -158,6 +158,8 @@ export type RegistrationRequest = {
   campusId: string
   campusName?: string | null
   vehicleJson?: string | null
+  /** registration | vehicle_change */
+  kind?: string
   status: string
   createdAt: string
 }

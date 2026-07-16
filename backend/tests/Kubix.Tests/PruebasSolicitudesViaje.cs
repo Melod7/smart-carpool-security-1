@@ -261,7 +261,7 @@ public class PruebasSolicitudesViaje
             Rol = usuario.Rol
         };
         var auditoria = new EscritorAuditoria(db, inquilino);
-        return new ServicioSolicitudesViaje(db, inquilino, auditoria);
+        return new ServicioSolicitudesViaje(db, inquilino, auditoria, new DirectionsMock());
     }
 
     private static async Task<ContextoApp> CrearDbConSeedAsync()
@@ -286,5 +286,17 @@ public class PruebasSolicitudesViaje
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         return new ContextoApp(opciones, new ContextoInquilino { OmitirFiltros = true });
+    }
+
+    private sealed class DirectionsMock : IServicioDirections
+    {
+        public Task<ResultadoDirections?> ObtenerRutaAsync(
+            double origenLat,
+            double origenLng,
+            double destinoLat,
+            double destinoLng,
+            IReadOnlyList<(double Lat, double Lng)>? vias = null,
+            CancellationToken ct = default) =>
+            Task.FromResult<ResultadoDirections?>(null);
     }
 }

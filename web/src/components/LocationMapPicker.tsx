@@ -59,7 +59,7 @@ export function LocationMapPicker({
     return {
       path: google.maps.SymbolPath.CIRCLE,
       scale: 10,
-      fillColor: '#003087',
+      fillColor: '#ce2727',
       fillOpacity: 1,
       strokeColor: '#ffffff',
       strokeWeight: 2,

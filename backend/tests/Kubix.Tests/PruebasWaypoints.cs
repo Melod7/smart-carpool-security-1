@@ -253,7 +253,7 @@ public class PruebasWaypoints
             UsuarioId = usuario.Id,
             Rol = usuario.Rol
         };
-        return new ServicioSolicitudesViaje(db, inquilino, new EscritorAuditoria(db, inquilino));
+        return new ServicioSolicitudesViaje(db, inquilino, new EscritorAuditoria(db, inquilino), new DirectionsMock());
     }
 
     private static async Task<ContextoApp> CrearDbConSeedAsync()

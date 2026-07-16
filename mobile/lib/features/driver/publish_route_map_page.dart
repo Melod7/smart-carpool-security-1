@@ -34,8 +34,7 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
   final List<TripWaypoint> _waypoints = [];
   String? _campusId;
   DateTime _departureAt = DateTime.now().add(const Duration(hours: 1));
-  final _seatsCtrl = TextEditingController(text: '3');
-  final _seatsFocus = FocusNode();
+  int _seatsAvailable = 3;
   Vehicle? _vehicle;
   List<CampusPublic> _campuses = const [];
   bool _loadingGps = true;
@@ -47,6 +46,8 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
   bool _previewLoading = false;
   Timer? _previewDebounce;
 
+  int get _maxSeats => (_vehicle?.seatsTotal ?? 8).clamp(1, 8);
+
   @override
   void initState() {
     super.initState();
@@ -57,11 +58,6 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
       _departureAt.hour,
       _departureAt.minute,
     );
-    _seatsFocus.addListener(() {
-      if (_seatsFocus.hasFocus && _panelExpanded) {
-        setState(() => _panelExpanded = false);
-      }
-    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _bootstrap();
     });
@@ -70,10 +66,14 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
   @override
   void dispose() {
     _previewDebounce?.cancel();
-    _seatsCtrl.dispose();
-    _seatsFocus.dispose();
     _mapController?.dispose();
     super.dispose();
+  }
+
+  void _setSeats(int value) {
+    final capped = value.clamp(1, _maxSeats);
+    if (capped == _seatsAvailable) return;
+    setState(() => _seatsAvailable = capped);
   }
 
   Future<void> _bootstrap() async {
@@ -81,8 +81,8 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
     try {
       _vehicle = await ref.read(driverVehicleProvider.future);
       if (_vehicle != null) {
-        _seatsCtrl.text =
-            '${(_vehicle!.seatsTotal - 1).clamp(1, 8)}';
+        final max = _vehicle!.seatsTotal.clamp(1, 8);
+        _seatsAvailable = (max - 1).clamp(1, max);
       }
     } catch (_) {
       _vehicle = null;
@@ -341,13 +341,13 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
   }
 
   Future<void> _publish() async {
-    final seats = int.tryParse(_seatsCtrl.text.trim());
+    final seats = _seatsAvailable.clamp(1, _maxSeats);
     final wpError = PublishRouteValidation.validateWaypoints(_waypoints);
     final metaError = PublishRouteValidation.validateMeta(
       campusId: _campusId,
       departureAt: _departureAt,
       seats: seats,
-      maxSeats: _vehicle?.seatsTotal,
+      maxSeats: _maxSeats,
     );
     final validation = wpError ?? metaError;
     if (validation != null) {
@@ -369,7 +369,7 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
                 PublishRouteValidation.originTextFromWaypoints(_waypoints),
             destinationCampusId: _campusId!,
             departureAt: _departureAt,
-            seatsAvailable: seats!,
+            seatsAvailable: seats,
           );
       ref.read(tripGeometryCacheProvider.notifier).putAvailable(published);
       invalidateDriverTrips(ref);
@@ -517,9 +517,9 @@ class _PublishRouteMapPageState extends ConsumerState<PublishRouteMapPage> {
               },
               departureAt: _departureAt,
               onPickDeparture: _pickDeparture,
-              seatsCtrl: _seatsCtrl,
-              seatsFocus: _seatsFocus,
-              maxSeats: _vehicle?.seatsTotal,
+              seatsAvailable: _seatsAvailable,
+              maxSeats: _maxSeats,
+              onSeatsChanged: _setSeats,
               submitting: _submitting,
               error: _error,
               onPublish: _publish,
@@ -544,9 +544,9 @@ class _PublishPanel extends StatelessWidget {
     required this.onCampusChanged,
     required this.departureAt,
     required this.onPickDeparture,
-    required this.seatsCtrl,
-    required this.seatsFocus,
+    required this.seatsAvailable,
     required this.maxSeats,
+    required this.onSeatsChanged,
     required this.submitting,
     required this.error,
     required this.onPublish,
@@ -562,9 +562,9 @@ class _PublishPanel extends StatelessWidget {
   final ValueChanged<String?> onCampusChanged;
   final DateTime departureAt;
   final VoidCallback onPickDeparture;
-  final TextEditingController seatsCtrl;
-  final FocusNode seatsFocus;
-  final int? maxSeats;
+  final int seatsAvailable;
+  final int maxSeats;
+  final ValueChanged<int> onSeatsChanged;
   final bool submitting;
   final String? error;
   final VoidCallback onPublish;
@@ -682,17 +682,46 @@ class _PublishPanel extends StatelessWidget {
                       child: const Text('Cambiar'),
                     ),
                   ),
-                  TextField(
-                    controller: seatsCtrl,
-                    focusNode: seatsFocus,
-                    enabled: !submitting,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Asientos disponibles',
-                      isDense: true,
-                      helperText: maxSeats == null
-                          ? 'Toca ↑ para reducir el panel'
-                          : 'Máx. $maxSeats · toca ↑ para achicar el panel',
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Asientos disponibles',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      IconButton.filledTonal(
+                        onPressed: submitting || seatsAvailable <= 1
+                            ? null
+                            : () => onSeatsChanged(seatsAvailable - 1),
+                        icon: const Icon(Icons.remove),
+                        tooltip: 'Menos asientos',
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          '$seatsAvailable',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      IconButton.filledTonal(
+                        onPressed:
+                            submitting || seatsAvailable >= maxSeats
+                                ? null
+                                : () => onSeatsChanged(seatsAvailable + 1),
+                        icon: const Icon(Icons.add),
+                        tooltip: 'Más asientos',
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'Máximo $maxSeats (capacidad del vehículo)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: KubixColors.muted,
                     ),
                   ),
                 ],
