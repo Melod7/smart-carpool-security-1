@@ -17,6 +17,14 @@ on:
     secrets:
       GOOGLE_MAPS_API_KEY:
         required: false
+      ANDROID_KEYSTORE_BASE64:
+        required: true
+      ANDROID_KEYSTORE_PASSWORD:
+        required: true
+      ANDROID_KEY_ALIAS:
+        required: true
+      ANDROID_KEY_PASSWORD:
+        required: true
 
 permissions:
   contents: read
@@ -28,6 +36,9 @@ jobs:
     env:
       MOBILE_API_URL: ${{ inputs.api_url }}
       GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     defaults:
       run:
         working-directory: mobile
@@ -38,6 +49,14 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
+      - name: Configure stable Android release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/kubix-release.jks
+          echo "ANDROID_KEYSTORE_PATH=$PWD/android/app/kubix-release.jks" >> "$GITHUB_ENV"
       - name: Build release APK
         run: |
           set -euo pipefail
@@ -53,7 +72,7 @@ jobs:
           retention-days: 14
 
   ios:
-    name: iOS unsigned app
+    name: iOS Simulator app
     runs-on: macos-15
     env:
       MOBILE_API_URL: ${{ inputs.api_url }}
@@ -70,19 +89,19 @@ jobs:
       - run: flutter pub get
       - name: Configure iOS Maps key
         run: printf 'MAPS_API_KEY=%s\n' "${GOOGLE_MAPS_API_KEY:-}" > ios/Flutter/MapsSecrets.xcconfig
-      - name: Build without Apple signing
+      - name: Build for iOS Simulator
         run: |
           set -euo pipefail
           test -n "$MOBILE_API_URL"
-          flutter build ios --release --no-codesign --no-tree-shake-icons \
+          flutter build ios --simulator \
             --dart-define=API_URL="$MOBILE_API_URL" \
             --dart-define=GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-}"
           ditto -c -k --sequesterRsrc --keepParent \
-            build/ios/iphoneos/Runner.app \
-            build/ios/iphoneos/Kubix-UTN-2.0-iOS-unsigned.zip
+            build/ios/iphonesimulator/Runner.app \
+            build/ios/iphonesimulator/Kubix-UTN-2.0-iOS-Simulator.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: kubix-ios-unsigned-app
-          path: mobile/build/ios/iphoneos/Kubix-UTN-2.0-iOS-unsigned.zip
+          name: kubix-ios-simulator-app
+          path: mobile/build/ios/iphonesimulator/Kubix-UTN-2.0-iOS-Simulator.zip
           if-no-files-found: error
           retention-days: 14

@@ -83,18 +83,31 @@ Workflows:
 | `DB_PASSWORD` | Master RDS |
 | `SUPER_ADMIN_PASSWORD` | Seed super-admin |
 | `GOOGLE_MAPS_API_KEY` | Maps en Android/iOS |
+| `ANDROID_KEYSTORE_BASE64` | Keystore estable para firmar el APK |
+| `ANDROID_KEYSTORE_PASSWORD` | Password del keystore |
+| `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD` | Alias y password de la clave |
 
 Variables de repo opcionales: `AWS_REGION`, `STACK_NAME`.
 
 Tras un deploy manual exitoso, Actions usa la URL CloudFront resultante y publica:
 
 - `deploy-urls`: URLs del entorno.
-- `kubix-android-apk`: APK Android de prueba, conectado a la API desplegada.
-- `kubix-ios-unsigned-app`: aplicación iOS sin firma, útil para validación/firmado posterior.
+- `kubix-android-apk`: APK Android con firma estable, conectado a la API desplegada.
+- `kubix-ios-simulator-app`: aplicación ejecutable en iOS Simulator.
 
-El APK usa actualmente la debug keystore configurada en Gradle; no es un AAB
-firmado para Play Store. Un IPA instalable requiere certificado y provisioning
-profile de Apple, que deben agregarse como secrets antes de habilitar firma iOS.
+Si ya existía una compilación Android firmada con otra clave, hay que
+desinstalarla una vez antes de instalar el nuevo APK. Los próximos artefactos
+de Actions sí podrán actualizarse entre ellos.
+
+El ZIP iOS se instala en un Simulator arrancado con:
+
+```bash
+xcrun simctl install booted Runner.app
+```
+
+Un IPA instalable en un iPhone físico requiere certificado Apple Distribution,
+provisioning profile y el UDID/distribución TestFlight; no puede generarse a
+partir de una aplicación sin firma.
 
 Para regenerar solamente las apps: **Actions → Mobile artifacts → Run
 workflow**. El input `api_url` debe ser la URL CloudFront del entorno.
