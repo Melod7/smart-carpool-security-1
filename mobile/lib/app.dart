@@ -12,7 +12,7 @@ class KubixApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
 
     return MaterialApp.router(
-      title: 'kubix 2.0',
+      title: 'Kubix UTN 2.0',
       debugShowCheckedModeBanner: false,
       theme: buildKubixTheme(),
       routerConfig: router,

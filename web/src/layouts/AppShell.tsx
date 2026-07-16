@@ -49,7 +49,7 @@ export function AppShell() {
   return (
     <div className="min-h-screen flex bg-[var(--kubix-bg)]">
       <aside className="w-60 bg-[var(--kubix-navy)] text-white p-6 flex flex-col shrink-0">
-        <div className="text-lg font-bold tracking-tight">kubix 2.0</div>
+        <div className="text-lg font-bold tracking-tight">Kubix UTN 2.0</div>
         <div className="text-xs text-slate-400 mt-1">
           {isCoordinador ? 'Consola Coordinador' : 'Consola Super Admin'}
         </div>

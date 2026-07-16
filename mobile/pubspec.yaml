@@ -1,5 +1,5 @@
 name: kubix_mobile
-description: Kubix UTN — Smart Carpool Security, app mobile (conductores y pasajeros)
+description: Kubix UTN 2.0 — Smart Carpool Security, app mobile (conductores y pasajeros)
 publish_to: "none"
 version: 0.1.0+1
 
@@ -25,3 +25,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/kubix-utn-2.0-icon.png

@@ -1,4 +1,4 @@
-# Kubix UTN — Smart Carpool Security  
+# Kubix UTN 2.0 — Smart Carpool Security  
 ## Informe de factibilidad e ingeniería de software
 
 **Fecha:** julio 2026  

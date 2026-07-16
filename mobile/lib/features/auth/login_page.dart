@@ -72,16 +72,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Center(
+                      child: Image.asset(
+                        'assets/branding/kubix-utn-2.0-icon.png',
+                        width: 160,
+                        height: 160,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Text(
-                      'kubix 2.0',
+                      'Kubix UTN 2.0',
+                      textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.w800,
-                            color: KubixColors.utnBlue,
+                            color: KubixColors.primary,
                           ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
                       'Carpooling seguro para tu universidad',
+                      textAlign: TextAlign.center,
                       style: TextStyle(color: KubixColors.muted),
                     ),
                     const SizedBox(height: 32),

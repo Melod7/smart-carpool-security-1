@@ -1,4 +1,4 @@
-# Kubix UTN — Smart Carpool Security
+# Kubix UTN 2.0 — Smart Carpool Security
 
 Plataforma multi-tenant de seguridad para carpooling (super_admin → universidades → campus → coordinador / driver / passenger).
 

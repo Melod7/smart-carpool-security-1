@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Paleta kubix 2.0
+/// Paleta Kubix UTN 2.0
 abstract final class KubixColors {
   static const Color text = Color(0xFF050315);
   static const Color background = Color(0xFFFBFBFE);
