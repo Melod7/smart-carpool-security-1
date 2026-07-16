@@ -22,6 +22,13 @@ Parameters:
     Type: String
     Default: 0.0.0.0/0
     Description: CIDR con acceso a Postgres (restringir en cuentas reales)
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC para RDS (default VPC de la cuenta)
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets de la VPC (mín. 2 AZs) para DB subnet group
+
 
 Resources:
   EcrRepository:
@@ -70,12 +77,33 @@ Resources:
         SigningBehavior: always
         SigningProtocol: sigv4
 
+  SpaRewriteFunction:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: !Sub "${ProjectName}-${EnvironmentName}-spa"
+      AutoPublish: true
+      FunctionConfig:
+        Comment: SPA rewrite for non-file paths
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var request = event.request;
+          var uri = request.uri;
+          if (uri.indexOf('.') !== -1) {
+            return request;
+          }
+          request.uri = '/index.html';
+          return request;
+        }
+
   WebDistribution:
     Type: AWS::CloudFront::Distribution
+    DependsOn:
+      - AlbHttpListener
     Properties:
       DistributionConfig:
         Enabled: true
-        Comment: !Sub "${ProjectName} ${EnvironmentName} SPA"
+        Comment: !Sub "${ProjectName} ${EnvironmentName} SPA + API"
         DefaultRootObject: index.html
         Origins:
           - Id: web-s3
@@ -83,6 +111,13 @@ Resources:
             OriginAccessControlId: !GetAtt CloudFrontOAC.Id
             S3OriginConfig:
               OriginAccessIdentity: ""
+          - Id: api-alb
+            DomainName: !GetAtt ApplicationLoadBalancer.DNSName
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+              OriginSSLProtocols:
+                - TLSv1.2
         DefaultCacheBehavior:
           TargetOriginId: web-s3
           ViewerProtocolPolicy: redirect-to-https
@@ -90,15 +125,90 @@ Resources:
           CachedMethods: [GET, HEAD]
           Compress: true
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
-        CustomErrorResponses:
-          - ErrorCode: 403
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 0
-          - ErrorCode: 404
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 0
+          FunctionAssociations:
+            - EventType: viewer-request
+              FunctionARN: !GetAtt SpaRewriteFunction.FunctionARN
+        CacheBehaviors:
+          - PathPattern: /api/*
+            TargetOriginId: api-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /auth/*
+            TargetOriginId: api-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /admin/*
+            TargetOriginId: api-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /me/*
+            TargetOriginId: api-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /trips*
+            TargetOriginId: api-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /requests*
+            TargetOriginId: api-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /sos*
+            TargetOriginId: api-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /super*
+            TargetOriginId: api-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /public*
+            TargetOriginId: api-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /health*
+            TargetOriginId: api-alb
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+            CachedMethods: [GET, HEAD]
+            Compress: true
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
         PriceClass: PriceClass_100
 
   WebBucketPolicy:
@@ -122,12 +232,19 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: !Sub "${ProjectName}-${EnvironmentName} RDS Postgres"
+      VpcId: !Ref VpcId
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 5432
           ToPort: 5432
           CidrIp: !Ref AllowedCidr
           Description: Postgres access for App Runner / ops
+
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: !Sub "${ProjectName}-${EnvironmentName} default VPC"
+      SubnetIds: !Ref SubnetIds
 
   DbInstance:
     Type: AWS::RDS::DBInstance
@@ -144,8 +261,9 @@ Resources:
       MasterUserPassword: !Ref DbPassword
       DBName: kubix
       PubliclyAccessible: true
+      DBSubnetGroupName: !Ref DbSubnetGroup
       VPCSecurityGroups:
-        - !Ref DbSecurityGroup
+        - !GetAtt DbSecurityGroup.GroupId
       BackupRetentionPeriod: 0
       DeletionProtection: false
       EnableCloudwatchLogsExports: []
@@ -176,6 +294,104 @@ Resources:
               Service: tasks.apprunner.amazonaws.com
             Action: sts:AssumeRole
 
+  # --- ECS Fargate + ALB (fallback when App Runner no está habilitado en la cuenta) ---
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${ProjectName}-${EnvironmentName}"
+
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${ProjectName}-${EnvironmentName}-api"
+      RetentionInDays: 7
+
+  EcsExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-${EnvironmentName}-ecs-exec"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  EcsTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-${EnvironmentName}-ecs-task"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${ProjectName}-${EnvironmentName} ALB"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP
+
+  TaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${ProjectName}-${EnvironmentName} ECS tasks"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !GetAtt AlbSecurityGroup.GroupId
+          Description: API from ALB
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${ProjectName}-${EnvironmentName}-alb"
+      Scheme: internet-facing
+      Type: application
+      Subnets: !Ref SubnetIds
+      SecurityGroups:
+        - !GetAtt AlbSecurityGroup.GroupId
+
+  ApiTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${ProjectName}-${EnvironmentName}-api"
+      VpcId: !Ref VpcId
+      Port: 8080
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: /api/v1/health
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: "200"
+
+  AlbHttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ApiTargetGroup
+
 Outputs:
   StackName:
     Value: !Ref AWS::StackName
@@ -200,4 +416,24 @@ Outputs:
   AppRunnerInstanceRoleArn:
     Value: !GetAtt AppRunnerInstanceRole.Arn
   DbSecurityGroupId:
-    Value: !Ref DbSecurityGroup
+    Value: !GetAtt DbSecurityGroup.GroupId
+  VpcId:
+    Value: !Ref VpcId
+  EcsClusterName:
+    Value: !Ref EcsCluster
+  EcsExecutionRoleArn:
+    Value: !GetAtt EcsExecutionRole.Arn
+  EcsTaskRoleArn:
+    Value: !GetAtt EcsTaskRole.Arn
+  ApiTargetGroupArn:
+    Value: !Ref ApiTargetGroup
+  TaskSecurityGroupId:
+    Value: !GetAtt TaskSecurityGroup.GroupId
+  AlbDnsName:
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+  ApiUrl:
+    Value: !Sub "http://${ApplicationLoadBalancer.DNSName}"
+  ApiLogGroupName:
+    Value: !Ref ApiLogGroup
+  SubnetIdsCsv:
+    Value: !Join [",", !Ref SubnetIds]

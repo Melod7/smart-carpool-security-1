@@ -1,41 +1,52 @@
 # Deploy — Kubix UTN 2.0 (KBX-30)
 
-Infra de **prueba** en AWS: API en **App Runner** (imagen ECR), **RDS Postgres `db.t4g.micro`**, admin web en **S3 + CloudFront** (routing SPA). Migraciones EF Core al arranque (`Database__MigrateOnStartup=true`).
+Infra de **prueba** en AWS: API en **ECS Fargate + ALB** (fallback automático si App Runner no está habilitado en la cuenta), imagen en **ECR**, **RDS Postgres `db.t4g.micro`**, admin web en **S3 + CloudFront** (routing SPA). Migraciones EF Core al arranque (`Database__MigrateOnStartup=true`).
+
+> En Mac Apple Silicon el build usa `--platform linux/amd64` (ECS/Fargate no acepta arm64).
+> Si el deploy “se cuelga” en `services-stable`, revisa eventos ECS: el error típico es imagen arm64.
 
 > Cuenta de prueba: **siempre** ejecuta el teardown al terminar. RDS + App Runner generan cargo aunque no haya tráfico.
 
 ## Prerrequisitos
 
-- AWS CLI v2 autenticado (`aws sts get-caller-identity`)
-- Docker
-- `jq`, Node 20+, npm
+- AWS CLI v2 con profile **`kx-dev`** (cuenta Kubix). Los scripts **ignoran** `AWS_PROFILE` del shell (p. ej. perfiles WP) y fuerzan `kx-dev`.
+- Docker, `jq`, Node 20+, npm
 - Permisos: CloudFormation, ECR, S3, CloudFront, RDS, EC2 (SG), IAM, App Runner
+
+Login (console credentials, no SSO WP):
+
+```bash
+aws login --profile kx-dev
+aws sts get-caller-identity --profile kx-dev
+# debe mostrar Account 900103507605
+```
 
 Variables mínimas:
 
 ```bash
 export AWS_REGION=us-east-1
 export DB_PASSWORD='TuPasswordSeguro1'
-# opcionales
-export SUPER_ADMIN_EMAIL=superadmin@kubix.local
-export SUPER_ADMIN_PASSWORD='ChangeMe123!'
-export GOOGLE_MAPS_API_KEY=''
-export STACK_NAME=kubix-test
+# override opcional del profile Kubix (default kx-dev):
+# export KUBIX_AWS_PROFILE=kx-dev
 ```
 
 ## Deploy
 
 ```bash
 chmod +x deploy/scripts/*.sh
+aws login --profile kx-dev   # si la sesión expiró
+export DB_PASSWORD='TuPasswordSeguro1'
+# Reanudar sin rebuild de imagen (ya está en ECR):
+# export SKIP_IMAGE_BUILD=1
 ./deploy/scripts/deploy.sh
 ```
 
 El script:
 
-1. Despliega `deploy/aws/cloudformation.yml` (ECR, S3, CloudFront SPA, RDS, roles App Runner)
+1. Despliega `deploy/aws/cloudformation.yml` (ECR, S3, CloudFront SPA, RDS, ALB/ECS roles)
 2. Build/push de la imagen API a ECR
-3. Crea o actualiza el servicio App Runner (env: connection string, CORS = URL CloudFront, seed/migrate)
-4. Build del web con `VITE_API_BASE_URL` apuntando a App Runner
+3. Crea/actualiza la API: **App Runner** si la cuenta lo permite; si no, **ECS Fargate + ALB**
+4. Build del web con `VITE_API_URL` apuntando a CloudFront (proxy `/api/*` → ALB)
 5. Sync a S3 + invalidación CloudFront
 6. Escribe URLs en `deploy/.out/urls.env`
 
@@ -56,7 +67,10 @@ Elimina App Runner, vacía S3/ECR y borra el stack CloudFormation (RDS, distribu
 
 ## CI/CD (GitHub Actions)
 
-Workflow: `.github/workflows/deploy.yml`
+Workflows:
+
+- `.github/workflows/deploy.yml`: infraestructura + web/API; al finalizar llama al build móvil.
+- `.github/workflows/mobile-builds.yml`: Android/iOS independiente, ejecutable manualmente sin credenciales AWS.
 
 - Disparo: **manual** (`workflow_dispatch`) para no gastar AWS en cada push
 - Opcional: push a `main` si existen secrets AWS
@@ -68,19 +82,30 @@ Workflow: `.github/workflows/deploy.yml`
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Alternativa a OIDC |
 | `DB_PASSWORD` | Master RDS |
 | `SUPER_ADMIN_PASSWORD` | Seed super-admin |
-| `GOOGLE_MAPS_API_KEY` | Opcional |
+| `GOOGLE_MAPS_API_KEY` | Maps en Android/iOS |
 
 Variables de repo opcionales: `AWS_REGION`, `STACK_NAME`.
 
-Tras un deploy exitoso, el job publica el artefacto `deploy-urls` con `urls.env`. Job opcional de APK Flutter como artefacto (no Play Store).
+Tras un deploy manual exitoso, Actions usa la URL CloudFront resultante y publica:
+
+- `deploy-urls`: URLs del entorno.
+- `kubix-android-apk`: APK Android de prueba, conectado a la API desplegada.
+- `kubix-ios-unsigned-app`: aplicación iOS sin firma, útil para validación/firmado posterior.
+
+El APK usa actualmente la debug keystore configurada en Gradle; no es un AAB
+firmado para Play Store. Un IPA instalable requiere certificado y provisioning
+profile de Apple, que deben agregarse como secrets antes de habilitar firma iOS.
+
+Para regenerar solamente las apps: **Actions → Mobile artifacts → Run
+workflow**. El input `api_url` debe ser la URL CloudFront del entorno.
 
 ## Arquitectura
 
 ```
 GitHub Actions / deploy.sh
         │
-        ├─► ECR ──► App Runner (API :8080) ──► RDS Postgres t4g.micro
-        │
+        ├─► ECR ──► ECS Fargate (+ ALB) ──► RDS Postgres t4g.micro
+        │         (o App Runner si la cuenta lo permite)
         └─► web/dist ──► S3 ──► CloudFront (403/404 → index.html)
 ```
 

@@ -22,6 +22,9 @@ jobs:
   deploy:
     name: AWS deploy
     runs-on: ubuntu-latest
+    outputs:
+      api_url: ${{ steps.deploy_outputs.outputs.api_url }}
+      web_url: ${{ steps.deploy_outputs.outputs.web_url }}
     # Skip automatic main deploys unless AWS credentials are configured
     if: >-
       github.event_name == 'workflow_dispatch' ||
@@ -73,6 +76,14 @@ jobs:
       - name: Smoke
         run: ./deploy/scripts/smoke.sh
 
+      - name: Export deploy URLs
+        id: deploy_outputs
+        run: |
+          set -euo pipefail
+          source deploy/.out/urls.env
+          echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
+          echo "web_url=$WEB_URL" >> "$GITHUB_OUTPUT"
+
       - name: Upload deploy URLs
         uses: actions/upload-artifact@v4
         with:
@@ -80,24 +91,11 @@ jobs:
           path: deploy/.out/urls.env
           if-no-files-found: warn
 
-  mobile-apk:
-    name: Optional APK artifact
-    runs-on: ubuntu-latest
-    continue-on-error: true
+  mobile-artifacts:
+    name: Mobile artifacts
+    needs: deploy
     if: github.event_name == 'workflow_dispatch'
-    defaults:
-      run:
-        working-directory: mobile
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - run: flutter pub get
-      - run: flutter build apk --release
-      - uses: actions/upload-artifact@v4
-        with:
-          name: kubix-android-apk
-          path: mobile/build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: warn
+    uses: ./.github/workflows/mobile-builds.yml
+    with:
+      api_url: ${{ needs.deploy.outputs.api_url }}
+    secrets: inherit

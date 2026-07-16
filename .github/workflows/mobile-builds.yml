@@ -1,0 +1,88 @@
+name: Mobile artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: Public API base URL embedded in both apps
+        required: true
+        default: https://d2dgmlbp00gdhh.cloudfront.net
+        type: string
+  workflow_call:
+    inputs:
+      api_url:
+        description: Public API base URL embedded in both apps
+        required: true
+        type: string
+    secrets:
+      GOOGLE_MAPS_API_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    env:
+      MOBILE_API_URL: ${{ inputs.api_url }}
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build release APK
+        run: |
+          set -euo pipefail
+          test -n "$MOBILE_API_URL"
+          flutter build apk --release --no-tree-shake-icons \
+            --dart-define=API_URL="$MOBILE_API_URL" \
+            --dart-define=GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kubix-android-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  ios:
+    name: iOS unsigned app
+    runs-on: macos-15
+    env:
+      MOBILE_API_URL: ${{ inputs.api_url }}
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Configure iOS Maps key
+        run: printf 'MAPS_API_KEY=%s\n' "${GOOGLE_MAPS_API_KEY:-}" > ios/Flutter/MapsSecrets.xcconfig
+      - name: Build without Apple signing
+        run: |
+          set -euo pipefail
+          test -n "$MOBILE_API_URL"
+          flutter build ios --release --no-codesign --no-tree-shake-icons \
+            --dart-define=API_URL="$MOBILE_API_URL" \
+            --dart-define=GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-}"
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/iphoneos/Runner.app \
+            build/ios/iphoneos/Kubix-UTN-2.0-iOS-unsigned.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kubix-ios-unsigned-app
+          path: mobile/build/ios/iphoneos/Kubix-UTN-2.0-iOS-unsigned.zip
+          if-no-files-found: error
+          retention-days: 14
