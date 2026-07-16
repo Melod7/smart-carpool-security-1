@@ -18,9 +18,18 @@ echo "GET /api/v1/health => $API_CODE"
 
 if [[ -n "$WEB_URL" ]]; then
   echo "==> Web $WEB_URL"
-  WCODE="$(curl -s -o /dev/null -w "%{http_code}" "$WEB_URL/")"
-  echo "Web / => $WCODE"
-  [[ "$WCODE" == "200" ]] || { echo "Web smoke failed"; exit 1; }
+  for route in / /admin/usuarios /super/universidades /utn-logo.png; do
+    WCODE="$(curl -s -o /dev/null -w "%{http_code}" "$WEB_URL$route")"
+    echo "Web $route => $WCODE"
+    [[ "$WCODE" == "200" ]] || { echo "Web smoke failed for $route"; exit 1; }
+  done
+
+  API_GUARD_CODE="$(curl -s -o /dev/null -w "%{http_code}" "$WEB_URL/api/admin/users")"
+  echo "API /api/admin/users (sin token) => $API_GUARD_CODE"
+  [[ "$API_GUARD_CODE" == "401" ]] || {
+    echo "API prefix/routing smoke failed"
+    exit 1
+  }
 fi
 
 echo "Smoke OK"

@@ -63,6 +63,10 @@ public sealed class CacheEstadoUsuario(
             {
                 motivo = "User is pending approval.";
             }
+            else if (fila.Estado == EstadoUsuario.Eliminado)
+            {
+                motivo = "User is deleted.";
+            }
             else if (fila.EstadoUniversidad == EstadoUniversidad.Suspendida)
             {
                 motivo = "University is suspended.";

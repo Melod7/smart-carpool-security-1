@@ -202,7 +202,8 @@ public class PruebasViajes
             MarcaModelo = "Mazda 3",
             Placa = "PBA-7777",
             Color = "Rojo",
-            AsientosTotales = 4
+            AsientosTotales = 4,
+            Imagen = "data:image/webp;base64,AQ=="
         });
 
         Assert.Null(resultado.Vehiculo);

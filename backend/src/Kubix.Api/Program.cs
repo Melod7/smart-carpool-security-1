@@ -56,7 +56,7 @@ try
     builder.Services.AgregarServiciosAuth(builder.Configuration);
     builder.Services.AgregarTenancy();
     builder.Services.AgregarSuperAdmin();
-    builder.Services.AgregarRegistroUsuarios();
+    builder.Services.AgregarRegistroUsuarios(builder.Configuration);
     builder.Services.AgregarViajes(builder.Configuration);
     builder.Services.AgregarCalificaciones();
     builder.Services.AgregarEcoTokens();
@@ -159,6 +159,20 @@ try
     }
 
     app.UseCors("WebApp");
+
+    // CloudFront reserva /api/* para el ALB. Internamente los controladores
+    // conservan sus rutas históricas (/auth, /admin, /me, etc.).
+    app.Use(async (context, next) =>
+    {
+        if (context.Request.Path.StartsWithSegments("/api", out var remaining)
+            && context.Request.Path != "/api/v1/health")
+        {
+            context.Request.Path = remaining.HasValue ? remaining : "/";
+        }
+
+        await next();
+    });
+    app.UseRouting();
 
     if (app.Environment.IsDevelopment() ||
         string.Equals(app.Configuration["Swagger:Enabled"], "true", StringComparison.OrdinalIgnoreCase))

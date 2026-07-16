@@ -49,7 +49,14 @@ export function AppShell() {
   return (
     <div className="min-h-screen flex bg-[var(--kubix-bg)]">
       <aside className="w-60 bg-[var(--kubix-navy)] text-white p-6 flex flex-col shrink-0">
-        <div className="text-lg font-bold tracking-tight">Kubix UTN 2.0</div>
+        <div className="flex items-center gap-3">
+          <img
+            src="/utn-logo.png"
+            alt="Universidad Técnica del Norte"
+            className="h-12 w-12 object-contain"
+          />
+          <div className="text-lg font-bold tracking-tight">Kubix UTN 2.0</div>
+        </div>
         <div className="text-xs text-slate-400 mt-1">
           {isCoordinador ? 'Consola Coordinador' : 'Consola Super Admin'}
         </div>

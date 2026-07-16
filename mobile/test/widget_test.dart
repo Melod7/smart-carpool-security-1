@@ -14,6 +14,10 @@ void main() {
       expect(errors['name'], isNotNull);
       expect(errors['email'], isNotNull);
       expect(errors['password'], isNotNull);
+      expect(errors['career'], isNotNull);
+      expect(errors['idNumber'], isNotNull);
+      expect(errors['gender'], isNotNull);
+      expect(errors['profileImage'], isNotNull);
     });
 
     test('acepta datos personales válidos', () {
@@ -21,6 +25,10 @@ void main() {
         name: 'Ana Pasajera',
         email: 'ana@utn.edu.ec',
         password: 'Secreta123!',
+        career: 'Software',
+        idNumber: '1000000001',
+        gender: 'female',
+        profileImage: 'data:image/jpeg;base64,YQ==',
       );
       expect(errors, isEmpty);
     });

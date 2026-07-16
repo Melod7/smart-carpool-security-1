@@ -166,7 +166,7 @@ public class PruebasWaypoints
     public async Task SuggestedWait_proyecta_sobre_segmento_y_tooFar_cuando_lejos()
     {
         await using var db = await CrearDbConSeedAsync();
-        var pasajero = await db.Usuarios.SingleAsync(u => u.Correo == "pax1@utn.local");
+        var pasajero = await db.Usuarios.SingleAsync(u => u.Correo == "pax2@utn.local");
         var viaje = await db.Viajes
             .Include(v => v.PuntosRuta)
             .Include(v => v.CampusDestino)

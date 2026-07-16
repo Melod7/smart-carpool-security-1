@@ -28,7 +28,7 @@ public sealed class ServicioSuperAdmin(
                 u.Slug,
                 u.Estado,
                 CantidadCampuses = u.Sedes.Count,
-                CantidadUsuarios = u.Usuarios.Count
+                CantidadUsuarios = u.Usuarios.Count(x => x.Estado != EstadoUsuario.Eliminado)
             })
             .ToListAsync(ct);
 
@@ -404,7 +404,10 @@ public sealed class ServicioSuperAdmin(
         var finDiaUtc = inicioDiaUtc.AddDays(1);
 
         var universidades = await db.Universidades.CountAsync(ct);
-        var usuarios = await db.Usuarios.CountAsync(u => u.Rol != RolUsuario.SuperAdministrador, ct);
+        var usuarios = await db.Usuarios.CountAsync(
+            u => u.Rol != RolUsuario.SuperAdministrador
+                 && u.Estado != EstadoUsuario.Eliminado,
+            ct);
         var viajesHoy = await db.Viajes.CountAsync(
             v => (v.SaleEn >= inicioDiaUtc && v.SaleEn < finDiaUtc)
                  || (v.CreadoEn >= inicioDiaUtc && v.CreadoEn < finDiaUtc),

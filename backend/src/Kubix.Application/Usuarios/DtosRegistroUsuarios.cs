@@ -22,6 +22,12 @@ public sealed class SolicitudRegistroDto
     [JsonPropertyName("password")]
     public string Contrasena { get; set; } = string.Empty;
 
+    [JsonPropertyName("gender")]
+    public string? Genero { get; set; }
+
+    [JsonPropertyName("profileImage")]
+    public string? ImagenPerfil { get; set; }
+
     [JsonPropertyName("career")]
     public string? Carrera { get; set; }
 
@@ -45,6 +51,9 @@ public sealed class VehiculoRegistroDto
 
     [JsonPropertyName("seatsTotal")]
     public int AsientosTotales { get; set; }
+
+    [JsonPropertyName("image")]
+    public string? Imagen { get; set; }
 }
 
 public sealed class RespuestaRegistroDto
@@ -94,6 +103,12 @@ public sealed class SolicitudRegistroResumenDto
     [JsonPropertyName("role")]
     public string Rol { get; set; } = string.Empty;
 
+    [JsonPropertyName("gender")]
+    public string? Genero { get; set; }
+
+    [JsonPropertyName("profileImage")]
+    public string? ImagenPerfil { get; set; }
+
     [JsonPropertyName("career")]
     public string? Carrera { get; set; }
 
@@ -109,7 +124,7 @@ public sealed class SolicitudRegistroResumenDto
     [JsonPropertyName("vehicleJson")]
     public string? VehiculoJson { get; set; }
 
-    /// <summary>registration | vehicle_change</summary>
+    /// <summary>registration | vehicle_change | role_change_driver | profile_change</summary>
     [JsonPropertyName("kind")]
     public string Tipo { get; set; } = "registration";
 
@@ -133,6 +148,12 @@ public sealed class UsuarioAdminDto
 
     [JsonPropertyName("role")]
     public string Rol { get; set; } = string.Empty;
+
+    [JsonPropertyName("gender")]
+    public string? Genero { get; set; }
+
+    [JsonPropertyName("profileImage")]
+    public string? ImagenPerfil { get; set; }
 
     [JsonPropertyName("status")]
     public string Estado { get; set; } = string.Empty;
@@ -183,6 +204,12 @@ public sealed class PerfilUsuarioDto
     [JsonPropertyName("role")]
     public string Rol { get; set; } = string.Empty;
 
+    [JsonPropertyName("gender")]
+    public string? Genero { get; set; }
+
+    [JsonPropertyName("profileImage")]
+    public string? ImagenPerfil { get; set; }
+
     [JsonPropertyName("career")]
     public string? Carrera { get; set; }
 
@@ -203,6 +230,58 @@ public sealed class SolicitudActualizarPerfil
 
     [JsonPropertyName("career")]
     public string? Carrera { get; set; }
+
+    [JsonPropertyName("gender")]
+    public string? Genero { get; set; }
+
+    [JsonPropertyName("profileImage")]
+    public string? ImagenPerfil { get; set; }
+}
+
+public sealed class RespuestaCambioPerfilDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Estado { get; set; } = "pending";
+
+    [JsonPropertyName("kind")]
+    public string Tipo { get; set; } = "profile_change";
+
+    [JsonPropertyName("message")]
+    public string Mensaje { get; set; } = string.Empty;
+}
+
+public sealed class SolicitudCambioModo
+{
+    [JsonPropertyName("mode")]
+    public string Modo { get; set; } = string.Empty;
+
+    [JsonPropertyName("vehicle")]
+    public VehiculoRegistroDto? Vehiculo { get; set; }
+}
+
+public sealed class RespuestaCambioModoDto
+{
+    [JsonPropertyName("status")]
+    public string Estado { get; set; } = string.Empty;
+
+    [JsonPropertyName("kind")]
+    public string Tipo { get; set; } = string.Empty;
+
+    [JsonPropertyName("role")]
+    public string Rol { get; set; } = string.Empty;
+
+    [JsonPropertyName("requestId")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Guid? SolicitudId { get; set; }
+
+    [JsonPropertyName("requiresReauthentication")]
+    public bool RequiereReautenticacion { get; set; }
+
+    [JsonPropertyName("message")]
+    public string Mensaje { get; set; } = string.Empty;
 }
 
 public sealed class ContactoEmergenciaDto

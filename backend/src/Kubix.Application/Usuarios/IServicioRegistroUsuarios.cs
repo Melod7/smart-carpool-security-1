@@ -18,6 +18,8 @@ public interface IServicioRegistroUsuarios
 
     Task DesbloquearUsuarioAsync(Guid usuarioId, CancellationToken ct = default);
 
+    Task EliminarUsuarioAsync(Guid usuarioId, CancellationToken ct = default);
+
     Task<string> ExportarUsuariosCsvAsync(FiltroUsuariosAdmin filtro, CancellationToken ct = default);
 
     Task<PerfilUsuarioDto> ObtenerPerfilAsync(Guid usuarioId, CancellationToken ct = default);
@@ -25,6 +27,16 @@ public interface IServicioRegistroUsuarios
     Task<PerfilUsuarioDto> ActualizarPerfilAsync(
         Guid usuarioId,
         SolicitudActualizarPerfil solicitud,
+        CancellationToken ct = default);
+
+    Task<RespuestaCambioPerfilDto> SolicitarCambioPerfilAsync(
+        Guid usuarioId,
+        SolicitudActualizarPerfil solicitud,
+        CancellationToken ct = default);
+
+    Task<RespuestaCambioModoDto> CambiarModoAsync(
+        Guid usuarioId,
+        SolicitudCambioModo solicitud,
         CancellationToken ct = default);
 
     Task<IReadOnlyList<ContactoEmergenciaDto>> ListarContactosEmergenciaAsync(

@@ -25,6 +25,14 @@ DB_PASSWORD="${DB_PASSWORD:?Set DB_PASSWORD (min 8 chars)}"
 SUPER_ADMIN_EMAIL="${SUPER_ADMIN_EMAIL:-superadmin@kubix.local}"
 SUPER_ADMIN_PASSWORD="${SUPER_ADMIN_PASSWORD:-ChangeMe123!}"
 GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-}"
+SMTP_USERNAME="${SMTP_USERNAME:-}"
+SMTP_PASSWORD="${SMTP_PASSWORD:-}"
+SMTP_FROM_EMAIL="${SMTP_FROM_EMAIL:-$SMTP_USERNAME}"
+SMTP_FROM_NAME="${SMTP_FROM_NAME:-Kubix UTN 2.0}"
+SMTP_ENABLED="${SMTP_ENABLED:-false}"
+if [[ -n "$SMTP_USERNAME" && -n "$SMTP_PASSWORD" ]]; then
+  SMTP_ENABLED="true"
+fi
 ALLOWED_CIDR="${ALLOWED_CIDR:-0.0.0.0/0}"
 
 echo "==> Profile=$PROFILE_LABEL Region=$REGION Stack=$STACK Tag=$IMAGE_TAG"
@@ -153,6 +161,11 @@ if [[ "$API_RUNTIME" == "apprunner" ]]; then
     --arg email "$SUPER_ADMIN_EMAIL" \
     --arg pass "$SUPER_ADMIN_PASSWORD" \
     --arg maps "$GOOGLE_MAPS_API_KEY" \
+    --arg smtpEnabled "$SMTP_ENABLED" \
+    --arg smtpUser "$SMTP_USERNAME" \
+    --arg smtpPass "$SMTP_PASSWORD" \
+    --arg smtpFrom "$SMTP_FROM_EMAIL" \
+    --arg smtpName "$SMTP_FROM_NAME" \
     '{
       ConnectionStrings__Default: $conn,
       Cors__WebOrigin: $cors,
@@ -162,6 +175,13 @@ if [[ "$API_RUNTIME" == "apprunner" ]]; then
       SUPER_ADMIN_EMAIL: $email,
       SUPER_ADMIN_PASSWORD: $pass,
       GoogleMaps__ApiKey: $maps,
+      Email__Enabled: $smtpEnabled,
+      Email__SmtpHost: "smtp.gmail.com",
+      Email__Port: "587",
+      Email__Username: $smtpUser,
+      Email__Password: $smtpPass,
+      Email__FromEmail: $smtpFrom,
+      Email__FromName: $smtpName,
       ASPNETCORE_ENVIRONMENT: "Production",
       Swagger__Enabled: "false"
     }')
@@ -242,6 +262,11 @@ else
     --arg email "$SUPER_ADMIN_EMAIL" \
     --arg pass "$SUPER_ADMIN_PASSWORD" \
     --arg maps "$GOOGLE_MAPS_API_KEY" \
+    --arg smtpEnabled "$SMTP_ENABLED" \
+    --arg smtpUser "$SMTP_USERNAME" \
+    --arg smtpPass "$SMTP_PASSWORD" \
+    --arg smtpFrom "$SMTP_FROM_EMAIL" \
+    --arg smtpName "$SMTP_FROM_NAME" \
     '{
       family: $family,
       networkMode: "awsvpc",
@@ -264,6 +289,13 @@ else
           { name: "SUPER_ADMIN_EMAIL", value: $email },
           { name: "SUPER_ADMIN_PASSWORD", value: $pass },
           { name: "GoogleMaps__ApiKey", value: $maps },
+          { name: "Email__Enabled", value: $smtpEnabled },
+          { name: "Email__SmtpHost", value: "smtp.gmail.com" },
+          { name: "Email__Port", value: "587" },
+          { name: "Email__Username", value: $smtpUser },
+          { name: "Email__Password", value: $smtpPass },
+          { name: "Email__FromEmail", value: $smtpFrom },
+          { name: "Email__FromName", value: $smtpName },
           { name: "ASPNETCORE_ENVIRONMENT", value: "Production" },
           { name: "Swagger__Enabled", value: "false" },
           { name: "ASPNETCORE_URLS", value: "http://+:8080" }
@@ -312,11 +344,16 @@ else
   API_URL="$CF_URL"
 fi
 
-echo "==> Build + sync web (VITE_API_URL=$API_URL)"
+WEB_API_URL="$API_URL"
+if [[ "$API_RUNTIME" == "ecs" ]]; then
+  WEB_API_URL="$CF_URL/api"
+fi
+
+echo "==> Build + sync web (VITE_API_URL=$WEB_API_URL)"
 (
   cd "$ROOT/web"
   npm ci
-  VITE_API_URL="$API_URL" npm run build
+  VITE_API_URL="$WEB_API_URL" npm run build
 )
 aws s3 sync "$ROOT/web/dist/" "s3://${BUCKET}/" --delete --region "$REGION"
 aws cloudfront create-invalidation --region "$REGION" \

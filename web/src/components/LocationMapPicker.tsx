@@ -1,5 +1,5 @@
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState, type FormEvent } from 'react'
 
 const MAP_STYLE = { width: '100%', height: '100%' } as const
 const DEFAULT_CENTER = { lat: -0.1807, lng: -78.4678 }
@@ -11,6 +11,8 @@ type LocationMapPickerProps = {
   apiKey: string
   value: MapLatLng | null
   onChange: (point: MapLatLng) => void
+  address?: string
+  onAddressChange?: (address: string) => void
   /** Centro inicial si aún no hay valor (p. ej. al crear). */
   defaultCenter?: MapLatLng
   className?: string
@@ -24,9 +26,13 @@ export function LocationMapPicker({
   apiKey,
   value,
   onChange,
+  address = '',
+  onAddressChange,
   defaultCenter = DEFAULT_CENTER,
   className,
 }: LocationMapPickerProps) {
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'kubix-google-maps',
     googleMapsApiKey: apiKey,
@@ -34,14 +40,30 @@ export function LocationMapPicker({
 
   const center = value ?? defaultCenter
 
+  const selectPoint = useCallback(
+    async (point: MapLatLng, resolveAddress: boolean) => {
+      onChange(point)
+      setSearchError(null)
+      if (!resolveAddress || !onAddressChange) return
+      try {
+        const results = await new google.maps.Geocoder().geocode({ location: point })
+        const formatted = results.results[0]?.formatted_address
+        if (formatted) onAddressChange(formatted)
+      } catch {
+        setSearchError('Se marcó el punto, pero no se pudo obtener la dirección.')
+      }
+    },
+    [onAddressChange, onChange],
+  )
+
   const onMapClick = useCallback(
     (e: google.maps.MapMouseEvent) => {
       const lat = e.latLng?.lat()
       const lng = e.latLng?.lng()
       if (lat == null || lng == null) return
-      onChange({ lat, lng })
+      void selectPoint({ lat, lng }, true)
     },
-    [onChange],
+    [selectPoint],
   )
 
   const onMarkerDragEnd = useCallback(
@@ -49,10 +71,43 @@ export function LocationMapPicker({
       const lat = e.latLng?.lat()
       const lng = e.latLng?.lng()
       if (lat == null || lng == null) return
-      onChange({ lat, lng })
+      void selectPoint({ lat, lng }, true)
     },
-    [onChange],
+    [selectPoint],
   )
+
+  async function searchAddress(event: FormEvent) {
+    event.preventDefault()
+    const query = address.trim()
+    if (!query) {
+      setSearchError('Escribe una dirección para buscar.')
+      return
+    }
+
+    setSearching(true)
+    setSearchError(null)
+    try {
+      const results = await new google.maps.Geocoder().geocode({
+        address: query,
+        region: 'EC',
+      })
+      const result = results.results[0]
+      if (!result) {
+        setSearchError('No encontramos esa dirección.')
+        return
+      }
+      const point = {
+        lat: result.geometry.location.lat(),
+        lng: result.geometry.location.lng(),
+      }
+      onChange(point)
+      onAddressChange?.(result.formatted_address)
+    } catch {
+      setSearchError('No se pudo buscar la dirección. Revisa Geocoding API.')
+    } finally {
+      setSearching(false)
+    }
+  }
 
   const markerIcon = useMemo(() => {
     if (!isLoaded || typeof google === 'undefined' || !google.maps) return undefined
@@ -109,6 +164,29 @@ export function LocationMapPicker({
 
   return (
     <div className={['overflow-hidden rounded-lg border border-slate-200', className ?? ''].join(' ')}>
+      {onAddressChange && (
+        <form onSubmit={(event) => void searchAddress(event)} className="flex gap-2 border-b bg-white p-3">
+          <input
+            value={address}
+            onChange={(event) => onAddressChange(event.target.value)}
+            placeholder="Busca una dirección en Ecuador"
+            aria-label="Dirección del campus"
+            className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+          />
+          <button
+            type="submit"
+            disabled={searching}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            {searching ? 'Buscando…' : 'Buscar'}
+          </button>
+        </form>
+      )}
+      {searchError && (
+        <p className="border-b bg-amber-50 px-3 py-2 text-xs text-amber-900" role="alert">
+          {searchError}
+        </p>
+      )}
       <div className="h-64 w-full sm:h-72">
         <GoogleMap
           mapContainerStyle={MAP_STYLE}

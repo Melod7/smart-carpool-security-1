@@ -24,7 +24,9 @@ class AuthUser {
   bool get isDriver => role == 'driver';
   bool get isPassenger => role == 'passenger';
   bool get isAdminRole =>
-      role == 'coordinador' || role == 'super_admin' || role == 'university_admin';
+      role == 'coordinador' ||
+      role == 'super_admin' ||
+      role == 'university_admin';
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     return AuthUser(
@@ -137,18 +139,21 @@ class VehicleRegister {
     required this.plate,
     required this.color,
     required this.seatsTotal,
+    required this.image,
   });
 
   final String makeModel;
   final String plate;
   final String color;
   final int seatsTotal;
+  final String image;
 
   Map<String, dynamic> toJson() => {
         'makeModel': makeModel,
         'plate': plate,
         'color': color,
         'seatsTotal': seatsTotal,
+        'image': image,
       };
 }
 
@@ -160,8 +165,10 @@ class RegisterRequest {
     required this.name,
     required this.email,
     required this.password,
-    this.career,
-    this.idNumber,
+    required this.career,
+    required this.idNumber,
+    required this.gender,
+    required this.profileImage,
     this.vehicle,
   });
 
@@ -171,8 +178,10 @@ class RegisterRequest {
   final String name;
   final String email;
   final String password;
-  final String? career;
-  final String? idNumber;
+  final String career;
+  final String idNumber;
+  final String gender;
+  final String profileImage;
   final VehicleRegister? vehicle;
 
   Map<String, dynamic> toJson() => {
@@ -182,8 +191,10 @@ class RegisterRequest {
         'name': name,
         'email': email,
         'password': password,
-        if (career != null && career!.isNotEmpty) 'career': career,
-        if (idNumber != null && idNumber!.isNotEmpty) 'idNumber': idNumber,
+        'career': career,
+        'idNumber': idNumber,
+        'gender': gender,
+        'profileImage': profileImage,
         if (vehicle != null) 'vehicle': vehicle!.toJson(),
       };
 }
@@ -410,11 +421,9 @@ class MyTrip {
   final double distanceKm;
   final double co2SavedKg;
 
-  bool get isUpcoming =>
-      status == 'scheduled' || status == 'in_progress';
+  bool get isUpcoming => status == 'scheduled' || status == 'in_progress';
 
-  bool get isHistory =>
-      status == 'completed' || status == 'cancelled';
+  bool get isHistory => status == 'completed' || status == 'cancelled';
 
   factory MyTrip.fromJson(Map<String, dynamic> json) {
     return MyTrip(
@@ -440,9 +449,8 @@ class MyTripsResponse {
   factory MyTripsResponse.fromJson(Map<String, dynamic> json) {
     final raw = json['trips'] as List<dynamic>? ?? const [];
     return MyTripsResponse(
-      trips: raw
-          .map((e) => MyTrip.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      trips:
+          raw.map((e) => MyTrip.fromJson(e as Map<String, dynamic>)).toList(),
       stats: TripStats.fromJson(
         json['stats'] as Map<String, dynamic>? ?? const {},
       ),
@@ -551,6 +559,8 @@ class UserProfile {
     required this.role,
     required this.status,
     this.career,
+    this.gender,
+    this.profileImage,
     this.campusId,
     this.universityId,
   });
@@ -560,6 +570,8 @@ class UserProfile {
   final String email;
   final String role;
   final String? career;
+  final String? gender;
+  final String? profileImage;
   final String? campusId;
   final String? universityId;
   final String status;
@@ -571,6 +583,8 @@ class UserProfile {
       email: json['email'] as String,
       role: json['role'] as String,
       career: json['career'] as String?,
+      gender: json['gender'] as String?,
+      profileImage: json['profileImage'] as String?,
       campusId: json['campusId'] as String?,
       universityId: json['universityId'] as String?,
       status: json['status'] as String? ?? 'active',
@@ -622,9 +636,8 @@ class PendingRating {
       ratedUserId: json['ratedUserId'] as String,
       ratedUserName: json['ratedUserName'] as String? ?? '',
       roleToRate: json['roleToRate'] as String? ?? 'driver',
-      expiresAt: json['expiresAt'] == null
-          ? null
-          : _asDateTime(json['expiresAt']),
+      expiresAt:
+          json['expiresAt'] == null ? null : _asDateTime(json['expiresAt']),
     );
   }
 }
@@ -695,9 +708,8 @@ class SosAlert {
       tripId: json['tripId'] as String?,
       firedAt: _asDateTime(json['firedAt']),
       resolvedBy: json['resolvedBy'] as String?,
-      resolvedAt: json['resolvedAt'] == null
-          ? null
-          : _asDateTime(json['resolvedAt']),
+      resolvedAt:
+          json['resolvedAt'] == null ? null : _asDateTime(json['resolvedAt']),
       universityId: json['universityId'] as String? ?? '',
       userId: json['userId'] as String? ?? '',
     );
@@ -758,10 +770,8 @@ class TrackingParticipant {
 
   bool get isDriver => role == 'driver';
   bool get isPickup => source == 'pickup' || source == 'boarding';
-  bool get isBoardingPoint =>
-      role == 'boarding_point' || source == 'boarding';
-  bool get isLivePassenger =>
-      role == 'passenger' || role == 'boarding';
+  bool get isBoardingPoint => role == 'boarding_point' || source == 'boarding';
+  bool get isLivePassenger => role == 'passenger' || role == 'boarding';
 
   factory TrackingParticipant.fromJson(Map<String, dynamic> json) {
     return TrackingParticipant(
@@ -770,9 +780,8 @@ class TrackingParticipant {
       name: json['name'] as String?,
       lat: _asDouble(json['lat']),
       lng: _asDouble(json['lng']),
-      recordedAt: json['recordedAt'] == null
-          ? null
-          : _asDateTime(json['recordedAt']),
+      recordedAt:
+          json['recordedAt'] == null ? null : _asDateTime(json['recordedAt']),
       source: json['source'] as String? ?? 'ping',
     );
   }
@@ -883,6 +892,7 @@ class Vehicle {
     required this.plate,
     required this.color,
     required this.seatsTotal,
+    this.image,
   });
 
   final String id;
@@ -890,6 +900,7 @@ class Vehicle {
   final String plate;
   final String color;
   final int seatsTotal;
+  final String? image;
 
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
@@ -898,6 +909,7 @@ class Vehicle {
       plate: json['plate'] as String? ?? '',
       color: json['color'] as String? ?? '',
       seatsTotal: json['seatsTotal'] as int? ?? 4,
+      image: json['image'] as String?,
     );
   }
 }
@@ -922,6 +934,59 @@ class VehicleChangeRequest {
       status: json['status'] as String? ?? 'pending',
       kind: json['kind'] as String? ?? 'vehicle_change',
       message: json['message'] as String?,
+    );
+  }
+}
+
+class ModeChangeResponse {
+  const ModeChangeResponse({
+    required this.status,
+    required this.kind,
+    required this.role,
+    required this.requiresReauthentication,
+    required this.message,
+    this.requestId,
+  });
+
+  final String status;
+  final String kind;
+  final String role;
+  final bool requiresReauthentication;
+  final String message;
+  final String? requestId;
+
+  factory ModeChangeResponse.fromJson(Map<String, dynamic> json) {
+    return ModeChangeResponse(
+      status: json['status'] as String? ?? '',
+      kind: json['kind'] as String? ?? '',
+      role: json['role'] as String? ?? '',
+      requiresReauthentication:
+          json['requiresReauthentication'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+      requestId: json['requestId'] as String?,
+    );
+  }
+}
+
+class ProfileChangeResponse {
+  const ProfileChangeResponse({
+    required this.id,
+    required this.status,
+    required this.kind,
+    required this.message,
+  });
+
+  final String id;
+  final String status;
+  final String kind;
+  final String message;
+
+  factory ProfileChangeResponse.fromJson(Map<String, dynamic> json) {
+    return ProfileChangeResponse(
+      id: json['id'] as String? ?? '',
+      status: json['status'] as String? ?? 'pending',
+      kind: json['kind'] as String? ?? 'profile_change',
+      message: json['message'] as String? ?? '',
     );
   }
 }

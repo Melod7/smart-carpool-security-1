@@ -16,7 +16,7 @@ on:
         type: string
     secrets:
       GOOGLE_MAPS_API_KEY:
-        required: false
+        required: true
       ANDROID_KEYSTORE_BASE64:
         required: true
       ANDROID_KEYSTORE_PASSWORD:
@@ -61,6 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$MOBILE_API_URL"
+          test -n "$GOOGLE_MAPS_API_KEY"
           flutter build apk --release --no-tree-shake-icons \
             --dart-define=API_URL="$MOBILE_API_URL" \
             --dart-define=GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-}"
@@ -93,6 +94,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$MOBILE_API_URL"
+          test -n "$GOOGLE_MAPS_API_KEY"
           flutter build ios --simulator \
             --dart-define=API_URL="$MOBILE_API_URL" \
             --dart-define=GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY:-}"

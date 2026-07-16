@@ -83,37 +83,37 @@ public sealed class SembradorBaseDatos(
             ConfiguracionPorDefecto(pue.Id, "puce.edu.ec")
         };
 
-        var coordUtn = NuevoUsuario(utn.Id, null, RolUsuario.Coordinador, "Ana Coordinadora UTN", "coordinador@utn.local", hash, debeCambiar: true);
-        var coordPuce = NuevoUsuario(pue.Id, null, RolUsuario.Coordinador, "Luis Coordinador PUCE", "coordinador@puce.local", hash, debeCambiar: true);
+        var coordUtn = NuevoUsuario(utn.Id, null, RolUsuario.Coordinador, "Ana Coordinadora UTN", "coordinador@utn.local", hash, debeCambiar: true, genero: GeneroUsuario.Femenino);
+        var coordPuce = NuevoUsuario(pue.Id, null, RolUsuario.Coordinador, "Luis Coordinador PUCE", "coordinador@puce.local", hash, debeCambiar: true, genero: GeneroUsuario.Masculino);
         var superAdmin = await db.Usuarios.SingleAsync(u => u.Rol == RolUsuario.SuperAdministrador, ct);
 
         var conductoresUtn = new[]
         {
-            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Conductor, "Carlos Conductor", "driver1@utn.local", hash, "Software", "1001", calificacion: 4.6m, eco: 24, vitalicio: 24),
-            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Conductor, "María Conductora", "driver2@utn.local", hash, "Industrial", "1002", calificacion: 4.2m, eco: 16, vitalicio: 16),
-            NuevoUsuario(utn.Id, utnOtavalo.Id, RolUsuario.Conductor, "Pedro Conductor", "driver3@utn.local", hash, "Civil", "1003", calificacion: 3.9m, eco: 8, vitalicio: 8),
+            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Conductor, "Carlos Conductor", "driver1@utn.local", hash, "Software", "1001", calificacion: 4.6m, eco: 24, vitalicio: 24, genero: GeneroUsuario.Masculino),
+            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Conductor, "María Conductora", "driver2@utn.local", hash, "Industrial", "1002", calificacion: 4.2m, eco: 16, vitalicio: 16, genero: GeneroUsuario.Femenino),
+            NuevoUsuario(utn.Id, utnOtavalo.Id, RolUsuario.Conductor, "Pedro Conductor", "driver3@utn.local", hash, "Civil", "1003", calificacion: 3.9m, eco: 8, vitalicio: 8, genero: GeneroUsuario.Masculino),
         };
 
         var pasajerosUtn = new[]
         {
-            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Pasajero, "Sofía Pasajera", "pax1@utn.local", hash, "Software", "2001", calificacion: 4.8m, eco: 14, vitalicio: 14),
-            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Pasajero, "Diego Pasajero", "pax2@utn.local", hash, "Software", "2002", calificacion: 4.1m, eco: 8, vitalicio: 8),
-            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Pasajero, "Elena Pasajera", "pax3@utn.local", hash, "Industrial", "2003", calificacion: 4.5m, eco: 4, vitalicio: 4),
-            NuevoUsuario(utn.Id, utnOtavalo.Id, RolUsuario.Pasajero, "Andrés Pasajero", "pax4@utn.local", hash, "Civil", "2004"),
-            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Pasajero, "Lucía Pendiente", "pending@utn.local", hash, "Software", "2005", estado: EstadoUsuario.Pendiente),
+            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Pasajero, "Sofía Pasajera", "pax1@utn.local", hash, "Software", "2001", calificacion: 4.8m, eco: 14, vitalicio: 14, genero: GeneroUsuario.Femenino),
+            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Pasajero, "Diego Pasajero", "pax2@utn.local", hash, "Software", "2002", calificacion: 4.1m, eco: 8, vitalicio: 8, genero: GeneroUsuario.Masculino),
+            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Pasajero, "Elena Pasajera", "pax3@utn.local", hash, "Industrial", "2003", calificacion: 4.5m, eco: 4, vitalicio: 4, genero: GeneroUsuario.Femenino),
+            NuevoUsuario(utn.Id, utnOtavalo.Id, RolUsuario.Pasajero, "Andrés Pasajero", "pax4@utn.local", hash, "Civil", "2004", genero: GeneroUsuario.Masculino),
+            NuevoUsuario(utn.Id, utnIbarra.Id, RolUsuario.Pasajero, "Lucía Pendiente", "pending@utn.local", hash, "Software", "2005", estado: EstadoUsuario.Pendiente, genero: GeneroUsuario.Femenino),
         };
 
         var conductoresPuce = new[]
         {
-            NuevoUsuario(pue.Id, pueCentro.Id, RolUsuario.Conductor, "Jorge Conductor", "driver1@puce.local", hash, "Derecho", "3001", calificacion: 4.4m, eco: 8, vitalicio: 8),
-            NuevoUsuario(pue.Id, pueCumbaya.Id, RolUsuario.Conductor, "Patricia Conductora", "driver2@puce.local", hash, "Medicina", "3002"),
+            NuevoUsuario(pue.Id, pueCentro.Id, RolUsuario.Conductor, "Jorge Conductor", "driver1@puce.local", hash, "Derecho", "3001", calificacion: 4.4m, eco: 8, vitalicio: 8, genero: GeneroUsuario.Masculino),
+            NuevoUsuario(pue.Id, pueCumbaya.Id, RolUsuario.Conductor, "Patricia Conductora", "driver2@puce.local", hash, "Medicina", "3002", genero: GeneroUsuario.Femenino),
         };
 
         var pasajerosPuce = new[]
         {
-            NuevoUsuario(pue.Id, pueCentro.Id, RolUsuario.Pasajero, "Camila Pasajera", "pax1@puce.local", hash, "Derecho", "4001", eco: 4, vitalicio: 4),
-            NuevoUsuario(pue.Id, pueCumbaya.Id, RolUsuario.Pasajero, "Mateo Pasajero", "pax2@puce.local", hash, "Medicina", "4002"),
-            NuevoUsuario(pue.Id, pueCentro.Id, RolUsuario.Pasajero, "Valentina Pasajera", "pax3@puce.local", hash, "Economía", "4003"),
+            NuevoUsuario(pue.Id, pueCentro.Id, RolUsuario.Pasajero, "Camila Pasajera", "pax1@puce.local", hash, "Derecho", "4001", eco: 4, vitalicio: 4, genero: GeneroUsuario.Femenino),
+            NuevoUsuario(pue.Id, pueCumbaya.Id, RolUsuario.Pasajero, "Mateo Pasajero", "pax2@puce.local", hash, "Medicina", "4002", genero: GeneroUsuario.Masculino),
+            NuevoUsuario(pue.Id, pueCentro.Id, RolUsuario.Pasajero, "Valentina Pasajera", "pax3@puce.local", hash, "Economía", "4003", genero: GeneroUsuario.Femenino),
         };
 
         var vehiculos = new[]
@@ -277,6 +277,7 @@ public sealed class SembradorBaseDatos(
             Correo = "nuevo.driver@utn.edu.ec",
             HashContrasena = hash,
             Rol = RolUsuario.Conductor,
+            Genero = GeneroUsuario.Masculino,
             Carrera = "Software",
             NumeroIdentificacion = "9999",
             VehiculoJson = """{"makeModel":"Chevrolet Spark","plate":"PBA-9999","color":"Verde","seatsTotal":3}""",
@@ -372,7 +373,8 @@ public sealed class SembradorBaseDatos(
         int eco = 0,
         int vitalicio = 0,
         bool debeCambiar = false,
-        EstadoUsuario estado = EstadoUsuario.Activo) => new()
+        EstadoUsuario estado = EstadoUsuario.Activo,
+        GeneroUsuario? genero = null) => new()
     {
         UniversidadId = universidadId,
         CampusId = campusId,
@@ -381,6 +383,7 @@ public sealed class SembradorBaseDatos(
         Nombre = nombre,
         Correo = email,
         HashContrasena = hash,
+        Genero = genero,
         Carrera = carrera,
         NumeroIdentificacion = numeroIdentificacion,
         PromedioCalificacion = calificacion,

@@ -100,7 +100,8 @@ void main() {
   });
 
   group('SosOverlay', () {
-    testWidgets('confirma y muestra copy de seguridad del campus', (tester) async {
+    testWidgets('confirma y muestra copy de seguridad del campus',
+        (tester) async {
       final api = _MockSosApi();
       when(
         () => api.createSos(
@@ -197,6 +198,57 @@ void main() {
           tripId: any(named: 'tripId'),
         ),
       );
+    });
+
+    testWidgets('sale si el coordinador ya resolvió la alerta', (tester) async {
+      final api = _MockSosApi();
+      var closed = false;
+      when(
+        () => api.createSos(
+          lat: any(named: 'lat'),
+          lng: any(named: 'lng'),
+          tripId: any(named: 'tripId'),
+        ),
+      ).thenAnswer(
+        (_) async => SosAlert(
+          id: 'sos-2',
+          status: 'active',
+          lat: -0.18,
+          lng: -78.48,
+          firedAt: DateTime.utc(2026, 7, 16, 18),
+          universityId: 'u1',
+          userId: 'p1',
+        ),
+      );
+      when(() => api.closeSos('sos-2')).thenThrow(
+        ApiException(
+          'SOS alert is already resolved.',
+          statusCode: 409,
+          code: 'sos_already_resolved',
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sosApiProvider.overrideWithValue(api),
+            sosLocationSourceProvider.overrideWithValue(_FakeLocationOk()),
+          ],
+          child: MaterialApp(
+            home: SosOverlay(onClosed: () => closed = true),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Enviar alerta'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Estoy a salvo · Cerrar alerta'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(closed, isTrue);
+      expect(find.textContaining('already resolved'), findsNothing);
     });
   });
 }

@@ -79,6 +79,58 @@ public sealed class ControladorYo(
         }
     }
 
+    [HttpPost("profile-change")]
+    [Authorize(Policy = NombresPoliticas.SoloPasajero)]
+    [ProducesResponseType(typeof(RespuestaCambioPerfilDto), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> SolicitarCambioPerfil(
+        [FromBody] SolicitudActualizarPerfil solicitud,
+        CancellationToken ct)
+    {
+        try
+        {
+            var respuesta = await registro.SolicitarCambioPerfilAsync(
+                ObtenerUsuarioId(),
+                solicitud,
+                ct);
+            return Accepted(respuesta);
+        }
+        catch (ExcepcionRegistroUsuarios ex)
+        {
+            return ProblemRegistro(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
+    [HttpPost("mode")]
+    [Authorize(Policy = NombresPoliticas.UsuarioMobile)]
+    [ProducesResponseType(typeof(RespuestaCambioModoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RespuestaCambioModoDto), StatusCodes.Status202Accepted)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CambiarModo(
+        [FromBody] SolicitudCambioModo solicitud,
+        CancellationToken ct)
+    {
+        try
+        {
+            var respuesta = await registro.CambiarModoAsync(ObtenerUsuarioId(), solicitud, ct);
+            return respuesta.Estado == "pending" ? Accepted(respuesta) : Ok(respuesta);
+        }
+        catch (ExcepcionRegistroUsuarios ex)
+        {
+            return ProblemRegistro(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
     [HttpGet("emergency-contacts")]
     [ProducesResponseType(typeof(IReadOnlyList<ContactoEmergenciaDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]

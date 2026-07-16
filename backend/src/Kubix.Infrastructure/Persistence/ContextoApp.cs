@@ -267,7 +267,10 @@ public class ContextoApp : DbContext
     private static void ConfigurarUsuario(ModelBuilder modelBuilder)
     {
         var e = modelBuilder.Entity<Usuario>();
-        e.ToTable("users");
+        e.ToTable("users", tabla =>
+            tabla.HasCheckConstraint(
+                "ck_users_gender",
+                "gender IS NULL OR gender IN ('male', 'female')"));
         e.HasKey(x => x.Id);
         ConfigurarCamposAuditables(e);
         e.Property(x => x.UniversidadId).HasColumnName("university_id");
@@ -277,6 +280,8 @@ public class ContextoApp : DbContext
         e.Property(x => x.Nombre).HasColumnName("name").HasMaxLength(200).IsRequired();
         e.Property(x => x.Correo).HasColumnName("email").HasMaxLength(320).IsRequired();
         e.Property(x => x.HashContrasena).HasColumnName("password_hash").HasMaxLength(200).IsRequired();
+        e.Property(x => x.Genero).HasColumnName("gender").HasConversion(ConversorEnum<GeneroUsuario>()).HasMaxLength(16);
+        e.Property(x => x.ImagenPerfil).HasColumnName("profile_image").HasColumnType("text");
         e.Property(x => x.Carrera).HasColumnName("career").HasMaxLength(200);
         e.Property(x => x.NumeroIdentificacion).HasColumnName("id_number").HasMaxLength(50);
         e.Property(x => x.PromedioCalificacion).HasColumnName("rating_avg").HasPrecision(3, 2);
@@ -306,7 +311,10 @@ public class ContextoApp : DbContext
     private static void ConfigurarSolicitudRegistro(ModelBuilder modelBuilder)
     {
         var e = modelBuilder.Entity<SolicitudRegistro>();
-        e.ToTable("registration_requests");
+        e.ToTable("registration_requests", tabla =>
+            tabla.HasCheckConstraint(
+                "ck_registration_requests_gender",
+                "gender IS NULL OR gender IN ('male', 'female')"));
         e.HasKey(x => x.Id);
         ConfigurarCamposAuditables(e);
         e.Property(x => x.UniversidadId).HasColumnName("university_id");
@@ -315,6 +323,8 @@ public class ContextoApp : DbContext
         e.Property(x => x.Correo).HasColumnName("email").HasMaxLength(320).IsRequired();
         e.Property(x => x.HashContrasena).HasColumnName("password_hash").HasMaxLength(200).IsRequired();
         e.Property(x => x.Rol).HasColumnName("role").HasConversion(ConversorEnum<RolUsuario>()).HasMaxLength(32);
+        e.Property(x => x.Genero).HasColumnName("gender").HasConversion(ConversorEnum<GeneroUsuario>()).HasMaxLength(16);
+        e.Property(x => x.ImagenPerfil).HasColumnName("profile_image").HasColumnType("text");
         e.Property(x => x.Carrera).HasColumnName("career").HasMaxLength(200);
         e.Property(x => x.NumeroIdentificacion).HasColumnName("id_number").HasMaxLength(50);
         e.Property(x => x.VehiculoJson).HasColumnName("vehicle_json");
@@ -337,6 +347,7 @@ public class ContextoApp : DbContext
         e.Property(x => x.Placa).HasColumnName("plate").HasMaxLength(32).IsRequired();
         e.Property(x => x.Color).HasColumnName("color").HasMaxLength(64).IsRequired();
         e.Property(x => x.AsientosTotales).HasColumnName("seats_total");
+        e.Property(x => x.Imagen).HasColumnName("image").HasColumnType("text");
         e.HasIndex(x => x.UsuarioId).IsUnique();
         e.HasOne(x => x.Universidad).WithMany().HasForeignKey(x => x.UniversidadId);
         e.HasOne(x => x.Usuario).WithMany(x => x.Vehiculos).HasForeignKey(x => x.UsuarioId);

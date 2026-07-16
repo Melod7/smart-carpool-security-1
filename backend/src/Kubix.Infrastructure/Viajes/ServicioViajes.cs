@@ -1,5 +1,6 @@
 using Kubix.Application.EcoTokens;
 using Kubix.Application.Tenancy;
+using Kubix.Application.Usuarios;
 using Kubix.Application.Viajes;
 using Kubix.Domain;
 using Kubix.Domain.Entities;
@@ -74,6 +75,21 @@ public sealed class ServicioViajes(
                 "invalid_seats");
         }
 
+        if (string.IsNullOrWhiteSpace(solicitud.Imagen))
+        {
+            throw ExcepcionViajes.Validacion(
+                "image is required.",
+                "vehicle_image_required");
+        }
+
+        var imagen = solicitud.Imagen.Trim();
+        if (!ValidadorImagenDataUrl.EsValida(imagen))
+        {
+            throw ExcepcionViajes.Validacion(
+                "image must be a JPEG, PNG or WebP data URL of at most 2 MiB.",
+                "invalid_vehicle_image");
+        }
+
         var vehiculo = await db.Vehiculos.FirstOrDefaultAsync(v => v.UsuarioId == usuarioId, ct);
         var ahora = DateTimeOffset.UtcNow;
 
@@ -88,6 +104,7 @@ public sealed class ServicioViajes(
                 Placa = placa,
                 Color = color,
                 AsientosTotales = solicitud.AsientosTotales,
+                Imagen = imagen,
                 CreadoEn = ahora,
                 ActualizadoEn = ahora
             };
@@ -113,7 +130,8 @@ public sealed class ServicioViajes(
             makeModel = marca,
             plate = placa,
             color,
-            seatsTotal = solicitud.AsientosTotales
+            seatsTotal = solicitud.AsientosTotales,
+            image = imagen
         });
 
         var solicitudCambio = new SolicitudRegistro
@@ -124,6 +142,8 @@ public sealed class ServicioViajes(
             Correo = usuario.Correo,
             HashContrasena = MarcadoresSolicitud.CambioVehiculo,
             Rol = RolUsuario.Conductor,
+            Genero = usuario.Genero,
+            ImagenPerfil = usuario.ImagenPerfil,
             Carrera = usuario.Carrera,
             NumeroIdentificacion = usuario.NumeroIdentificacion,
             VehiculoJson = vehiculoJson,
@@ -755,6 +775,7 @@ public sealed class ServicioViajes(
         Placa = v.Placa,
         Color = v.Color,
         AsientosTotales = v.AsientosTotales,
+        Imagen = v.Imagen,
         UniversidadId = v.UniversidadId
     };
 

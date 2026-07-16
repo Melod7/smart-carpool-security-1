@@ -23,6 +23,7 @@ type ConfirmAction =
   | { kind: 'deny'; request: RegistrationRequest }
   | { kind: 'block'; user: UsuarioAdmin }
   | { kind: 'unblock'; user: UsuarioAdmin }
+  | { kind: 'delete'; user: UsuarioAdmin }
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat('es-EC', {
@@ -189,6 +190,14 @@ export function UsuariosPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deleteUser(id),
+    onSuccess: async () => {
+      await invalidateUsers()
+      setConfirm(null)
+    },
+  })
+
   const exportMutation = useMutation({
     mutationFn: () =>
       adminApi.exportUsers({
@@ -228,7 +237,8 @@ export function UsuariosPage() {
     acceptMutation.isPending ||
       denyMutation.isPending ||
       blockMutation.isPending ||
-      unblockMutation.isPending,
+      unblockMutation.isPending ||
+      deleteMutation.isPending,
   )
 
   return (
@@ -262,7 +272,7 @@ export function UsuariosPage() {
         <div className="mb-3">
           <h2 className="text-lg font-semibold text-slate-900">Solicitudes pendientes</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Altas de usuario y cambios de vehículo. Revisa la información antes de aceptar o denegar.
+            Altas y cambios de perfil, rol o vehículo. Revisa la información antes de aceptar o denegar.
           </p>
         </div>
 
@@ -300,7 +310,13 @@ export function UsuariosPage() {
                             : 'rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700'
                         }
                       >
-                        {req.kind === 'vehicle_change' ? 'Cambio vehículo' : 'Registro'}
+                        {req.kind === 'vehicle_change'
+                          ? 'Cambio vehículo'
+                          : req.kind === 'role_change_driver'
+                            ? 'Cambio a conductor'
+                            : req.kind === 'profile_change'
+                              ? 'Cambio de perfil'
+                            : 'Registro'}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -452,15 +468,28 @@ export function UsuariosPage() {
                         {Number(u.ratingAvg).toFixed(1)}
                       </td>
                       <td className="px-4 py-3">
-                        {u.status.toLowerCase() === 'blocked' ? (
-                          <PrimaryButton onClick={() => setConfirm({ kind: 'unblock', user: u })}>
-                            Desbloquear
-                          </PrimaryButton>
-                        ) : u.status.toLowerCase() === 'active' ? (
-                          <DangerButton onClick={() => setConfirm({ kind: 'block', user: u })}>
-                            Bloquear
-                          </DangerButton>
-                        ) : null}
+                        <div className="flex flex-wrap gap-2">
+                          {u.status.toLowerCase() === 'blocked' ? (
+                            <PrimaryButton
+                              onClick={() => setConfirm({ kind: 'unblock', user: u })}
+                            >
+                              Desbloquear
+                            </PrimaryButton>
+                          ) : u.status.toLowerCase() === 'active' ? (
+                            <SecondaryButton
+                              onClick={() => setConfirm({ kind: 'block', user: u })}
+                            >
+                              Bloquear
+                            </SecondaryButton>
+                          ) : null}
+                          {['driver', 'passenger'].includes(u.role.toLowerCase()) && (
+                            <DangerButton
+                              onClick={() => setConfirm({ kind: 'delete', user: u })}
+                            >
+                              Eliminar
+                            </DangerButton>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -515,6 +544,8 @@ export function UsuariosPage() {
                   ? apiErrorMessage(blockMutation.error, 'No se pudo bloquear el usuario.')
                   : confirm.kind === 'unblock' && unblockMutation.isError
                     ? apiErrorMessage(unblockMutation.error, 'No se pudo desbloquear el usuario.')
+                    : confirm.kind === 'delete' && deleteMutation.isError
+                      ? apiErrorMessage(deleteMutation.error, 'No se pudo eliminar el usuario.')
                     : null
           }
           onClose={() => setConfirm(null)}
@@ -523,6 +554,7 @@ export function UsuariosPage() {
             if (confirm.kind === 'deny') denyMutation.mutate(confirm.request.id)
             if (confirm.kind === 'block') blockMutation.mutate(confirm.user.id)
             if (confirm.kind === 'unblock') unblockMutation.mutate(confirm.user.id)
+            if (confirm.kind === 'delete') deleteMutation.mutate(confirm.user.id)
           }}
         />
       )}
@@ -561,7 +593,11 @@ function RequestDetailDialog({
       title={
         request.kind === 'vehicle_change'
           ? 'Detalle · cambio de vehículo'
-          : 'Detalle de solicitud'
+          : request.kind === 'role_change_driver'
+            ? 'Detalle · cambio a conductor'
+            : request.kind === 'profile_change'
+              ? 'Detalle · cambio de perfil'
+              : 'Detalle de solicitud'
       }
       onClose={onClose}
       footer={
@@ -579,11 +615,26 @@ function RequestDetailDialog({
         <DetailItem label="Campus" value={campusName} />
         <DetailItem label="Carrera" value={request.career ?? '—'} />
         <DetailItem label="Cédula / ID" value={request.idNumber ?? '—'} />
+        <DetailItem
+          label="Género"
+          value={request.gender === 'female' ? 'Mujer' : request.gender === 'male' ? 'Hombre' : '—'}
+        />
         <DetailItem label="Estado" value={userStatusLabel(request.status)} />
         <DetailItem label="Solicitado" value={formatDateTime(request.createdAt)} />
       </dl>
 
-      {request.role.toLowerCase() === 'driver' && (
+      {request.profileImage && (
+        <div className="mt-4">
+          <p className="mb-2 text-sm font-medium text-slate-800">Imagen de perfil</p>
+          <img
+            src={request.profileImage}
+            alt={`Perfil de ${request.name}`}
+            className="h-40 w-40 rounded-lg border object-cover"
+          />
+        </div>
+      )}
+
+      {(request.role.toLowerCase() === 'driver' || request.kind === 'role_change_driver') && (
         <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
           <p className="text-sm font-medium text-slate-800">Vehículo</p>
           {vehicle ? (
@@ -600,6 +651,13 @@ function RequestDetailDialog({
             <p className="mt-1 text-sm text-slate-600">
               {request.vehicleJson ?? 'Sin información de vehículo.'}
             </p>
+          )}
+          {vehicle?.image && (
+            <img
+              src={vehicle.image}
+              alt={`Vehículo de ${request.name}`}
+              className="mt-3 h-44 w-full rounded-lg border object-cover"
+            />
           )}
         </div>
       )}
@@ -629,7 +687,7 @@ function ConfirmActionDialog({
   onClose: () => void
   onConfirm: () => void
 }) {
-  const isDanger = action.kind === 'deny' || action.kind === 'block'
+  const isDanger = action.kind === 'deny' || action.kind === 'block' || action.kind === 'delete'
   const title =
     action.kind === 'accept'
       ? 'Aceptar solicitud'
@@ -637,19 +695,27 @@ function ConfirmActionDialog({
         ? 'Denegar solicitud'
         : action.kind === 'block'
           ? 'Bloquear usuario'
-          : 'Desbloquear usuario'
+          : action.kind === 'unblock'
+            ? 'Desbloquear usuario'
+            : 'Eliminar usuario'
 
   const name =
     action.kind === 'accept' || action.kind === 'deny' ? action.request.name : action.user.name
 
   const message =
     action.kind === 'accept'
-      ? `¿Aceptar el registro de ${name}? Podrá iniciar sesión de inmediato.`
+      ? action.request.kind === 'profile_change'
+        ? `¿Aceptar los cambios de perfil solicitados por ${name}?`
+        : action.request.kind === 'registration' || !action.request.kind
+          ? `¿Aceptar el registro de ${name}? Podrá iniciar sesión de inmediato.`
+          : `¿Aceptar la solicitud de ${name}?`
       : action.kind === 'deny'
-        ? `¿Denegar el registro de ${name}? La solicitud quedará rechazada.`
+        ? `¿Denegar la solicitud de ${name}? No se aplicarán cambios.`
         : action.kind === 'block'
           ? `¿Bloquear a ${name}? Perderá el acceso de inmediato.`
-          : `¿Desbloquear a ${name}? Recuperará el acceso a la plataforma.`
+          : action.kind === 'unblock'
+            ? `¿Desbloquear a ${name}? Recuperará el acceso a la plataforma.`
+            : `¿Eliminar a ${name}? Se cancelarán sus actividades futuras y no podrá volver a iniciar sesión.`
 
   const confirmLabel =
     action.kind === 'accept'
@@ -658,7 +724,9 @@ function ConfirmActionDialog({
         ? 'Confirmar denegación'
         : action.kind === 'block'
           ? 'Confirmar bloqueo'
-          : 'Confirmar desbloqueo'
+          : action.kind === 'unblock'
+            ? 'Confirmar desbloqueo'
+            : 'Eliminar usuario'
 
   return (
     <Dialog

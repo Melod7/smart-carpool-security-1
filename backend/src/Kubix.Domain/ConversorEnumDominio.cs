@@ -22,11 +22,18 @@ public static class ConversorEnumDominio
         [RolUsuario.Pasajero] = "passenger"
     };
 
+    private static readonly Dictionary<GeneroUsuario, string> GeneroUsuarioADb = new()
+    {
+        [GeneroUsuario.Masculino] = "male",
+        [GeneroUsuario.Femenino] = "female"
+    };
+
     private static readonly Dictionary<EstadoUsuario, string> EstadoUsuarioADb = new()
     {
         [EstadoUsuario.Activo] = "active",
         [EstadoUsuario.Bloqueado] = "blocked",
-        [EstadoUsuario.Pendiente] = "pending"
+        [EstadoUsuario.Pendiente] = "pending",
+        [EstadoUsuario.Eliminado] = "deleted"
     };
 
     private static readonly Dictionary<EstadoSolicitudRegistro, string> EstadoSolicitudRegistroADb = new()
@@ -96,6 +103,7 @@ public static class ConversorEnumDominio
     {
         if (valor is EstadoUniversidad eu) return Buscar(EstadoUniversidadADb, eu);
         if (valor is RolUsuario ru) return Buscar(RolUsuarioADb, ru);
+        if (valor is GeneroUsuario gu) return Buscar(GeneroUsuarioADb, gu);
         if (valor is EstadoUsuario esu) return Buscar(EstadoUsuarioADb, esu);
         if (valor is EstadoSolicitudRegistro esr) return Buscar(EstadoSolicitudRegistroADb, esr);
         if (valor is EstadoViaje ev) return Buscar(EstadoViajeADb, ev);
@@ -115,6 +123,8 @@ public static class ConversorEnumDominio
             return (TEnum)(object)BuscarInverso(EstadoUniversidadADb, valor);
         if (typeof(TEnum) == typeof(RolUsuario))
             return (TEnum)(object)BuscarInverso(RolUsuarioADb, valor);
+        if (typeof(TEnum) == typeof(GeneroUsuario))
+            return (TEnum)(object)BuscarInverso(GeneroUsuarioADb, valor);
         if (typeof(TEnum) == typeof(EstadoUsuario))
             return (TEnum)(object)BuscarInverso(EstadoUsuarioADb, valor);
         if (typeof(TEnum) == typeof(EstadoSolicitudRegistro))

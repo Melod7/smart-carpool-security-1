@@ -95,6 +95,10 @@ export const adminApi = {
     await api.post(`/admin/users/${id}/unblock`)
   },
 
+  deleteUser: async (id: string) => {
+    await api.delete(`/admin/users/${id}`)
+  },
+
   listPublicUniversities: async () => {
     const { data } = await api.get<PublicUniversity[]>('/public/universities')
     return data

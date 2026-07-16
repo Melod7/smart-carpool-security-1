@@ -203,6 +203,11 @@ public sealed class ServicioAutenticacion(
             throw ExcepcionAutenticacion.Prohibido("User is pending approval.", "user_pending");
         }
 
+        if (usuario.Estado == EstadoUsuario.Eliminado)
+        {
+            throw ExcepcionAutenticacion.Prohibido("User is deleted.", "user_deleted");
+        }
+
         if (usuario.Universidad is { Estado: EstadoUniversidad.Suspendida })
         {
             throw ExcepcionAutenticacion.Prohibido("University is suspended.", "university_suspended");
@@ -215,6 +220,10 @@ public sealed class ServicioAutenticacion(
         Correo = usuario.Correo,
         Nombre = usuario.Nombre,
         Rol = ConversorEnumDominio.ACadenaDb(usuario.Rol),
+        Genero = usuario.Genero.HasValue
+            ? ConversorEnumDominio.ACadenaDb(usuario.Genero.Value)
+            : null,
+        ImagenPerfil = usuario.ImagenPerfil,
         UniversidadId = usuario.UniversidadId,
         CampusId = usuario.CampusId,
         DebeCambiarContrasena = incluirExtras ? usuario.DebeCambiarContrasena : null,

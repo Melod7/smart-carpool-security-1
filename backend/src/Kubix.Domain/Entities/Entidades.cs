@@ -60,6 +60,8 @@ public class Usuario : EntidadAuditable
     public string Nombre { get; set; } = string.Empty;
     public string Correo { get; set; } = string.Empty;
     public string HashContrasena { get; set; } = string.Empty;
+    public GeneroUsuario? Genero { get; set; }
+    public string? ImagenPerfil { get; set; }
     public string? Carrera { get; set; }
     public string? NumeroIdentificacion { get; set; }
     public decimal PromedioCalificacion { get; set; }
@@ -94,6 +96,8 @@ public class SolicitudRegistro : EntidadAuditable
     public string Correo { get; set; } = string.Empty;
     public string HashContrasena { get; set; } = string.Empty;
     public RolUsuario Rol { get; set; }
+    public GeneroUsuario? Genero { get; set; }
+    public string? ImagenPerfil { get; set; }
     public string? Carrera { get; set; }
     public string? NumeroIdentificacion { get; set; }
     public string? VehiculoJson { get; set; }
@@ -113,6 +117,7 @@ public class Vehiculo : EntidadAuditable
     public string Placa { get; set; } = string.Empty;
     public string Color { get; set; } = string.Empty;
     public int AsientosTotales { get; set; }
+    public string? Imagen { get; set; }
 
     public Universidad Universidad { get; set; } = null!;
     public Usuario Usuario { get; set; } = null!;

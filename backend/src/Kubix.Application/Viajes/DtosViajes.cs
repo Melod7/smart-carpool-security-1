@@ -19,6 +19,9 @@ public sealed class VehiculoDto
     [JsonPropertyName("seatsTotal")]
     public int AsientosTotales { get; set; }
 
+    [JsonPropertyName("image")]
+    public string? Imagen { get; set; }
+
     [JsonPropertyName("universityId")]
     public Guid UniversidadId { get; set; }
 }
@@ -36,6 +39,9 @@ public sealed class SolicitudUpsertVehiculo
 
     [JsonPropertyName("seatsTotal")]
     public int AsientosTotales { get; set; }
+
+    [JsonPropertyName("image")]
+    public string? Imagen { get; set; }
 }
 
 /// <summary>Respuesta cuando el cambio de vehículo queda pendiente de aprobación.</summary>

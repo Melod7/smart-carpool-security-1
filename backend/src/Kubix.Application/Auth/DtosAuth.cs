@@ -64,6 +64,12 @@ public sealed class ResumenUsuarioDto
     [JsonPropertyName("role")]
     public string Rol { get; set; } = string.Empty;
 
+    [JsonPropertyName("gender")]
+    public string? Genero { get; set; }
+
+    [JsonPropertyName("profileImage")]
+    public string? ImagenPerfil { get; set; }
+
     [JsonPropertyName("universityId")]
     public Guid? UniversidadId { get; set; }
 

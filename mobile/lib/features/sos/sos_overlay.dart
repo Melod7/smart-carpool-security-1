@@ -43,7 +43,8 @@ class SosOverlayState extends ConsumerState<SosOverlay> {
     });
 
     try {
-      final coords = await ref.read(sosLocationSourceProvider).getCurrentCoords();
+      final coords =
+          await ref.read(sosLocationSourceProvider).getCurrentCoords();
       final alert = await ref.read(sosApiProvider).createSos(
             lat: coords.lat,
             lng: coords.lng,
@@ -81,6 +82,11 @@ class SosOverlayState extends ConsumerState<SosOverlay> {
       Navigator.of(context).maybePop();
     } catch (e) {
       if (!mounted) return;
+      if (e is ApiException && e.code == 'sos_already_resolved') {
+        widget.onClosed?.call();
+        Navigator.of(context).maybePop();
+        return;
+      }
       setState(() {
         _error = e.toString();
         _phase = SosOverlayPhase.active;

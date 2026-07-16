@@ -50,9 +50,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    final banner = _localError ??
-        auth.errorMessage ??
-        auth.sessionExpiredMessage;
+    final banner =
+        _localError ?? auth.errorMessage ?? auth.sessionExpiredMessage;
 
     if (auth.status == AuthStatus.unknown) {
       return const Scaffold(
@@ -84,14 +83,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     Text(
                       'Kubix UTN 2.0',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: KubixColors.primary,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: KubixColors.primary,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Carpooling seguro para tu universidad',
+                      'Comunidad UTN: tu ruta, tus amigos',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: KubixColors.muted),
                     ),
@@ -149,9 +149,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton(
-                      onPressed: _submitting
-                          ? null
-                          : () => context.push('/register'),
+                      onPressed:
+                          _submitting ? null : () => context.push('/register'),
                       child: const Text('Crear cuenta'),
                     ),
                   ],

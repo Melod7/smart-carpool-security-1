@@ -82,7 +82,21 @@ class PassengerApi {
       );
       return RideRequest.fromJson(res.data!);
     } on DioException catch (e) {
-      throw mapDioError(e, fallback: 'No se pudo solicitar el viaje.');
+      final error = mapDioError(e, fallback: 'No se pudo solicitar el viaje.');
+      final message = switch (error.code) {
+        'gender_required' =>
+          'Completa tu género en Perfil antes de solicitar un viaje.',
+        'gender_mismatch' =>
+          'Por seguridad, solo puedes viajar con un conductor de tu mismo género.',
+        'duplicate_request' => 'Ya solicitaste un lugar en este viaje.',
+        'no_seats_available' => 'Este viaje ya no tiene asientos disponibles.',
+        _ => error.message,
+      };
+      throw ApiException(
+        message,
+        statusCode: error.statusCode,
+        code: error.code,
+      );
     }
   }
 
@@ -104,21 +118,54 @@ class PassengerApi {
     }
   }
 
-  Future<UserProfile> updateProfile({
+  Future<ProfileChangeResponse> requestProfileChange({
     required String name,
-    String? career,
+    required String career,
+    required String gender,
+    String? profileImage,
   }) async {
     try {
-      final res = await _dio.put<Map<String, dynamic>>(
-        '/me/profile',
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/me/profile-change',
         data: {
           'name': name,
-          if (career != null) 'career': career,
+          'career': career,
+          'gender': gender,
+          if (profileImage != null) 'profileImage': profileImage,
         },
       );
-      return UserProfile.fromJson(res.data!);
+      return ProfileChangeResponse.fromJson(res.data!);
     } on DioException catch (e) {
-      throw mapDioError(e, fallback: 'No se pudo actualizar el perfil.');
+      final error = mapDioError(
+        e,
+        fallback: 'No se pudo enviar la solicitud de cambio.',
+      );
+      if (error.code == 'profile_change_pending') {
+        throw ApiException(
+          'Ya tienes una solicitud de cambio de perfil pendiente.',
+          statusCode: error.statusCode,
+          code: error.code,
+        );
+      }
+      throw error;
+    }
+  }
+
+  Future<ModeChangeResponse> requestDriverMode(VehicleRegister vehicle) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/me/mode',
+        data: {
+          'mode': 'driver',
+          'vehicle': vehicle.toJson(),
+        },
+      );
+      return ModeChangeResponse.fromJson(res.data!);
+    } on DioException catch (e) {
+      throw mapDioError(
+        e,
+        fallback: 'No se pudo solicitar el cambio a conductor.',
+      );
     }
   }
 
@@ -170,7 +217,8 @@ class PassengerApi {
           .map((e) => PendingRating.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
-      throw mapDioError(e, fallback: 'No se pudieron cargar las calificaciones.');
+      throw mapDioError(e,
+          fallback: 'No se pudieron cargar las calificaciones.');
     }
   }
 

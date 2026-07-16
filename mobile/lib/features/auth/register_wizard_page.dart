@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/models.dart';
 import '../../auth/auth_state.dart';
+import '../../constants/utn_careers.dart';
 import '../../theme/kubix_theme.dart';
+import '../../widgets/image_picker_field.dart';
 
 /// Validación pura del wizard (testeable sin widgets).
 class RegisterWizardValidation {
@@ -33,6 +35,10 @@ class RegisterWizardValidation {
     required String name,
     required String email,
     required String password,
+    String career = '',
+    String idNumber = '',
+    String? gender,
+    String? profileImage,
   }) {
     final errors = <String, String>{};
     if (name.trim().isEmpty) errors['name'] = 'Ingresa tu nombre';
@@ -46,6 +52,14 @@ class RegisterWizardValidation {
     } else if (password.length < 8) {
       errors['password'] = 'Mínimo 8 caracteres';
     }
+    if (career.trim().isEmpty) errors['career'] = 'Selecciona tu carrera';
+    if (idNumber.trim().isEmpty) errors['idNumber'] = 'Ingresa tu cédula / ID';
+    if (gender != 'male' && gender != 'female') {
+      errors['gender'] = 'Selecciona tu género';
+    }
+    if (profileImage == null || profileImage.isEmpty) {
+      errors['profileImage'] = 'Sube una imagen de perfil';
+    }
     return errors;
   }
 
@@ -54,6 +68,7 @@ class RegisterWizardValidation {
     required String plate,
     required String color,
     required String seatsText,
+    String? image,
   }) {
     final errors = <String, String>{};
     if (makeModel.trim().isEmpty) {
@@ -64,6 +79,9 @@ class RegisterWizardValidation {
     final seats = int.tryParse(seatsText.trim());
     if (seats == null || seats < 1 || seats > 8) {
       errors['seats'] = 'Asientos entre 1 y 8';
+    }
+    if (image == null || image.isEmpty) {
+      errors['image'] = 'Sube una imagen del vehículo';
     }
     return errors;
   }
@@ -92,11 +110,14 @@ class _RegisterWizardPageState extends ConsumerState<RegisterWizardPage> {
   final _passwordCtrl = TextEditingController();
   final _careerCtrl = TextEditingController();
   final _idCtrl = TextEditingController();
+  String? _gender;
+  String? _profileImage;
 
   final _makeCtrl = TextEditingController();
   final _plateCtrl = TextEditingController();
   final _colorCtrl = TextEditingController();
   final _seatsCtrl = TextEditingController(text: '3');
+  String? _vehicleImage;
 
   Map<String, String> _fieldErrors = {};
 
@@ -150,8 +171,7 @@ class _RegisterWizardPageState extends ConsumerState<RegisterWizardPage> {
     return null;
   }
 
-  List<CampusPublic> get _campuses =>
-      _selectedUniversity?.campuses ?? const [];
+  List<CampusPublic> get _campuses => _selectedUniversity?.campuses ?? const [];
 
   int get _lastStep => _role == 'driver' ? 5 : 4;
 
@@ -207,6 +227,10 @@ class _RegisterWizardPageState extends ConsumerState<RegisterWizardPage> {
           name: _nameCtrl.text,
           email: _emailCtrl.text,
           password: _passwordCtrl.text,
+          career: _careerCtrl.text,
+          idNumber: _idCtrl.text,
+          gender: _gender,
+          profileImage: _profileImage,
         );
         if (errors.isNotEmpty) {
           setState(() => _fieldErrors = errors);
@@ -220,6 +244,7 @@ class _RegisterWizardPageState extends ConsumerState<RegisterWizardPage> {
             plate: _plateCtrl.text,
             color: _colorCtrl.text,
             seatsText: _seatsCtrl.text,
+            image: _vehicleImage,
           );
           if (errors.isNotEmpty) {
             setState(() => _fieldErrors = errors);
@@ -267,14 +292,17 @@ class _RegisterWizardPageState extends ConsumerState<RegisterWizardPage> {
       name: _nameCtrl.text.trim(),
       email: _emailCtrl.text.trim(),
       password: _passwordCtrl.text,
-      career: _careerCtrl.text.trim().isEmpty ? null : _careerCtrl.text.trim(),
-      idNumber: _idCtrl.text.trim().isEmpty ? null : _idCtrl.text.trim(),
+      career: _careerCtrl.text.trim(),
+      idNumber: _idCtrl.text.trim(),
+      gender: _gender!,
+      profileImage: _profileImage!,
       vehicle: _role == 'driver'
           ? VehicleRegister(
               makeModel: _makeCtrl.text.trim(),
               plate: _plateCtrl.text.trim(),
               color: _colorCtrl.text.trim(),
               seatsTotal: int.parse(_seatsCtrl.text.trim()),
+              image: _vehicleImage!,
             )
           : null,
     );
@@ -286,9 +314,8 @@ class _RegisterWizardPageState extends ConsumerState<RegisterWizardPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e is ApiException
-            ? e.message
-            : 'No se pudo completar el registro.';
+        _error =
+            e is ApiException ? e.message : 'No se pudo completar el registro.';
         _submitting = false;
       });
     }
@@ -328,7 +355,8 @@ class _RegisterWizardPageState extends ConsumerState<RegisterWizardPage> {
                         if (_error != null) ...[
                           Text(
                             _error!,
-                            style: const TextStyle(color: KubixColors.emergency),
+                            style:
+                                const TextStyle(color: KubixColors.emergency),
                           ),
                           const SizedBox(height: 12),
                         ],
@@ -501,16 +529,54 @@ class _RegisterWizardPageState extends ConsumerState<RegisterWizardPage> {
           ),
         ),
         const SizedBox(height: 12),
-        TextField(
-          controller: _careerCtrl,
-          decoration: const InputDecoration(labelText: 'Carrera (opcional)'),
+        LayoutBuilder(
+          builder: (context, constraints) => DropdownMenu<String>(
+            controller: _careerCtrl,
+            width: constraints.maxWidth,
+            enableFilter: true,
+            enableSearch: true,
+            requestFocusOnTap: true,
+            label: const Text('Carrera'),
+            helperText: 'Escribe para buscar',
+            errorText: _fieldErrors['career'],
+            dropdownMenuEntries: [
+              for (final career in utnCareers)
+                DropdownMenuEntry(value: career, label: career),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         TextField(
           controller: _idCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Cédula / ID (opcional)',
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Cédula / ID',
+            errorText: _fieldErrors['idNumber'],
           ),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          key: ValueKey(_gender),
+          initialValue: _gender,
+          decoration: InputDecoration(
+            labelText: 'Género',
+            errorText: _fieldErrors['gender'],
+          ),
+          items: const [
+            DropdownMenuItem(value: 'female', child: Text('Mujer')),
+            DropdownMenuItem(value: 'male', child: Text('Hombre')),
+          ],
+          onChanged: (value) => setState(() => _gender = value),
+        ),
+        const SizedBox(height: 16),
+        ImagePickerField(
+          label: 'Subir imagen de perfil',
+          value: _profileImage,
+          errorText: _fieldErrors['profileImage'],
+          onChanged: (value) => setState(() {
+            _profileImage = value;
+            _fieldErrors.remove('profileImage');
+          }),
         ),
       ],
     );
@@ -557,6 +623,16 @@ class _RegisterWizardPageState extends ConsumerState<RegisterWizardPage> {
             errorText: _fieldErrors['seats'],
           ),
         ),
+        const SizedBox(height: 16),
+        ImagePickerField(
+          label: 'Subir imagen del vehículo',
+          value: _vehicleImage,
+          errorText: _fieldErrors['image'],
+          onChanged: (value) => setState(() {
+            _vehicleImage = value;
+            _fieldErrors.remove('image');
+          }),
+        ),
       ],
     );
   }
@@ -585,8 +661,8 @@ class _RegisterWizardPageState extends ConsumerState<RegisterWizardPage> {
         _kv('Rol', roleLabel),
         _kv('Nombre', _nameCtrl.text.trim()),
         _kv('Correo', _emailCtrl.text.trim()),
-        if (_careerCtrl.text.trim().isNotEmpty)
-          _kv('Carrera', _careerCtrl.text.trim()),
+        _kv('Carrera', _careerCtrl.text.trim()),
+        _kv('Género', _gender == 'female' ? 'Mujer' : 'Hombre'),
         if (_role == 'driver') ...[
           _kv('Vehículo', _makeCtrl.text.trim()),
           _kv('Placa', _plateCtrl.text.trim()),

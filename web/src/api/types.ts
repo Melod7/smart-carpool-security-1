@@ -155,10 +155,12 @@ export type RegistrationRequest = {
   role: string
   career?: string | null
   idNumber?: string | null
+  gender?: 'male' | 'female' | null
+  profileImage?: string | null
   campusId: string
   campusName?: string | null
   vehicleJson?: string | null
-  /** registration | vehicle_change */
+  /** registration | vehicle_change | role_change_driver | profile_change */
   kind?: string
   status: string
   createdAt: string
@@ -173,6 +175,8 @@ export type UsuarioAdmin = {
   campusId?: string | null
   career?: string | null
   idNumber?: string | null
+  gender?: 'male' | 'female' | null
+  profileImage?: string | null
   ratingAvg: number
   createdAt: string
 }
@@ -207,6 +211,7 @@ export type VehicleJson = {
   plate?: string
   color?: string
   seatsTotal?: number
+  image?: string
 }
 
 export type ReportPeriod = 'diario' | 'semanal' | 'mensual' | 'trimestral' | 'anual'

@@ -26,6 +26,10 @@ Variables mínimas:
 ```bash
 export AWS_REGION=us-east-1
 export DB_PASSWORD='TuPasswordSeguro1'
+# Gmail SMTP opcional (usa una contraseña de aplicación, no tu contraseña normal):
+# export SMTP_USERNAME='notificaciones@utn.edu.ec'
+# export SMTP_PASSWORD='xxxx xxxx xxxx xxxx'
+# export SMTP_FROM_EMAIL="$SMTP_USERNAME"
 # override opcional del profile Kubix (default kx-dev):
 # export KUBIX_AWS_PROFILE=kx-dev
 ```
@@ -83,11 +87,15 @@ Workflows:
 | `DB_PASSWORD` | Master RDS |
 | `SUPER_ADMIN_PASSWORD` | Seed super-admin |
 | `GOOGLE_MAPS_API_KEY` | Maps en Android/iOS |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | Gmail SMTP; requiere contraseña de aplicación |
 | `ANDROID_KEYSTORE_BASE64` | Keystore estable para firmar el APK |
 | `ANDROID_KEYSTORE_PASSWORD` | Password del keystore |
 | `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD` | Alias y password de la clave |
 
-Variables de repo opcionales: `AWS_REGION`, `STACK_NAME`.
+Variables de repo opcionales: `AWS_REGION`, `STACK_NAME`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`.
+
+El correo se habilita automáticamente cuando existen ambos secrets SMTP. La aprobación o
+denegación nunca se revierte si Gmail no está disponible; el fallo queda registrado en logs.
 
 Tras un deploy manual exitoso, Actions usa la URL CloudFront resultante y publica:
 

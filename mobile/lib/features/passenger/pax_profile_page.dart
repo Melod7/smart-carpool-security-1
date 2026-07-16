@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/models.dart';
 import '../../auth/auth_state.dart';
 import '../../theme/kubix_theme.dart';
+import '../../widgets/image_picker_field.dart';
 import 'passenger_providers.dart';
 import 'trip_labels.dart';
 import 'widgets/eco_widget.dart';
@@ -20,6 +21,10 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
   final _careerCtrl = TextEditingController();
   var _profileLoaded = false;
   var _savingProfile = false;
+  var _switchingMode = false;
+  String? _gender;
+  String? _profileImage;
+  var _profileImageChanged = false;
 
   @override
   void dispose() {
@@ -32,6 +37,8 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
     if (_profileLoaded) return;
     _nameCtrl.text = profile.name;
     _careerCtrl.text = profile.career ?? '';
+    _gender = profile.gender;
+    _profileImage = profile.profileImage;
     _profileLoaded = true;
   }
 
@@ -52,6 +59,15 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  ImagePickerField(
+                    label: 'Imagen de perfil',
+                    value: _profileImage,
+                    onChanged: (value) => setState(() {
+                      _profileImage = value;
+                      _profileImageChanged = true;
+                    }),
+                  ),
+                  const SizedBox(height: 12),
                   Text(
                     profile.email,
                     style: const TextStyle(color: KubixColors.muted),
@@ -69,6 +85,25 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
                     textCapitalization: TextCapitalization.sentences,
                   ),
                   const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey(_gender),
+                    initialValue: _gender,
+                    decoration: const InputDecoration(labelText: 'Género'),
+                    items: const [
+                      DropdownMenuItem(value: 'female', child: Text('Mujer')),
+                      DropdownMenuItem(value: 'male', child: Text('Hombre')),
+                    ],
+                    onChanged: (value) => setState(() => _gender = value),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Los cambios se aplicarán cuando el coordinador los apruebe.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: KubixColors.muted,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   FilledButton(
                     onPressed: _savingProfile ? null : _saveProfile,
                     child: _savingProfile
@@ -80,7 +115,7 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text('Guardar perfil'),
+                        : const Text('Enviar solicitud de cambio'),
                   ),
                 ],
               ),
@@ -202,7 +237,8 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.storefront_outlined, color: KubixColors.muted),
+                        Icon(Icons.storefront_outlined,
+                            color: KubixColors.muted),
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
@@ -241,6 +277,14 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
           ),
         ),
         const SizedBox(height: 24),
+        FilledButton.icon(
+          onPressed: _switchingMode ? null : _requestDriverMode,
+          icon: const Icon(Icons.directions_car_outlined),
+          label: Text(
+            _switchingMode ? 'Enviando solicitud…' : 'Cambiar a modo conductor',
+          ),
+        ),
+        const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: () => ref.read(authProvider.notifier).logout(),
           icon: const Icon(Icons.logout),
@@ -261,19 +305,146 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
       _snack('El nombre es obligatorio.');
       return;
     }
+    if (_gender == null) {
+      _snack('Selecciona tu género para encontrar viajes compatibles.');
+      return;
+    }
+    final career = _careerCtrl.text.trim();
+    if (career.isEmpty) {
+      _snack('La carrera es obligatoria.');
+      return;
+    }
     setState(() => _savingProfile = true);
     try {
-      final updated = await ref.read(passengerApiProvider).updateProfile(
+      await ref.read(passengerApiProvider).requestProfileChange(
             name: name,
-            career: _careerCtrl.text.trim(),
+            career: career,
+            gender: _gender!,
+            profileImage: _profileImageChanged ? _profileImage : null,
           );
-      ref.read(authProvider.notifier).updateDisplayName(updated.name);
-      ref.invalidate(profileProvider);
-      _snack('Perfil actualizado.');
+      _profileImageChanged = false;
+      _snack('Solicitud enviada al coordinador.');
     } catch (e) {
       _snack(e.toString());
     } finally {
       if (mounted) setState(() => _savingProfile = false);
+    }
+  }
+
+  Future<void> _requestDriverMode() async {
+    final makeCtrl = TextEditingController();
+    final plateCtrl = TextEditingController();
+    final colorCtrl = TextEditingController();
+    final seatsCtrl = TextEditingController(text: '4');
+    String? image;
+
+    final vehicle = await showDialog<VehicleRegister>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Datos del vehículo'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Un coordinador aprobará el cambio a conductor.',
+                  style: TextStyle(fontSize: 13, color: KubixColors.muted),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: makeCtrl,
+                  decoration:
+                      const InputDecoration(labelText: 'Marca y modelo'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: plateCtrl,
+                  decoration: const InputDecoration(labelText: 'Placa'),
+                  textCapitalization: TextCapitalization.characters,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: colorCtrl,
+                  decoration: const InputDecoration(labelText: 'Color'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: seatsCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Asientos totales',
+                    helperText: 'Entre 1 y 8',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ImagePickerField(
+                  label: 'Imagen del vehículo',
+                  value: image,
+                  onChanged: (value) => setDialogState(() => image = value),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final seats = int.tryParse(seatsCtrl.text.trim());
+                if (makeCtrl.text.trim().isEmpty ||
+                    plateCtrl.text.trim().isEmpty ||
+                    colorCtrl.text.trim().isEmpty ||
+                    seats == null ||
+                    seats < 1 ||
+                    seats > 8 ||
+                    image == null) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Completa todos los datos del vehículo.'),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(
+                  ctx,
+                  VehicleRegister(
+                    makeModel: makeCtrl.text.trim(),
+                    plate: plateCtrl.text.trim(),
+                    color: colorCtrl.text.trim(),
+                    seatsTotal: seats,
+                    image: image!,
+                  ),
+                );
+              },
+              child: const Text('Enviar solicitud'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    makeCtrl.dispose();
+    plateCtrl.dispose();
+    colorCtrl.dispose();
+    seatsCtrl.dispose();
+    if (vehicle == null || !mounted) return;
+
+    setState(() => _switchingMode = true);
+    try {
+      final response =
+          await ref.read(passengerApiProvider).requestDriverMode(vehicle);
+      _snack(
+        response.message.isNotEmpty
+            ? response.message
+            : 'Solicitud enviada al coordinador.',
+      );
+    } catch (e) {
+      _snack(e.toString());
+    } finally {
+      if (mounted) setState(() => _switchingMode = false);
     }
   }
 
@@ -302,8 +473,7 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: relCtrl,
-                      decoration:
-                          const InputDecoration(labelText: 'Relación'),
+                      decoration: const InputDecoration(labelText: 'Relación'),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -323,8 +493,7 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
               ),
               actions: [
                 TextButton(
-                  onPressed:
-                      submitting ? null : () => Navigator.pop(ctx),
+                  onPressed: submitting ? null : () => Navigator.pop(ctx),
                   child: const Text('Cancelar'),
                 ),
                 FilledButton(

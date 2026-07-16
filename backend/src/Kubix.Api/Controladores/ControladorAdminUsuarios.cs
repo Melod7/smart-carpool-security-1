@@ -161,6 +161,24 @@ public sealed class ControladorAdminUsuarios(IServicioRegistroUsuarios registro)
         }
     }
 
+    [HttpDelete("users/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> EliminarUsuario(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            await registro.EliminarUsuarioAsync(id, ct);
+            return NoContent();
+        }
+        catch (ExcepcionRegistroUsuarios ex)
+        {
+            return ProblemFrom(ex);
+        }
+    }
+
     private ObjectResult ProblemFrom(ExcepcionRegistroUsuarios ex) =>
         Problem(
             detail: ex.Message,

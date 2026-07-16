@@ -47,11 +47,14 @@ public sealed class ServicioSolicitudesViaje(
         var viajes = await db.Viajes
             .Include(v => v.PuntosRuta)
             .Include(v => v.CampusDestino)
+            .Include(v => v.Conductor)
             .Where(v =>
                 v.CampusDestinoId == campusPasajero
                 && v.Estado == EstadoViaje.Programado
                 && v.AsientosDisponibles > 0
-                && v.SaleEn > ahora)
+                && v.SaleEn > ahora
+                && pasajero.Genero != null
+                && v.Conductor.Genero == pasajero.Genero)
             .OrderBy(v => v.SaleEn)
             .ToListAsync(ct);
 
@@ -142,6 +145,7 @@ public sealed class ServicioSolicitudesViaje(
         var viaje = await db.Viajes
             .Include(v => v.PuntosRuta)
             .Include(v => v.CampusDestino)
+            .Include(v => v.Conductor)
             .FirstOrDefaultAsync(v => v.Id == viajeId, ct)
             ?? throw ExcepcionViajes.NoEncontrado("Trip not found.", "trip_not_found");
 
@@ -150,6 +154,20 @@ public sealed class ServicioSolicitudesViaje(
             throw ExcepcionViajes.Validacion(
                 "Trip is not available for requests.",
                 "trip_not_available");
+        }
+
+        if (pasajero.Genero is null || viaje.Conductor.Genero is null)
+        {
+            throw ExcepcionViajes.Validacion(
+                "Passenger and driver must complete gender before requesting a ride.",
+                "gender_required");
+        }
+
+        if (pasajero.Genero != viaje.Conductor.Genero)
+        {
+            throw ExcepcionViajes.Validacion(
+                "Ride requests are only allowed between users of the same gender.",
+                "gender_mismatch");
         }
 
         var espera = CalcularEspera(viaje, solicitud.RecogidaLat, solicitud.RecogidaLng);

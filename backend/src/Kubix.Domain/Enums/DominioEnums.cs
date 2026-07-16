@@ -14,11 +14,18 @@ public enum RolUsuario
     Pasajero
 }
 
+public enum GeneroUsuario
+{
+    Masculino,
+    Femenino
+}
+
 public enum EstadoUsuario
 {
     Activo,
     Bloqueado,
-    Pendiente
+    Pendiente,
+    Eliminado
 }
 
 public enum EstadoSolicitudRegistro

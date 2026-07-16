@@ -435,7 +435,8 @@ public sealed class ServicioAdminOps(ContextoApp db, IContextoInquilino inquilin
     private async Task<decimal> CalcularTasaAdopcionAsync(CancellationToken ct)
     {
         var total = await db.Usuarios.CountAsync(
-            u => u.Rol == RolUsuario.Conductor || u.Rol == RolUsuario.Pasajero,
+            u => (u.Rol == RolUsuario.Conductor || u.Rol == RolUsuario.Pasajero)
+                 && u.Estado != EstadoUsuario.Eliminado,
             ct);
 
         if (total == 0)

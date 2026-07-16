@@ -441,19 +441,20 @@ function CampusFormDialog({
             className={inputClassName}
           />
         </Field>
-        <Field label="Dirección" htmlFor="campus-address" error={errors.address}>
-          <input
-            id="campus-address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            className={inputClassName}
-          />
-        </Field>
         <div>
-          <p className="mb-1.5 text-sm font-medium text-slate-700">Ubicación en el mapa</p>
+          <p className="mb-1.5 text-sm font-medium text-slate-700">Dirección y ubicación</p>
           <LocationMapPicker
             apiKey={mapsKey}
             value={point}
+            address={address}
+            onAddressChange={(nextAddress) => {
+              setAddress(nextAddress)
+              setErrors((prev) => {
+                if (!prev.address) return prev
+                const { address: _removed, ...rest } = prev
+                return rest
+              })
+            }}
             onChange={(p) => {
               setPoint(p)
               setErrors((prev) => {

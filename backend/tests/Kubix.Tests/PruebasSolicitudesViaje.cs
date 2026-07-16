@@ -22,7 +22,7 @@ public class PruebasSolicitudesViaje
         var campusIbarra = await db.Sedes.SingleAsync(c =>
             c.UniversidadId == conductor.UniversidadId && c.Nombre == "Campus Ibarra");
         var pasajeroOtavalo = await db.Usuarios.SingleAsync(u => u.Correo == "pax4@utn.local");
-        var pasajeroIbarra = await db.Usuarios.SingleAsync(u => u.Correo == "pax1@utn.local");
+        var pasajeroIbarra = await db.Usuarios.SingleAsync(u => u.Correo == "pax2@utn.local");
 
         var viaje = new Viaje
         {
@@ -104,7 +104,7 @@ public class PruebasSolicitudesViaje
         await using var db = await CrearDbConSeedAsync();
         var conductor = await db.Usuarios.SingleAsync(u => u.Correo == "driver1@utn.local");
         var campus = await db.Sedes.FirstAsync(c => c.Id == conductor.CampusId);
-        var pasajero = await db.Usuarios.SingleAsync(u => u.Correo == "pax3@utn.local");
+        var pasajero = await db.Usuarios.SingleAsync(u => u.Correo == "pax2@utn.local");
 
         var viaje = new Viaje
         {
@@ -236,6 +236,53 @@ public class PruebasSolicitudesViaje
 
         Assert.Equal(409, ex.CodigoEstado);
         Assert.Equal("no_seats_available", ex.Codigo);
+    }
+
+    [Fact]
+    public async Task Disponibles_solo_muestra_conductores_del_mismo_genero()
+    {
+        await using var db = await CrearDbConSeedAsync();
+        var viaje = await db.Viajes.FirstAsync(v =>
+            v.Estado == EstadoViaje.Programado
+            && v.Conductor.Correo == "driver1@utn.local");
+        var pasajeroMismoGenero = await db.Usuarios.SingleAsync(u => u.Correo == "pax2@utn.local");
+        var pasajeraOtroGenero = await db.Usuarios.SingleAsync(u => u.Correo == "pax1@utn.local");
+
+        var visibles = await CrearServicio(db, pasajeroMismoGenero)
+            .ListarDisponiblesAsync(pasajeroMismoGenero.Id);
+        var ocultos = await CrearServicio(db, pasajeraOtroGenero)
+            .ListarDisponiblesAsync(pasajeraOtroGenero.Id);
+
+        Assert.Contains(visibles, v => v.Id == viaje.Id);
+        Assert.DoesNotContain(ocultos, v => v.Id == viaje.Id);
+    }
+
+    [Fact]
+    public async Task Crear_solicitud_rechaza_genero_distinto_o_ausente()
+    {
+        await using var db = await CrearDbConSeedAsync();
+        var viaje = await db.Viajes
+            .Include(v => v.PuntosRuta)
+            .FirstAsync(v => v.Estado == EstadoViaje.Programado
+                             && v.Conductor.Correo == "driver1@utn.local");
+        var pasajera = await db.Usuarios.SingleAsync(u => u.Correo == "pax1@utn.local");
+        var body = new SolicitudCrearSolicitudViaje
+        {
+            RecogidaTexto = "Punto género",
+            RecogidaLat = viaje.OrigenLat,
+            RecogidaLng = viaje.OrigenLng
+        };
+
+        var distinto = await Assert.ThrowsAsync<ExcepcionViajes>(() =>
+            CrearServicio(db, pasajera).CrearSolicitudAsync(pasajera.Id, viaje.Id, body));
+        Assert.Equal(422, distinto.CodigoEstado);
+        Assert.Equal("gender_mismatch", distinto.Codigo);
+
+        pasajera.Genero = null;
+        await db.SaveChangesAsync();
+        var ausente = await Assert.ThrowsAsync<ExcepcionViajes>(() =>
+            CrearServicio(db, pasajera).CrearSolicitudAsync(pasajera.Id, viaje.Id, body));
+        Assert.Equal("gender_required", ausente.Codigo);
     }
 
     private static SolicitudViaje NuevaPendiente(Viaje viaje, Usuario pasajero, string texto) =>

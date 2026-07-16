@@ -253,6 +253,7 @@ public sealed class ServicioCalificaciones(
 
         var debeBloquear = calificado.Rol == RolUsuario.Conductor
             && calificado.Estado != EstadoUsuario.Bloqueado
+            && calificado.Estado != EstadoUsuario.Eliminado
             && calificado.UniversidadId.HasValue
             && cantidad >= 5;
 

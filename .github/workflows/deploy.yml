@@ -36,6 +36,10 @@ jobs:
       SUPER_ADMIN_EMAIL: ${{ vars.SUPER_ADMIN_EMAIL || 'superadmin@kubix.local' }}
       SUPER_ADMIN_PASSWORD: ${{ secrets.SUPER_ADMIN_PASSWORD || 'ChangeMe123!' }}
       GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      SMTP_FROM_EMAIL: ${{ vars.SMTP_FROM_EMAIL }}
+      SMTP_FROM_NAME: ${{ vars.SMTP_FROM_NAME || 'Kubix UTN 2.0' }}
     steps:
       - uses: actions/checkout@v4
 

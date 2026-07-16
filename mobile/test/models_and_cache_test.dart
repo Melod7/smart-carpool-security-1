@@ -77,8 +77,10 @@ void main() {
         'plate': 'ABC-123',
         'color': 'Gris',
         'seatsTotal': 4,
+        'image': 'data:image/jpeg;base64,YQ==',
       });
       expect(v.plate, 'ABC-123');
+      expect(v.image, startsWith('data:image/jpeg'));
       final change = VehicleChangeRequest.fromJson({
         'id': 'r1',
         'status': 'pending',
@@ -87,6 +89,26 @@ void main() {
       });
       expect(change.kind, 'vehicle_change');
       expect(change.message, 'ok');
+
+      final mode = ModeChangeResponse.fromJson({
+        'status': 'pending',
+        'kind': 'role_change_driver',
+        'role': 'passenger',
+        'requiresReauthentication': false,
+        'requestId': 'r2',
+        'message': 'pending',
+      });
+      expect(mode.kind, 'role_change_driver');
+      expect(mode.requiresReauthentication, isFalse);
+
+      final profileChange = ProfileChangeResponse.fromJson({
+        'id': 'r3',
+        'status': 'pending',
+        'kind': 'profile_change',
+        'message': 'pending',
+      });
+      expect(profileChange.kind, 'profile_change');
+      expect(profileChange.status, 'pending');
     });
 
     test('EcoSummary.fromJson', () {

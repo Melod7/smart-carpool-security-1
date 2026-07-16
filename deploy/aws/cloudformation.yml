@@ -145,14 +145,6 @@ Resources:
             Compress: true
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
-          - PathPattern: /admin/*
-            TargetOriginId: api-alb
-            ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
-            CachedMethods: [GET, HEAD]
-            Compress: true
-            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           - PathPattern: /me/*
             TargetOriginId: api-alb
             ViewerProtocolPolicy: redirect-to-https
@@ -186,14 +178,6 @@ Resources:
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           - PathPattern: /sos*
-            TargetOriginId: api-alb
-            ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
-            CachedMethods: [GET, HEAD]
-            Compress: true
-            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
-            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
-          - PathPattern: /super*
             TargetOriginId: api-alb
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
