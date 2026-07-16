@@ -14,7 +14,7 @@ Plan: [PLAN.md](PLAN.md) (v2.9 — **T1–T8**; waypoints + espera; §10.1) · A
 | Plan v2.7 (diseño waypoints + espera) | Hecho (doc) |
 | Plan v2.8 (tarea Planner **T8** = KBX-32·33) | Hecho |
 | Artefactos de stories | Parcial (INFORME.md) |
-| Implementación | T1–T5 + T8 + **T6/KBX-27** hechos; **siguiente: T7 / KBX-30** (KBX-28/29 opcionales en paralelo) |
+| Implementación | T1–T5 + T8 + T6/KBX-27 + **T7/KBX-30 (scaffold)** hechos; smoke real en AWS pendiente de secrets; KBX-28/29 opcionales |
 
 ## Planner (8 tareas · 2 semanas · ancla D1=2026-07-06)
 
@@ -27,7 +27,7 @@ Plan: [PLAN.md](PLAN.md) (v2.9 — **T1–T8**; waypoints + espera; §10.1) · A
 | **T5** Mobile | Importante | 07-13 | 07-17 | 22–26 | hecho |
 | **T8** Ruta por waypoints | Importante | 07-13 | 07-17 | 32–33 | hecho |
 | **T6** QA | Importante | 07-15 | 07-18 | 27–29 | **KBX-27 hecho**; 28–29 pendientes |
-| **T7** Deploy | Media | 07-17 | 07-19 | 30 | **siguiente** |
+| **T7** Deploy | Media | 07-17 | 07-19 | 30 | **scaffold hecho** (deploy real con secrets AWS) |
 
 ## Tablero KBX (detalle interno)
 
@@ -62,12 +62,12 @@ Plan: [PLAN.md](PLAN.md) (v2.9 — **T1–T8**; waypoints + espera; §10.1) · A
 | KBX-27 | QA: suites unitarias y umbrales de cobertura | **hecho** |
 | KBX-28 | QA: colección Postman, pruebas de carga y plan JMeter | pendiente |
 | KBX-29 | QA: Selenium, TestLink, SonarCloud, MantisBT, SAST | pendiente |
-| KBX-30 | Despliegue: infraestructura AWS y CI/CD | **siguiente** |
+| KBX-30 | Despliegue: infraestructura AWS y CI/CD | **scaffold hecho** |
 | KBX-31 | Motor EcoTokens y API | hecho |
 | KBX-32 | Backend: waypoints de ruta + punto de espera sugerido (v2.7) | hecho |
 | KBX-33 | Mobile: mapa publicar ruta + espera del pasajero (v2.7) | hecho |
 
-Orden: T1→T5 + T8 + **KBX-27** hechos · **T7 Deploy (KBX-30)** siguiente · KBX-28/29 pendientes.
+Orden: T1→T8 + KBX-27 + **KBX-30 scaffold** hechos · ejecutar `deploy/scripts/deploy.sh` con credenciales AWS · KBX-28/29 pendientes.
 
 ## Log de decisiones clave
 

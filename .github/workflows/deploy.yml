@@ -1,0 +1,103 @@
+name: Deploy (KBX-30)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "web/**"
+      - "deploy/**"
+      - ".github/workflows/deploy.yml"
+
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: AWS deploy
+    runs-on: ubuntu-latest
+    # Skip automatic main deploys unless AWS credentials are configured
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && (vars.DEPLOY_ON_PUSH == 'true'))
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      STACK_NAME: ${{ vars.STACK_NAME || 'kubix-test' }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      SUPER_ADMIN_EMAIL: ${{ vars.SUPER_ADMIN_EMAIL || 'superadmin@kubix.local' }}
+      SUPER_ADMIN_PASSWORD: ${{ secrets.SUPER_ADMIN_PASSWORD || 'ChangeMe123!' }}
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS (OIDC)
+        if: ${{ secrets.AWS_ROLE_ARN != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure AWS (access keys)
+        if: ${{ secrets.AWS_ROLE_ARN == '' && secrets.AWS_ACCESS_KEY_ID != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Require AWS + DB_PASSWORD
+        run: |
+          set -euo pipefail
+          aws sts get-caller-identity
+          test -n "${DB_PASSWORD:-}" || { echo "Missing secret DB_PASSWORD"; exit 1; }
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Deploy
+        run: |
+          chmod +x deploy/scripts/*.sh
+          ./deploy/scripts/deploy.sh
+
+      - name: Smoke
+        run: ./deploy/scripts/smoke.sh
+
+      - name: Upload deploy URLs
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-urls
+          path: deploy/.out/urls.env
+          if-no-files-found: warn
+
+  mobile-apk:
+    name: Optional APK artifact
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    if: github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kubix-android-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: warn

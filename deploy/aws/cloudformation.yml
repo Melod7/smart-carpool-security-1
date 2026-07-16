@@ -1,0 +1,203 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Kubix UTN 2.0 (KBX-30) — infra de prueba: ECR, S3+CloudFront SPA,
+  RDS Postgres db.t4g.micro (default VPC). App Runner se gestiona con scripts.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: kubix
+  EnvironmentName:
+    Type: String
+    Default: test
+  DbUsername:
+    Type: String
+    Default: kubix
+    MinLength: 1
+  DbPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+  AllowedCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR con acceso a Postgres (restringir en cuentas reales)
+
+Resources:
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Delete
+    Properties:
+      RepositoryName: !Sub "${ProjectName}-${EnvironmentName}-api"
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [{
+              "rulePriority": 1,
+              "description": "Keep last 5 images",
+              "selection": {
+                "tagStatus": "any",
+                "countType": "imageCountMoreThan",
+                "countNumber": 5
+              },
+              "action": { "type": "expire" }
+            }]
+          }
+
+  WebBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub "${ProjectName}-${EnvironmentName}-web-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${ProjectName}-${EnvironmentName}-oac"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  WebDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub "${ProjectName} ${EnvironmentName} SPA"
+        DefaultRootObject: index.html
+        Origins:
+          - Id: web-s3
+            DomainName: !GetAtt WebBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: web-s3
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+        PriceClass: PriceClass_100
+
+  WebBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${WebBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${WebDistribution}"
+
+  DbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${ProjectName}-${EnvironmentName} RDS Postgres"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !Ref AllowedCidr
+          Description: Postgres access for App Runner / ops
+
+  DbInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      DBInstanceIdentifier: !Sub "${ProjectName}-${EnvironmentName}-pg"
+      Engine: postgres
+      EngineVersion: "16"
+      DBInstanceClass: db.t4g.micro
+      AllocatedStorage: 20
+      StorageType: gp3
+      MasterUsername: !Ref DbUsername
+      MasterUserPassword: !Ref DbPassword
+      DBName: kubix
+      PubliclyAccessible: true
+      VPCSecurityGroups:
+        - !Ref DbSecurityGroup
+      BackupRetentionPeriod: 0
+      DeletionProtection: false
+      EnableCloudwatchLogsExports: []
+
+  AppRunnerAccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-${EnvironmentName}-apprunner-ecr"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: build.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
+
+  AppRunnerInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-${EnvironmentName}-apprunner-instance"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: tasks.apprunner.amazonaws.com
+            Action: sts:AssumeRole
+
+Outputs:
+  StackName:
+    Value: !Ref AWS::StackName
+  EcrRepositoryUri:
+    Value: !GetAtt EcrRepository.RepositoryUri
+  EcrRepositoryName:
+    Value: !Ref EcrRepository
+  WebBucketName:
+    Value: !Ref WebBucket
+  CloudFrontDistributionId:
+    Value: !Ref WebDistribution
+  CloudFrontDomainName:
+    Value: !GetAtt WebDistribution.DomainName
+  CloudFrontUrl:
+    Value: !Sub "https://${WebDistribution.DomainName}"
+  RdsEndpoint:
+    Value: !GetAtt DbInstance.Endpoint.Address
+  RdsPort:
+    Value: !GetAtt DbInstance.Endpoint.Port
+  AppRunnerAccessRoleArn:
+    Value: !GetAtt AppRunnerAccessRole.Arn
+  AppRunnerInstanceRoleArn:
+    Value: !GetAtt AppRunnerInstanceRole.Arn
+  DbSecurityGroupId:
+    Value: !Ref DbSecurityGroup

@@ -51,3 +51,6 @@ qa/results/*
 pgdata/
 web/node_modules/
 web/dist/
+
+# Deploy local outputs (URLs / secrets-adjacent)
+deploy/.out/

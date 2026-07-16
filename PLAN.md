@@ -741,12 +741,12 @@ Cerrar calidad del curso: umbrales de coverage en CI, colección Postman + Newma
 | **Fecha de vencimiento** | 2026-07-19 (D14) |
 
 **Lista de comprobación:**
-- [ ] KBX-30 — Infra AWS + pipelines CI/CD
-- [ ] API: imagen ECR → App Runner; migraciones al arranque
-- [ ] Web: S3 + CloudFront (SPA routing)
-- [ ] CI: PR build/test/lint/sonar/newman/security; main deploy + invalidation
-- [ ] Smoke Postman env `aws` (o checklist equivalente) verde
-- [ ] Script/doc de teardown sin recursos facturables residuales
+- [x] KBX-30 — Infra AWS + pipelines CI/CD (`deploy/`, `.github/workflows/deploy.yml`)
+- [x] API: imagen ECR → App Runner; migraciones al arranque
+- [x] Web: S3 + CloudFront (SPA routing)
+- [x] CI: PR tests (`pr-tests.yml`); main/manual deploy + invalidation (`deploy.yml`)
+- [ ] Smoke Postman env `aws` (o `deploy/scripts/smoke.sh`) verde contra cuenta real
+- [x] Script/doc de teardown sin recursos facturables residuales
 
 **Notas:**
 Infra de prueba AWS (ECR, App Runner, RDS t4g.micro, S3+CloudFront) y GitHub Actions; documentar deploy y **teardown** para no dejar cargos. Detalle: PLAN.md → KBX-30 · `deploy/README`.
@@ -893,8 +893,9 @@ Infra de prueba AWS (ECR, App Runner, RDS t4g.micro, S3+CloudFront) y GitHub Act
 **QA:** suite Selenium verde headless en CI contra el stack docker-compose; XML TestLink importa limpio e incluye casos manuales de la pantalla de mapa; quality gates Sonar visibles en PRs; instancia MantisBT arranca en local; security scan falla el build en findings de high-severity.
 
 ### KBX-30 — Despliegue: infraestructura AWS y CI/CD
-**Descripción:** `deploy/`: servicio ECR + App Runner (env vars desde SSM), RDS Postgres (t4g.micro) con paso de migración, S3+CloudFront para web con routing SPA, workflows GitHub Actions (PR: build/test/sonar/newman/security; main: image push, App Runner deploy, S3 sync + invalidation, artefacto APK). Documentar teardown para evitar cargos en la cuenta de prueba.
-**QA:** deploy fresco desde cuenta AWS vacía siguiendo deploy/README tiene éxito; smoke Postman env `aws` verde contra la API desplegada; web carga sobre CloudFront e inicia sesión; el script de teardown no deja recursos facturables.
+**Descripción:** `deploy/`: CloudFormation (ECR, S3+CloudFront SPA, RDS `db.t4g.micro`, roles App Runner) + scripts `deploy.sh` / `teardown.sh` / `smoke.sh`; App Runner con env (connection string, CORS CloudFront, migrate/seed on startup); workflow `.github/workflows/deploy.yml` (manual + opcional push main). Documentar teardown para evitar cargos en la cuenta de prueba.
+**QA:** deploy fresco desde cuenta AWS vacía siguiendo deploy/README tiene éxito; smoke (`deploy/scripts/smoke.sh` o Postman env `aws`) verde; web carga sobre CloudFront e inicia sesión; teardown no deja recursos facturables.
+**Estado scaffold:** hecho en repo; ejecución real depende de secrets AWS en la cuenta de prueba.
 
 ### KBX-31 — Motor EcoTokens y API (track backend: después de KBX-10, antes de KBX-13)
 **Descripción:** Implementación real de `IEcoTokenEngine` reemplazando el stub no-op cableado en KBX-9/10, aplicando las reglas de la sección 4: eventos de award (driver +8 / passenger +4 en trip completion, +2 en rating, +10 racha semanal en el 5.º trip completed en la semana lun–dom del timezone de la universidad, late-cancel penalty registrado como −min(5, balance) clamped); idempotente vía unique(user_id, type, source_id) donde source_id es trip_id / rating_id / week key ISO por tipo — la week key hace la racha una-vez-por-semana incluso bajo completions concurrentes; la racha cuenta solo filas del ledger `trip_completed_*`; `eco_balance`/`eco_lifetime` desnormalizados actualizados en la misma transacción (la suma del ledger siempre iguala eco_balance); cómputo de level + fórmula de progress (null en Platino); no-op cuando `gamification_enabled = false`; `GET /me/eco` (balance, lifetime, level, progress, `gamificationEnabled`, transacciones paginadas); agregación de montos positivos de la semana actual `xpByCareer` consumida por el dashboard de KBX-13. Pese al número, se ejecuta en el track backend: after KBX-10, before KBX-13.
