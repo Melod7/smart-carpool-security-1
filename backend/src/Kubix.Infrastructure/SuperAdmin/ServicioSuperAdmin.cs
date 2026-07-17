@@ -277,7 +277,9 @@ public sealed class ServicioSuperAdmin(
 
         var filas = await db.Usuarios
             .AsNoTracking()
-            .Where(u => u.UniversidadId == universidadId && u.Rol == RolUsuario.Coordinador)
+            .Where(u => u.UniversidadId == universidadId
+                        && u.Rol == RolUsuario.Coordinador
+                        && u.Estado != EstadoUsuario.Eliminado)
             .OrderBy(u => u.Nombre)
             .ToListAsync(ct);
 
@@ -356,12 +358,66 @@ public sealed class ServicioSuperAdmin(
         };
     }
 
+    public async Task EliminarCoordinadorAsync(
+        Guid coordinadorId,
+        CancellationToken ct = default)
+    {
+        var usuario = await db.Usuarios.FirstOrDefaultAsync(
+            u => u.Id == coordinadorId
+                 && u.Rol == RolUsuario.Coordinador
+                 && u.Estado != EstadoUsuario.Eliminado,
+            ct) ?? throw ExcepcionSuperAdmin.NoEncontrado("Coordinador not found.");
+
+        var ahora = DateTimeOffset.UtcNow;
+        var tokens = await db.TokensRefresco
+            .Where(t => t.UsuarioId == coordinadorId && t.RevocadoEn == null)
+            .ToListAsync(ct);
+        foreach (var token in tokens)
+        {
+            token.RevocadoEn = ahora;
+        }
+
+        var contactos = await db.ContactosEmergencia
+            .Where(c => c.UsuarioId == coordinadorId)
+            .ToListAsync(ct);
+        db.ContactosEmergencia.RemoveRange(contactos);
+
+        var vehiculos = await db.Vehiculos
+            .Where(v => v.UsuarioId == coordinadorId)
+            .ToListAsync(ct);
+        db.Vehiculos.RemoveRange(vehiculos);
+
+        usuario.Estado = EstadoUsuario.Eliminado;
+        usuario.Nombre = "Deleted coordinator";
+        usuario.Correo = $"deleted-coordinator-{usuario.Id:D}@invalid.local";
+        usuario.HashContrasena = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
+        usuario.Genero = null;
+        usuario.ImagenPerfil = null;
+        usuario.Carrera = null;
+        usuario.NumeroIdentificacion = null;
+        usuario.DebeCambiarContrasena = false;
+        usuario.ActualizadoEn = ahora;
+
+        await db.SaveChangesAsync(ct);
+        cacheEstado.Invalidar(coordinadorId);
+
+        await auditoria.EscribirAsync(
+            "coordinador.deleted",
+            TipoEventoAuditoria.Admin,
+            SeveridadAuditoria.Alta,
+            universidadId: usuario.UniversidadId,
+            usuarioId: usuario.Id,
+            ct: ct);
+    }
+
     public async Task<RespuestaResetContrasena> ResetearContrasenaCoordinadorAsync(
         Guid coordinadorId,
         CancellationToken ct = default)
     {
         var usuario = await db.Usuarios.FirstOrDefaultAsync(
-            u => u.Id == coordinadorId && u.Rol == RolUsuario.Coordinador,
+            u => u.Id == coordinadorId
+                 && u.Rol == RolUsuario.Coordinador
+                 && u.Estado != EstadoUsuario.Eliminado,
             ct) ?? throw ExcepcionSuperAdmin.NoEncontrado("Coordinador not found.");
 
         var temporal = GenerarContrasenaTemporal();

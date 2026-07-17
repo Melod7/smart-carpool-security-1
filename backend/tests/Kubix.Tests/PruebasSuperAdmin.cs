@@ -106,6 +106,46 @@ public class PruebasSuperAdmin
     }
 
     [Fact]
+    public async Task Eliminar_coordinador_anonimiza_revoca_sesiones_y_lo_oculta()
+    {
+        await using var db = await CrearDbConSeedAsync();
+        var servicio = CrearServicio(db);
+        var auth = CrearAuth(db);
+
+        var uni = await db.Universidades.SingleAsync(u => u.Slug == "utn");
+        var creado = await servicio.CrearCoordinadorAsync(uni.Id, new SolicitudCrearCoordinador
+        {
+            Nombre = "Coordinador Eliminable",
+            Correo = "eliminable.coord@utn.local"
+        });
+
+        await auth.IniciarSesionAsync(new SolicitudInicioSesion
+        {
+            Correo = creado.Correo,
+            Contrasena = creado.ContrasenaTemporal
+        });
+
+        await servicio.EliminarCoordinadorAsync(creado.Id);
+
+        var eliminado = await db.Usuarios.SingleAsync(u => u.Id == creado.Id);
+        Assert.Equal(EstadoUsuario.Eliminado, eliminado.Estado);
+        Assert.Equal("Deleted coordinator", eliminado.Nombre);
+        Assert.StartsWith("deleted-coordinator-", eliminado.Correo);
+        Assert.False(eliminado.DebeCambiarContrasena);
+
+        var tokens = await db.TokensRefresco.Where(t => t.UsuarioId == creado.Id).ToListAsync();
+        Assert.NotEmpty(tokens);
+        Assert.All(tokens, token => Assert.NotNull(token.RevocadoEn));
+
+        var coordinadores = await servicio.ListarCoordinadoresAsync(uni.Id);
+        Assert.DoesNotContain(coordinadores, c => c.Id == creado.Id);
+
+        var evento = await db.EventosAuditoria.SingleAsync(
+            e => e.Accion == "coordinador.deleted" && e.UsuarioId == creado.Id);
+        Assert.Equal(uni.Id, evento.UniversidadId);
+    }
+
+    [Fact]
     public async Task Stats_coinciden_tras_crear_entidades()
     {
         await using var db = CrearDb();

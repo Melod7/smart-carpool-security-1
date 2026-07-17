@@ -42,6 +42,7 @@ export function UniversidadDetallePage() {
   const [campusForm, setCampusForm] = useState<CampusFormState | null>(null)
   const [deletingCampus, setDeletingCampus] = useState<Campus | null>(null)
   const [coordFormOpen, setCoordFormOpen] = useState(false)
+  const [deletingCoordinador, setDeletingCoordinador] = useState<Coordinador | null>(null)
   const [tempPassword, setTempPassword] = useState<TempPasswordState | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -115,6 +116,17 @@ export function UniversidadDetallePage() {
       })
     },
     onError: (err) => setFormError(apiErrorMessage(err, 'No se pudo crear el coordinador.')),
+  })
+
+  const deleteCoordinador = useMutation({
+    mutationFn: (coordinadorId: string) => superAdminApi.deleteCoordinador(coordinadorId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['super', 'universities', id, 'coordinadores'],
+      })
+      await queryClient.invalidateQueries({ queryKey: ['super', 'universities'] })
+      setDeletingCoordinador(null)
+    },
   })
 
   const resetPassword = useMutation({
@@ -261,6 +273,8 @@ export function UniversidadDetallePage() {
                     coordinador={coord}
                     resetting={resetPassword.isPending}
                     onReset={() => resetPassword.mutate(coord.id)}
+                    deleting={deleteCoordinador.isPending}
+                    onDelete={() => setDeletingCoordinador(coord)}
                   />
                 ))}
               </tbody>
@@ -327,6 +341,40 @@ export function UniversidadDetallePage() {
         </Dialog>
       )}
 
+      {deletingCoordinador && (
+        <Dialog
+          title="Eliminar coordinador"
+          onClose={() => setDeletingCoordinador(null)}
+          footer={
+            <>
+              <SecondaryButton
+                onClick={() => setDeletingCoordinador(null)}
+                disabled={deleteCoordinador.isPending}
+              >
+                Cancelar
+              </SecondaryButton>
+              <DangerButton
+                disabled={deleteCoordinador.isPending}
+                onClick={() => deleteCoordinador.mutate(deletingCoordinador.id)}
+              >
+                {deleteCoordinador.isPending ? 'Eliminando…' : 'Eliminar'}
+              </DangerButton>
+            </>
+          }
+        >
+          <p className="text-sm text-slate-600">
+            ¿Eliminar al coordinador{' '}
+            <span className="font-medium text-slate-900">{deletingCoordinador.name}</span>? Se
+            cerrarán sus sesiones y perderá el acceso inmediatamente.
+          </p>
+          {deleteCoordinador.isError && (
+            <p className="mt-3 text-sm text-red-600" role="alert">
+              {apiErrorMessage(deleteCoordinador.error, 'No se pudo eliminar el coordinador.')}
+            </p>
+          )}
+        </Dialog>
+      )}
+
       {coordFormOpen && (
         <CoordinadorFormDialog
           submitting={createCoordinador.isPending}
@@ -352,10 +400,14 @@ function CoordinadorRow({
   coordinador,
   resetting,
   onReset,
+  deleting,
+  onDelete,
 }: {
   coordinador: Coordinador
   resetting: boolean
   onReset: () => void
+  deleting: boolean
+  onDelete: () => void
 }) {
   return (
     <tr className="border-b last:border-0">
@@ -368,9 +420,14 @@ function CoordinadorRow({
         {coordinador.mustChangePassword ? 'Pendiente' : 'Actualizada'}
       </td>
       <td className="px-4 py-3">
-        <SecondaryButton disabled={resetting} onClick={onReset}>
-          Resetear contraseña
-        </SecondaryButton>
+        <div className="flex flex-wrap gap-2">
+          <SecondaryButton disabled={resetting || deleting} onClick={onReset}>
+            Resetear contraseña
+          </SecondaryButton>
+          <DangerButton disabled={resetting || deleting} onClick={onDelete}>
+            Eliminar
+          </DangerButton>
+        </div>
       </td>
     </tr>
   )

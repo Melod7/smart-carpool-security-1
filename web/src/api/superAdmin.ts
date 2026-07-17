@@ -78,6 +78,10 @@ export const superAdminApi = {
     return data
   },
 
+  deleteCoordinador: async (coordinadorId: string) => {
+    await api.delete(`/super/coordinadores/${coordinadorId}`)
+  },
+
   resetCoordinadorPassword: async (coordinadorId: string) => {
     const { data } = await api.post<ResetPasswordResponse>(
       `/super/coordinadores/${coordinadorId}/reset-password`,

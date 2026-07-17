@@ -39,6 +39,10 @@ public interface IServicioSuperAdmin
         SolicitudCrearCoordinador solicitud,
         CancellationToken ct = default);
 
+    Task EliminarCoordinadorAsync(
+        Guid coordinadorId,
+        CancellationToken ct = default);
+
     Task<RespuestaResetContrasena> ResetearContrasenaCoordinadorAsync(
         Guid coordinadorId,
         CancellationToken ct = default);

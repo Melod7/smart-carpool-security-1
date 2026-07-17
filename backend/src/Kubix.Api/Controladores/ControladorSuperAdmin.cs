@@ -187,6 +187,22 @@ public sealed class ControladorSuperAdmin(IServicioSuperAdmin superAdmin) : Cont
         }
     }
 
+    [HttpDelete("coordinadores/{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> EliminarCoordinador(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            await superAdmin.EliminarCoordinadorAsync(id, ct);
+            return NoContent();
+        }
+        catch (ExcepcionSuperAdmin ex)
+        {
+            return ProblemFrom(ex);
+        }
+    }
+
     [HttpPost("coordinadores/{id:guid}/reset-password")]
     [ProducesResponseType(typeof(RespuestaResetContrasena), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
