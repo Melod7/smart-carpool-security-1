@@ -1,7 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../auth/AuthContext'
-import { notificationsApi } from '../api/cliente'
 
 type NavItem = { to: string; label: string }
 
@@ -31,15 +29,6 @@ export function AppShell() {
   const navigate = useNavigate()
   const isCoordinador = user?.role === 'coordinador'
   const nav = isCoordinador ? adminNav : superNav
-
-  const notifications = useQuery({
-    queryKey: ['admin', 'notifications'],
-    queryFn: notificationsApi.list,
-    enabled: isCoordinador,
-    refetchInterval: 30_000,
-  })
-
-  const unreadCount = notifications.data?.filter((n) => !n.read).length ?? 0
 
   async function handleLogout() {
     await logout()
@@ -86,23 +75,6 @@ export function AppShell() {
           </div>
 
           <div className="flex items-center gap-3">
-            {isCoordinador && (
-              <button
-                type="button"
-                className="relative rounded-md border px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-                aria-label="Notificaciones"
-                title="Ver auditoría de seguridad"
-                onClick={() => navigate('/admin/auditoria')}
-              >
-                Notificaciones
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-red-600 text-white text-[11px] leading-5 text-center font-semibold">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </button>
-            )}
-
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-[var(--kubix-blue)] text-white text-xs font-semibold flex items-center justify-center">
                 {(user?.name ?? 'U').slice(0, 1).toUpperCase()}

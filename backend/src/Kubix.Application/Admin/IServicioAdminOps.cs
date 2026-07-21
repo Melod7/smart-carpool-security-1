@@ -18,6 +18,11 @@ public interface IServicioAdminOps
         int tamanoPagina,
         CancellationToken ct = default);
 
+    Task<ArchivoExportacion> ExportarAuditoriaPdfAsync(
+        string? tipo,
+        string? severidad,
+        CancellationToken ct = default);
+
     Task<IReadOnlyList<NotificacionAdminDto>> ListarNotificacionesAsync(
         Guid usuarioId,
         CancellationToken ct = default);

@@ -2,7 +2,7 @@
 ## Informe de factibilidad e ingeniería de software
 
 **Fecha:** julio 2026  
-**Fuentes:** `PLAN.md` v2.9 · `STATUS.md` · historial git (≈45 commits, jul 2026)
+**Fuentes:** `PLAN.md` v3.0 · `STATUS.md` · código y workflows en `main` (jul 2026)
 
 ---
 
@@ -24,23 +24,37 @@ Plataforma **multi-tenant** de carpooling seguro para universidades: identidades
 | App | Flutter 3.x | `mobile/` |
 | Mapas | Google Maps (Directions en servidor) | — |
 
-**Estado (commits + STATUS):** T1–T5 + T8 hechos · T6 QA siguiente · T7 Deploy pendiente.
+**Estado:** T1–T5 + T8, KBX-27 y T7/KBX-30 hechos. Backend, web y mobile están verdes en CI. El entorno AWS está desplegado y validado; KBX-28/29 permanecen como ampliación QA.
+
+### Capacidades incorporadas en la release final
+
+- Registro obligatorio con catálogo searchable de carreras UTN, cédula, género e imagen de perfil; vehículo e imagen obligatorios para conductor.
+- Solicitudes de viaje solo entre conductor y pasajero del mismo género.
+- Cambio passenger↔driver, aprobación de cambios de perfil del pasajero y cambios de vehículo.
+- Eliminación lógica de usuarios por coordinador y de coordinadores por super_admin, con anonimización, revocación de sesiones y auditoría.
+- Email SMTP opcional para aceptación/denegación, búsqueda de campuses con Google Maps, branding UTN, deep links SPA y cierre seguro del SOS resuelto remotamente.
 
 ---
 
 ## 2. Arquitectura
 
 ```
-Mobile (Flutter)  ──┐
-                    ├── REST + JWT + polling ──► API .NET ──► PostgreSQL
-Web admin (React) ──┘                              │
-                                                   └── Google Directions
+Mobile Flutter ──┐
+                 ├── HTTPS/JWT ──► CloudFront ──► ALB ──► ECS Fargate (.NET 10)
+Web React ───────┘          │                         ├──► RDS PostgreSQL 16
+                            └──► S3 privado (SPA)     └──► Google Directions
+                                            ECS ─────► CloudWatch Logs
 ```
 
 - Una sola BD; aislamiento por `university_id` (filtros EF).
 - JWT 60 min + refresh 14 días; bloqueo mid-session.
 - Sin WebSockets en v1: polling (SOS/tracking ~10 s).
 - Capas API: Api / Application / Domain / Infrastructure.
+
+**Límite del entorno actual:** solo existe el stack AWS de prueba
+`kubix-test`; no hay un stack de producción separado. Antes de producción se
+debe inyectar un `Jwt__Key` dedicado, mover RDS a red privada con backups y
+pasar `VITE_GOOGLE_MAPS_API_KEY` explícitamente al build web de CI.
 
 ---
 
@@ -119,15 +133,15 @@ No hay rol de guardia en v1: el **coordinador** atiende el SOS.
 
 | Necesidad | Tecnología disponible | Uso en Kubix |
 |---|---|---|
-| API contenedorizada | .NET 10 + Docker / App Runner | `backend/` · plan T7 |
+| API contenedorizada | .NET 10 + Docker / ECR / ECS Fargate + ALB | `backend/` desplegado |
 | Base de datos | PostgreSQL 16 (Docker local / RDS) | Persistencia multi-tenant |
 | Front admin | React estático → S3 + CloudFront | `web/` |
 | App móvil | Flutter (Android / iOS / Chrome) | `mobile/` |
 | Mapas y rutas | Google Maps Platform | Directions server-side + SDK/JS clients |
 | Auth | JWT propio (sin IdP externo en v1) | Login, refresh, logout, change-password |
-| CI/CD | GitHub Actions (planificado) | T7 / KBX-30 |
+| CI/CD | GitHub Actions | PR coverage, deploy y artefactos móviles |
 
-**Evidencia:** el stack ya corre en local (`make up`). Cloud es el siguiente paso, no un bloqueo técnico.
+**Evidencia:** stack local reproducible con `make up`; entorno AWS de prueba activo en <https://d2dgmlbp00gdhh.cloudfront.net>; smoke de health, rutas SPA, logo y guardas API aprobado.
 
 #### Skills y competencias tech
 
@@ -139,9 +153,9 @@ No hay rol de guardia en v1: el **coordinador** atiende el SOS.
 | Flutter + mapas + GPS | Medio-alto | Cubierto (T5, T8) |
 | Modelado Postgres / migraciones | Medio | Cubierto |
 | QA automatizado (Postman, JMeter, Selenium, SAST) | Medio | **Pendiente T6** |
-| AWS (App Runner, RDS, S3, CloudFront) | Medio | **Pendiente T7** |
+| AWS (ECS/ALB, ECR, RDS, S3, CloudFront, CloudWatch) | Medio | Cubierto y desplegado (T7) |
 
-**Conclusión skills:** el núcleo productivo está cubierto; faltan competencias de cierre (QA + cloud) explícitas en el Planner.
+**Conclusión skills:** núcleo productivo y cloud cubiertos; queda como ampliación la automatización QA avanzada de KBX-28/29.
 
 #### Escalabilidad y mantenimiento · adaptarse a nuevas necesidades
 
@@ -189,7 +203,7 @@ Copy SOS: *seguridad del campus notificada* (no se afirma contacto automático a
 | **BDD** | Postgres 16; schema único; `university_id` en tablas hijas; enums EN en DB/API |
 | **DEV** | Monorepo: `backend/`, `web/`, `mobile/`, `qa/`, `deploy/`; una sola `.env` + `make sync-env` |
 | **ARQ-SW** | Clients → `/api/v1` + JWT → API → DB; Maps tiles en clients; Directions solo en servidor |
-| **Entornos** | Local Docker Compose; cloud planificado App Runner + RDS + CloudFront |
+| **Entornos** | Local Docker Compose; AWS real con ECS Fargate/ALB, RDS y S3/CloudFront |
 | **Contratos** | Errores RFC 7807; Swagger; mismos endpoints para web y mobile |
 
 Commits recientes de integración operativa: unificar `.env`, fijar puertos 8080/5173/5055, CORS Flutter web.
@@ -199,14 +213,14 @@ Commits recientes de integración operativa: unificar `.env`, fijar puertos 8080
 | Tema | Enfoque |
 |---|---|
 | **Disponibilidad local** | `make up`: API, Web, Postgres siempre en los mismos puertos |
-| **Disponibilidad cloud (plan)** | App Runner (API) + RDS + CloudFront (web); healthcheck `/health` |
+| **Disponibilidad cloud** | CloudFront → ALB/ECS (API) + S3 (web) + RDS; healthcheck `/api/v1/health` |
 | **Soporte operativo** | Coordinador resuelve SOS; `support_email` en settings; sin rol guardia en v1 |
 | **Seguridad de acceso** | Aprobación de registros; JWT + refresh; block/suspend mid-session; policies por rol |
 | **Seguridad de datos** | Aislamiento tenant; auditoría (sos/auth/admin/system); rating mínimo → auto-block |
 | **Seguridad de mapas** | API key Directions en servidor; keys client restringidas por app/referrer |
 | **Backup / retención** | Dumps Postgres / snapshots RDS (T7); last ping por viaje; audit_events para forensics; pings viejos purgados |
 
-**Veredicto D:** **Factible operativamente** para piloto universitario. La operación diaria cae en el coordinador; el soporte cloud y backups formales se cierran en T7.
+**Veredicto D:** **Factible operativamente** para piloto universitario. La operación diaria cae en el coordinador y el entorno cloud ya fue validado; el stack actual mantiene backup retention 0 por ser una demo efímera.
 
 ---
 
@@ -217,7 +231,7 @@ Commits recientes de integración operativa: unificar `.env`, fijar puertos 8080
 | Costos de implementar | Beneficios / ahorro |
 |---|---|
 | Horas DEV del stack (API + web + mobile) — **ya invertidas** en T1–T5 + T8 | Menos coordinación manual de rides (grupos WhatsApp / hojas) |
-| Horas QA + deploy (T6–T7) — **pendientes** | Menos tiempo del coordinador buscando “quién va / quién es confiable” |
+| Horas QA avanzada (KBX-28/29) — pendientes | Menos tiempo del coordinador buscando “quién va / quién es confiable” |
 | Infra cloud + Google Maps (OPEX) | Identidades verificadas + SOS + auditoría = menos riesgo institucional |
 | Capacitación breve a coordinadores | Visibilidad de viajes activos y reportes exportables (CSV/XLSX/PDF) |
 | | Incentivo EcoTokens / CO₂ → más adopción del carpool |
@@ -271,7 +285,7 @@ El equilibrio se alcanza cuando el **valor institucional acumulado** (tiempo + r
 | T5 Mobile | Auth, pax, driver, SOS, mapa | Hecho | Alto |
 | T8 Waypoints | Ruta + punto de espera + polish Maps | Hecho | Medio |
 | **T6 QA** | Coverage, Postman, JMeter, Selenium, SAST | **Pendiente** | Medio |
-| **T7 Deploy** | AWS + CI/CD + teardown | Pendiente | Medio-bajo |
+| **T7 Deploy** | AWS + CI/CD + teardown | Hecho y validado | Medio-bajo |
 
 Inversión DEV del producto usable: **ya realizada** (historial `feat(backend|web|mobile)` por KBX). Inversión restante estimada: **~20–30%** (calidad + cloud).
 
@@ -280,9 +294,10 @@ Inversión DEV del producto usable: **ya realizada** (historial `feat(backend|we
 | Modelo | Servicio | Rol en Kubix | Notas de costo |
 |---|---|---|---|
 | **SaaS** | Google Maps Platform | Directions + tiles | Principal riesgo de billing; restringir keys |
-| **PaaS** | AWS App Runner | API contenedor | Free-tier friendly en plan |
-| **IaaS / DB managed** | RDS PostgreSQL t4g.micro | Datos | Pequeño instance size en plan |
-| **SaaS/CDN** | S3 + CloudFront | Hosting web | Estático, bajo costo |
+| **Contenedores** | ECR + ECS Fargate + ALB | API .NET 10 | Runtime real de la cuenta de prueba |
+| **DB managed** | RDS PostgreSQL 16 t4g.micro | Datos | 20 GiB gp3; costo mientras está activo |
+| **Object storage/CDN** | S3 privado + CloudFront/Function | Hosting web + entrada HTTPS | SPA, compresión, routing `/api/*` |
+| **Observabilidad** | CloudWatch Logs | Logs ECS | Retención 7 días |
 | **Local (dev)** | Docker Compose | Postgres + opcional API | Sin costo cloud |
 
 Regla de oro del plan: **documentar teardown** para no dejar recursos AWS facturando tras pruebas.
@@ -299,7 +314,7 @@ Regla de oro del plan: **documentar teardown** para no dejar recursos AWS factur
 | Parches de seguridad | SAST/Sonar (T6) + updates runtime | Continuo tras T6 |
 | Updates de producto | Features nuevas (push, canje ECT…) | Fuera de v1; nuevo backlog |
 
-**Veredicto F:** Inversión acotada y mayormente **ya ejecutada** en DEV. Costos recurrentes críticos: **Google Maps** + **RDS/App Runner**. Mantenimiento es sostenible gracias a capas claras y settings por tenant.
+**Veredicto F:** Inversión de desarrollo y deploy ejecutada. Costos recurrentes críticos: **Google Maps, RDS, ECS/ALB y CloudFront**; deben controlarse con teardown en la cuenta de prueba.
 
 ---
 
@@ -348,6 +363,6 @@ Regla de oro del plan: **documentar teardown** para no dejar recursos AWS factur
 | **C Técnica** | Factible — stack disponible y núcleo implementado |
 | **D Operativa** | Factible — usabilidad por rol, integración monorepo, seguridad/backup definidos |
 | **E Económica** | Viable en piloto — beneficio = seguridad + tiempo; cuidar Maps |
-| **F Inversión** | DEV hecho; restan QA + cloud; OPEX = Maps + infra |
+| **F Inversión** | DEV + cloud hechos; resta QA avanzada; OPEX = Maps + AWS |
 
-**Recomendación:** cerrar **T6 (QA)** y **T7 (deploy + teardown)**. El producto ya es demostrable en local con `make up`.
+**Recomendación:** completar KBX-28/29, configurar credenciales AWS en GitHub para deploy remoto y ejecutar teardown cuando termine la demo. El producto es demostrable localmente y en AWS.

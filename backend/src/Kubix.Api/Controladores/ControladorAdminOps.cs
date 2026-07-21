@@ -92,6 +92,26 @@ public sealed class ControladorAdminOps(IServicioAdminOps admin) : ControllerBas
         }
     }
 
+    [HttpGet("audit-log/export")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> ExportarAuditoria(
+        [FromQuery(Name = "type")] string? tipo,
+        [FromQuery(Name = "severity")] string? severidad,
+        CancellationToken ct)
+    {
+        try
+        {
+            var archivo = await admin.ExportarAuditoriaPdfAsync(tipo, severidad, ct);
+            return File(archivo.Contenido, archivo.ContentType, archivo.NombreArchivo);
+        }
+        catch (ExcepcionAdminOps ex)
+        {
+            return ProblemFrom(ex);
+        }
+    }
+
     [HttpGet("notifications")]
     [ProducesResponseType(typeof(IReadOnlyList<NotificacionAdminDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Notificaciones(CancellationToken ct)

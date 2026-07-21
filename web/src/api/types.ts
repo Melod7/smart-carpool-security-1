@@ -19,15 +19,6 @@ export type AuthResponse = {
   user: AuthUser
 }
 
-export type AdminNotification = {
-  id: string
-  type: string
-  title: string
-  body: string
-  read: boolean
-  createdAt: string
-}
-
 export type SuperStats = {
   universitiesCount: number
   totalUsers: number

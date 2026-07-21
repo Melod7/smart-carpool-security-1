@@ -5,13 +5,13 @@ Infra de **prueba** en AWS: API en **ECS Fargate + ALB** (fallback automático s
 > En Mac Apple Silicon el build usa `--platform linux/amd64` (ECS/Fargate no acepta arm64).
 > Si el deploy “se cuelga” en `services-stable`, revisa eventos ECS: el error típico es imagen arm64.
 
-> Cuenta de prueba: **siempre** ejecuta el teardown al terminar. RDS + App Runner generan cargo aunque no haya tráfico.
+> Cuenta de prueba: **siempre** ejecuta el teardown al terminar. RDS, ECS/ALB y CloudFront pueden generar cargos aunque no haya tráfico.
 
 ## Prerrequisitos
 
 - AWS CLI v2 con profile **`kx-dev`** (cuenta Kubix). Los scripts **ignoran** `AWS_PROFILE` del shell (p. ej. perfiles WP) y fuerzan `kx-dev`.
 - Docker, `jq`, Node 20+, npm
-- Permisos: CloudFormation, ECR, S3, CloudFront, RDS, EC2 (SG), IAM, App Runner
+- Permisos: CloudFormation, ECR, ECS, ELBv2, CloudWatch Logs, S3, CloudFront, RDS, EC2 (SG), IAM y, opcionalmente, App Runner
 
 Login (console credentials, no SSO WP):
 
@@ -54,6 +54,28 @@ El script:
 5. Sync a S3 + invalidación CloudFront
 6. Escribe URLs en `deploy/.out/urls.env`
 
+### Entorno desplegado (19/07/2026)
+
+Este repositorio define únicamente el entorno AWS de **prueba**
+(`STACK_NAME=kubix-test`, `ENVIRONMENT_NAME=test`); no existe un stack de
+producción separado.
+
+| Componente | Servicio real |
+|---|---|
+| Entrada HTTPS + CDN | CloudFront `https://d2dgmlbp00gdhh.cloudfront.net` |
+| SPA / assets | S3 privado `kubix-test-web-900103507605` + OAC |
+| Routing SPA | CloudFront Function `kubix-test-spa` |
+| Registro de contenedor | ECR `kubix-test-api` |
+| Runtime API | ECS Fargate, cluster/service `kubix-test` / `kubix-test-api` |
+| Entrada API | Application Load Balancer `kubix-test-alb` + target group |
+| Base de datos | RDS PostgreSQL 16 `kubix-test-pg`, `db.t4g.micro`, 20 GiB gp3 |
+| Logs | CloudWatch `/ecs/kubix-test-api`, retención 7 días |
+| Red/seguridad | Default VPC, subnets, security groups e IAM roles |
+
+App Runner no estaba habilitado en la cuenta `900103507605`; el fallback ECS
+se activó y es el runtime real. El smoke posterior verificó health, deep links
+`/admin/*` y `/super/*`, logo UTN y guardas `/api/*`.
+
 Smoke:
 
 ```bash
@@ -67,7 +89,7 @@ source deploy/.out/urls.env
 ./deploy/scripts/teardown.sh
 ```
 
-Elimina App Runner, vacía S3/ECR y borra el stack CloudFormation (RDS, distribución, roles). Verifica en la consola que no queden recursos `kubix-test-*`.
+Elimina el servicio ECS o App Runner, vacía S3/ECR y borra el stack CloudFormation (RDS, ALB, cluster, distribución, logs y roles). Verifica en la consola que no queden recursos `kubix-test-*`.
 
 ## CI/CD (GitHub Actions)
 
@@ -77,7 +99,7 @@ Workflows:
 - `.github/workflows/mobile-builds.yml`: Android/iOS independiente, ejecutable manualmente sin credenciales AWS.
 
 - Disparo: **manual** (`workflow_dispatch`) para no gastar AWS en cada push
-- Opcional: push a `main` si existen secrets AWS
+- Opcional: push a `main` cuando `DEPLOY_ON_PUSH=true` y existen secrets AWS
 - Secrets recomendados (OIDC o access keys):
 
 | Secret | Uso |
@@ -93,6 +115,10 @@ Workflows:
 | `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD` | Alias y password de la clave |
 
 Variables de repo opcionales: `AWS_REGION`, `STACK_NAME`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`.
+
+El workflow queda en `skipped` para pushes normales si `DEPLOY_ON_PUSH` no está
+habilitado. Sin `AWS_ROLE_ARN` o access keys, un dispatch no puede desplegar;
+en ese caso se usa `deploy.sh` con el profile local `kx-dev`.
 
 El correo se habilita automáticamente cuando existen ambos secrets SMTP. La aprobación o
 denegación nunca se revierte si Gmail no está disponible; el fallo queda registrado en logs.
@@ -125,21 +151,28 @@ workflow**. El input `api_url` debe ser la URL CloudFront del entorno.
 ```
 GitHub Actions / deploy.sh
         │
-        ├─► ECR ──► ECS Fargate (+ ALB) ──► RDS Postgres t4g.micro
-        │         (o App Runner si la cuenta lo permite)
-        └─► web/dist ──► S3 ──► CloudFront (403/404 → index.html)
+        ├─► ECR ──► ECS Fargate ◄── ALB ◄── CloudFront /api/*
+        │                     └────► RDS PostgreSQL 16
+        │                     └────► CloudWatch Logs
+        └─► web/dist ──► S3 privado ──► CloudFront + Function SPA
 ```
 
 CORS de la API se configura con el dominio CloudFront en el deploy.
 
 ## Costes / seguridad (cuenta de prueba)
 
-- RDS `PubliclyAccessible=true` y SG con CIDR configurable (`ALLOWED_CIDR`, default `0.0.0.0/0`) — **solo para demo**. En producción: VPC privada + connector App Runner.
+- RDS `PubliclyAccessible=true` y SG con CIDR configurable (`ALLOWED_CIDR`, default `0.0.0.0/0`) — **solo para demo**. En producción: subnets privadas y acceso exclusivo desde el security group de ECS.
 - `BackupRetentionPeriod=0` y `DeletionProtection=false` para facilitar teardown.
+- El script aún no inyecta `Jwt__Key`; el contenedor usa el valor de
+  `appsettings.json`. Es obligatorio cablear un secret JWT dedicado antes de
+  tratar este entorno como producción.
+- El build cloud solo fija `VITE_API_URL`. En un runner limpio también debe
+  inyectarse `VITE_GOOGLE_MAPS_API_KEY` o ejecutarse `make sync-env`; de lo
+  contrario el mapa web puede quedar sin clave.
 - No subas `deploy/.out/` ni passwords al repo.
 
 ## Checklist QA (ticket)
 
-- [ ] Deploy fresco desde cuenta limpia siguiendo este README
-- [ ] Smoke / login web vía CloudFront
+- [x] Deploy real siguiendo este README
+- [x] Smoke / routing SPA / guardas API vía CloudFront
 - [ ] Teardown sin recursos facturables residuales

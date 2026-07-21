@@ -1,32 +1,46 @@
-# React + TypeScript + Vite
+# Kubix UTN 2.0 — Web administrativa
 
-Esta plantilla ofrece un setup mínimo para hacer funcionar React en Vite con HMR y algunas reglas de Oxlint.
+SPA React 19 + TypeScript + Vite 8 para `super_admin` y `coordinador`.
 
-Actualmente hay dos plugins oficiales disponibles:
+## Rutas
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) usa [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) usa [SWC](https://swc.rs/)
+| Scope | Rutas | Funciones |
+|---|---|---|
+| Super admin | `/super/*` | Universidades, campuses con Google Maps, coordinadores (crear/resetear/eliminar) y estadísticas |
+| Coordinador | `/admin/*` | Dashboard, altas/cambios, usuarios (block/unblock/delete), viajes, SOS, tracking, auditoría y configuración |
 
-## React Compiler
+El login y el shell incluyen branding UTN. Los deep links funcionan mediante
+la CloudFront Function del stack de deploy.
 
-El React Compiler no está habilitado en esta plantilla por su impacto en el rendimiento de dev y build. Para añadirlo, consulta [esta documentación](https://react.dev/learn/react-compiler/installation).
+## Desarrollo
 
-## Ampliar la configuración de Oxlint
+Desde la raíz:
 
-Si estás desarrollando una aplicación de producción, recomendamos habilitar reglas de lint type-aware instalando `oxlint-tsgolint` y editando `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+cp .env.example .env
+make sync-env
+make api
+make web
 ```
 
-Consulta la [documentación de reglas de Oxlint](https://oxc.rs/docs/guide/usage/linter/rules) para la lista completa de reglas y categorías.
+Web: <http://localhost:5173>. La API se obtiene de `VITE_API_URL`; Maps usa
+`VITE_GOOGLE_MAPS_API_KEY`, ambas generadas desde el `.env` raíz.
+
+## Calidad
+
+```bash
+cd web
+npm ci
+npm test
+npm run lint
+npm run build
+```
+
+Vitest/React Testing Library cubre guards, auth y pantallas principales.
+`pr-tests.yml` ejecuta el gate web en cada PR y push a `main`.
+
+## Producción
+
+El build estático se sincroniza a S3 privado y se sirve por
+<https://d2dgmlbp00gdhh.cloudfront.net>. CloudFront enruta `/api/*` al ALB/ECS
+y conserva las rutas `/admin/*` y `/super/*` en la SPA.

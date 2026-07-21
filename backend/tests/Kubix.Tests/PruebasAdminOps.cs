@@ -287,6 +287,21 @@ public class PruebasAdminOps
         Assert.All(pagina.Items, i => Assert.Equal("sos", i.Tipo));
     }
 
+    [Fact]
+    public async Task Export_auditoria_devuelve_pdf_completo()
+    {
+        await using var db = await CrearDbConSeedAsync();
+        var coord = await db.Usuarios.SingleAsync(u => u.Correo == "coordinador@utn.local");
+        var servicio = CrearServicio(db, coord);
+
+        var archivo = await servicio.ExportarAuditoriaPdfAsync("sos", null);
+
+        Assert.Equal("application/pdf", archivo.ContentType);
+        Assert.EndsWith(".pdf", archivo.NombreArchivo);
+        Assert.True(archivo.Contenido.Length > 100);
+        Assert.Equal("%PDF", Encoding.ASCII.GetString(archivo.Contenido, 0, 4));
+    }
+
     private static IServicioAdminOps CrearServicio(ContextoApp db, Usuario usuario)
     {
         if (db is not ContextoAppConInquilino mutable)

@@ -11,7 +11,7 @@ public static class ExportadorReportes
 {
     private static int _licenciaConfigurada;
 
-    private static void AsegurarLicencia()
+    internal static void AsegurarLicencia()
     {
         if (Interlocked.Exchange(ref _licenciaConfigurada, 1) == 0)
         {

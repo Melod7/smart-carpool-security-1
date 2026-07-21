@@ -1,5 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import type { AuthResponse, AuthUser, AdminNotification } from './types'
+import type { AuthResponse, AuthUser } from './types'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
@@ -127,13 +127,6 @@ export const authApi = {
   me: async () => {
     const { data } = await api.get<unknown>('/me')
     return parseAuthUser(data)
-  },
-}
-
-export const notificationsApi = {
-  list: async () => {
-    const { data } = await api.get<AdminNotification[]>('/admin/notifications')
-    return data
   },
 }
 

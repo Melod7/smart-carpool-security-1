@@ -1,15 +1,17 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { AuditLogPage } from '../../api/types'
 import { AuditoriaPage } from './AuditoriaPage'
 
 const getAuditLog = vi.hoisted(() => vi.fn())
+const exportAuditLog = vi.hoisted(() => vi.fn())
 
 vi.mock('../../api/admin', () => ({
   adminApi: {
     getAuditLog,
+    exportAuditLog,
   },
 }))
 
@@ -67,10 +69,22 @@ function renderPage() {
 describe('AuditoriaPage', () => {
   beforeEach(() => {
     getAuditLog.mockReset()
+    exportAuditLog.mockReset()
     getAuditLog.mockImplementation(async (filters: { severity?: string } = {}) => {
       if (filters.severity === 'high') return highOnlyPage
       return allPage
     })
+    exportAuditLog.mockResolvedValue({
+      blob: new Blob(['%PDF-1.7'], { type: 'application/pdf' }),
+      filename: 'kubix_auditoria_2026-07-20.pdf',
+    })
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:kubix-auditoria')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined)
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('renderiza la tabla y filtra por severidad alta', async () => {
@@ -91,5 +105,23 @@ describe('AuditoriaPage', () => {
     expect(getAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'high', page: 1, pageSize: 20 }),
     )
+  })
+
+  it('descarga la auditoría completa en PDF con los filtros activos', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    expect(await screen.findByText('sos.fired')).toBeInTheDocument()
+    await user.selectOptions(screen.getByLabelText('Filtrar por severidad'), 'high')
+    await user.click(screen.getByRole('button', { name: 'Exportar PDF' }))
+
+    await waitFor(() => {
+      expect(exportAuditLog).toHaveBeenCalledWith({
+        type: undefined,
+        severity: 'high',
+      })
+    })
+    expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalled()
   })
 })

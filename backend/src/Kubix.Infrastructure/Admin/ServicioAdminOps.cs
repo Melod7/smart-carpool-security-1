@@ -142,33 +142,10 @@ public sealed class ServicioAdminOps(ContextoApp db, IContextoInquilino inquilin
         if (pagina < 1) pagina = 1;
         if (tamanoPagina is < 1 or > 100) tamanoPagina = 20;
 
-        var query = db.EventosAuditoria.AsNoTracking().AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(tipo))
-        {
-            try
-            {
-                var tipoEnum = ConversorEnumDominio.DesdeCadenaDb<TipoEventoAuditoria>(tipo.Trim().ToLowerInvariant());
-                query = query.Where(e => e.Tipo == tipoEnum);
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                throw ExcepcionAdminOps.Validacion("Invalid type filter.", "invalid_filter");
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(severidad))
-        {
-            try
-            {
-                var sevEnum = ConversorEnumDominio.DesdeCadenaDb<SeveridadAuditoria>(severidad.Trim().ToLowerInvariant());
-                query = query.Where(e => e.Severidad == sevEnum);
-            }
-            catch (ArgumentOutOfRangeException)
-            {
-                throw ExcepcionAdminOps.Validacion("Invalid severity filter.", "invalid_filter");
-            }
-        }
+        var query = AplicarFiltrosAuditoria(
+            db.EventosAuditoria.AsNoTracking(),
+            tipo,
+            severidad);
 
         var total = await query.CountAsync(ct);
         var filas = await query
@@ -178,18 +155,7 @@ public sealed class ServicioAdminOps(ContextoApp db, IContextoInquilino inquilin
             .Take(tamanoPagina)
             .ToListAsync(ct);
 
-        var items = filas.Select(e => new EventoAuditoriaDto
-        {
-            Id = e.Id,
-            Accion = e.Accion,
-            Tipo = ConversorEnumDominio.ACadenaDb(e.Tipo),
-            Severidad = ConversorEnumDominio.ACadenaDb(e.Severidad),
-            UsuarioId = e.UsuarioId,
-            NombreUsuario = e.Usuario?.Nombre,
-            Ip = e.Ip,
-            Dispositivo = e.Dispositivo,
-            CreadoEn = e.CreadoEn
-        }).ToList();
+        var items = filas.Select(MapearEventoAuditoria).ToList();
 
         return new PaginaAuditoriaDto
         {
@@ -198,6 +164,38 @@ public sealed class ServicioAdminOps(ContextoApp db, IContextoInquilino inquilin
             Pagina = pagina,
             TamanoPagina = tamanoPagina
         };
+    }
+
+    public async Task<ArchivoExportacion> ExportarAuditoriaPdfAsync(
+        string? tipo,
+        string? severidad,
+        CancellationToken ct = default)
+    {
+        RequerirUniversidad();
+
+        try
+        {
+            var filas = await AplicarFiltrosAuditoria(
+                    db.EventosAuditoria.AsNoTracking(),
+                    tipo,
+                    severidad)
+                .Include(e => e.Usuario)
+                .OrderByDescending(e => e.CreadoEn)
+                .ToListAsync(ct);
+
+            return ExportadorAuditoria.GenerarPdf(
+                filas.Select(MapearEventoAuditoria).ToList());
+        }
+        catch (ExcepcionAdminOps)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw ExcepcionAdminOps.ErrorInterno(
+                $"Failed to generate audit PDF: {ex.Message}",
+                "audit_export_failed");
+        }
     }
 
     public async Task<IReadOnlyList<NotificacionAdminDto>> ListarNotificacionesAsync(
@@ -456,6 +454,56 @@ public sealed class ServicioAdminOps(ContextoApp db, IContextoInquilino inquilin
         await db.ConfiguracionesUniversidad.AsNoTracking()
             .FirstOrDefaultAsync(c => c.UniversidadId == universidadId, ct)
         ?? throw ExcepcionAdminOps.NoEncontrado("University settings not found.", "settings_not_found");
+
+    private static IQueryable<EventoAuditoria> AplicarFiltrosAuditoria(
+        IQueryable<EventoAuditoria> query,
+        string? tipo,
+        string? severidad)
+    {
+        if (!string.IsNullOrWhiteSpace(tipo))
+        {
+            try
+            {
+                var tipoEnum = ConversorEnumDominio.DesdeCadenaDb<TipoEventoAuditoria>(
+                    tipo.Trim().ToLowerInvariant());
+                query = query.Where(e => e.Tipo == tipoEnum);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                throw ExcepcionAdminOps.Validacion("Invalid type filter.", "invalid_filter");
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(severidad))
+        {
+            try
+            {
+                var severidadEnum = ConversorEnumDominio.DesdeCadenaDb<SeveridadAuditoria>(
+                    severidad.Trim().ToLowerInvariant());
+                query = query.Where(e => e.Severidad == severidadEnum);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                throw ExcepcionAdminOps.Validacion("Invalid severity filter.", "invalid_filter");
+            }
+        }
+
+        return query;
+    }
+
+    private static EventoAuditoriaDto MapearEventoAuditoria(EventoAuditoria evento) =>
+        new()
+        {
+            Id = evento.Id,
+            Accion = evento.Accion,
+            Tipo = ConversorEnumDominio.ACadenaDb(evento.Tipo),
+            Severidad = ConversorEnumDominio.ACadenaDb(evento.Severidad),
+            UsuarioId = evento.UsuarioId,
+            NombreUsuario = evento.Usuario?.Nombre,
+            Ip = evento.Ip,
+            Dispositivo = evento.Dispositivo,
+            CreadoEn = evento.CreadoEn
+        };
 
     private Guid RequerirUniversidad()
     {

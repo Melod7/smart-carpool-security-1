@@ -1,5 +1,5 @@
 import { GoogleMap, Marker, useJsApiLoader } from '@react-google-maps/api'
-import { useCallback, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 const MAP_STYLE = { width: '100%', height: '100%' } as const
 const DEFAULT_CENTER = { lat: -0.1807, lng: -78.4678 }
@@ -76,8 +76,7 @@ export function LocationMapPicker({
     [selectPoint],
   )
 
-  async function searchAddress(event: FormEvent) {
-    event.preventDefault()
+  async function searchAddress() {
     const query = address.trim()
     if (!query) {
       setSearchError('Escribe una dirección para buscar.')
@@ -165,22 +164,28 @@ export function LocationMapPicker({
   return (
     <div className={['overflow-hidden rounded-lg border border-slate-200', className ?? ''].join(' ')}>
       {onAddressChange && (
-        <form onSubmit={(event) => void searchAddress(event)} className="flex gap-2 border-b bg-white p-3">
+        <div className="flex gap-2 border-b bg-white p-3">
           <input
             value={address}
             onChange={(event) => onAddressChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter') return
+              event.preventDefault()
+              void searchAddress()
+            }}
             placeholder="Busca una dirección en Ecuador"
             aria-label="Dirección del campus"
             className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
           />
           <button
-            type="submit"
+            type="button"
             disabled={searching}
+            onClick={() => void searchAddress()}
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
           >
             {searching ? 'Buscando…' : 'Buscar'}
           </button>
-        </form>
+        </div>
       )}
       {searchError && (
         <p className="border-b bg-amber-50 px-3 py-2 text-xs text-amber-900" role="alert">

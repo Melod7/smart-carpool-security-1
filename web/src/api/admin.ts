@@ -138,6 +138,25 @@ export const adminApi = {
     return data
   },
 
+  exportAuditLog: async (
+    filters: Pick<AuditLogFilter, 'type' | 'severity'> = {},
+  ): Promise<ReportExportResult> => {
+    const params: Record<string, string> = {}
+    if (filters.type) params.type = filters.type
+    if (filters.severity) params.severity = filters.severity
+    const { data, headers } = await api.get<Blob>('/admin/audit-log/export', {
+      params,
+      responseType: 'blob',
+    })
+    const disposition =
+      (headers['content-disposition'] as string | undefined) ??
+      (headers['Content-Disposition'] as string | undefined)
+    return {
+      blob: data,
+      filename: filenameFromContentDisposition(disposition),
+    }
+  },
+
   getSettings: async () => {
     const { data } = await api.get<AdminSettings>('/admin/settings')
     return data

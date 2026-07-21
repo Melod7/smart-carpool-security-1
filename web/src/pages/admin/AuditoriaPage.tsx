@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { adminApi } from '../../api/admin'
 import type { AuditEvent, AuditLogFilter } from '../../api/types'
 import {
@@ -77,32 +77,6 @@ function severityTone(severity: string) {
   }
 }
 
-function escapeCsv(value: string) {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`
-  }
-  return value
-}
-
-function buildCsv(items: AuditEvent[]) {
-  const header = ['id', 'action', 'type', 'severity', 'userName', 'ip', 'device', 'createdAt']
-  const rows = items.map((item) =>
-    [
-      item.id,
-      item.action,
-      item.type,
-      item.severity,
-      item.userName ?? '',
-      item.ip ?? '',
-      item.device ?? '',
-      item.createdAt,
-    ]
-      .map((cell) => escapeCsv(String(cell)))
-      .join(','),
-  )
-  return [header.join(','), ...rows].join('\n')
-}
-
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
@@ -141,6 +115,18 @@ export function AuditoriaPage() {
     queryFn: () => adminApi.getAuditLog(filters),
   })
 
+  const exportMutation = useMutation({
+    mutationFn: () =>
+      adminApi.exportAuditLog({
+        type: type || undefined,
+        severity: severity || undefined,
+      }),
+    onSuccess: (result) => {
+      const stamp = new Date().toISOString().slice(0, 10)
+      downloadBlob(result.blob, result.filename ?? `kubix_auditoria_${stamp}.pdf`)
+    },
+  })
+
   const items = audit.data?.items ?? []
   const totalCount = audit.data?.totalCount ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
@@ -151,21 +137,17 @@ export function AuditoriaPage() {
     setPage(1)
   }
 
-  function exportCsv() {
-    const csv = buildCsv(items)
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-    const stamp = new Date().toISOString().slice(0, 10)
-    downloadBlob(blob, `kubix_auditoria_${stamp}.csv`)
-  }
-
   return (
     <div className="space-y-8">
       <PageHeader
         title="Auditoría de Seguridad"
         description="Registro de eventos de seguridad con filtros por tipo y severidad."
         actions={
-          <SecondaryButton disabled={items.length === 0} onClick={exportCsv}>
-            Exportar CSV
+          <SecondaryButton
+            disabled={totalCount === 0 || exportMutation.isPending}
+            onClick={() => exportMutation.mutate()}
+          >
+            {exportMutation.isPending ? 'Generando PDF…' : 'Exportar PDF'}
           </SecondaryButton>
         }
       />
@@ -174,6 +156,14 @@ export function AuditoriaPage() {
       {audit.isError && (
         <ErrorBanner
           message={apiErrorMessage(audit.error, 'No se pudo cargar el registro de auditoría.')}
+        />
+      )}
+      {exportMutation.isError && (
+        <ErrorBanner
+          message={apiErrorMessage(
+            exportMutation.error,
+            'No se pudo generar el PDF de auditoría.',
+          )}
         />
       )}
 

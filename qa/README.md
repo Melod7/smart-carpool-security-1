@@ -3,6 +3,11 @@
 Postman, JMeter, Selenium, TestLink, MantisBT y SAST aterrizan en KBX-28/29.
 La cobertura unitaria (KBX-27) publica reportes en `qa/results/`.
 
+Estado al 19/07/2026: los jobs Backend, Web y Mobile de `pr-tests.yml`
+finalizan correctamente en `main`. La última validación funcional local incluyó
+110 tests backend, 17 tests web, build web y la suite mobile; KBX-28/29
+continúan como ampliación de Postman/JMeter/Selenium/SAST.
+
 ## Comandos locales (KBX-27)
 
 ```bash
