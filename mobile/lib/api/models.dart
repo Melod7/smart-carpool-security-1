@@ -499,6 +499,7 @@ class EcoSummary {
     required this.transactions,
     required this.totalCount,
     this.progress,
+    this.prizes = const [],
   });
 
   final int balance;
@@ -508,9 +509,11 @@ class EcoSummary {
   final bool gamificationEnabled;
   final List<EcoTransaction> transactions;
   final int totalCount;
+  final List<EcoPrize> prizes;
 
   factory EcoSummary.fromJson(Map<String, dynamic> json) {
     final raw = json['transactions'] as List<dynamic>? ?? const [];
+    final rawPrizes = json['prizes'] as List<dynamic>? ?? const [];
     return EcoSummary(
       balance: json['balance'] as int? ?? 0,
       lifetime: json['lifetime'] as int? ?? 0,
@@ -521,6 +524,55 @@ class EcoSummary {
           .map((e) => EcoTransaction.fromJson(e as Map<String, dynamic>))
           .toList(),
       totalCount: json['totalCount'] as int? ?? 0,
+      prizes: rawPrizes
+          .map((e) => EcoPrize.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class EcoPrize {
+  const EcoPrize({
+    required this.code,
+    required this.name,
+    required this.cost,
+  });
+
+  final String code;
+  final String name;
+  final int cost;
+
+  factory EcoPrize.fromJson(Map<String, dynamic> json) {
+    return EcoPrize(
+      code: json['code'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      cost: json['cost'] as int? ?? 0,
+    );
+  }
+}
+
+class PrizeRedemptionResult {
+  const PrizeRedemptionResult({
+    required this.prizeCode,
+    required this.prizeName,
+    required this.cost,
+    required this.balance,
+    required this.message,
+  });
+
+  final String prizeCode;
+  final String prizeName;
+  final int cost;
+  final int balance;
+  final String message;
+
+  factory PrizeRedemptionResult.fromJson(Map<String, dynamic> json) {
+    return PrizeRedemptionResult(
+      prizeCode: json['prizeCode'] as String? ?? '',
+      prizeName: json['prizeName'] as String? ?? '',
+      cost: json['cost'] as int? ?? 0,
+      balance: json['balance'] as int? ?? 0,
+      message: json['message'] as String? ?? '',
     );
   }
 }

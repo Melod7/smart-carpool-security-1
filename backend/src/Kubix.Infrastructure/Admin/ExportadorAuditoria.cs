@@ -54,7 +54,7 @@ public static class ExportadorAuditoria
                     foreach (var evento in eventos)
                     {
                         tabla.Cell().PaddingTop(4).Text(evento.CreadoEn.ToString("dd/MM/yyyy HH:mm"));
-                        tabla.Cell().PaddingTop(4).Text(evento.Accion);
+                        tabla.Cell().PaddingTop(4).Text(EtiquetasAuditoria.Accion(evento.Accion));
                         tabla.Cell().PaddingTop(4).Text(EtiquetaTipo(evento.Tipo));
                         tabla.Cell().PaddingTop(4).Text(EtiquetaSeveridad(evento.Severidad));
                         tabla.Cell().PaddingTop(4).Text(evento.NombreUsuario ?? "—");

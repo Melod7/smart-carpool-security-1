@@ -169,14 +169,14 @@ export function UniversidadDetallePage() {
         </Link>
         <PageHeader
           title={university.name}
-          description={`Slug: ${university.slug}`}
+          description={`Identificador: ${university.slug}`}
           actions={<StatusBadge status={university.status} />}
         />
       </div>
 
       <section>
         <div className="mb-3 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-slate-900">Campuses</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Campus</h2>
           <PrimaryButton
             onClick={() => {
               setFormError(null)
@@ -188,9 +188,9 @@ export function UniversidadDetallePage() {
         </div>
 
         {campuses.isLoading && <LoadingState />}
-        {campuses.isError && <ErrorBanner message="No se pudieron cargar los campuses." />}
+        {campuses.isError && <ErrorBanner message="No se pudieron cargar los campus." />}
         {campuses.data && campuses.data.length === 0 && (
-          <EmptyState label="No hay campuses en esta universidad." />
+          <EmptyState label="No hay campus en esta universidad." />
         )}
         {campuses.data && campuses.data.length > 0 && (
           <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">

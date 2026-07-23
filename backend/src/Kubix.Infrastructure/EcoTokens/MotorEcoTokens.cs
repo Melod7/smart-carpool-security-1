@@ -201,6 +201,7 @@ public sealed class MotorEcoTokens(ContextoApp db) : IMotorEcoTokens, IServicioE
             Level = level,
             Progress = progress,
             GamificationEnabled = gamificacion,
+            Prizes = gamificacion ? CatalogoPremiosEco.Todos : [],
             TotalCount = total,
             Transactions = filas.Select(t => new TransaccionEcoDto
             {
@@ -211,6 +212,123 @@ public sealed class MotorEcoTokens(ContextoApp db) : IMotorEcoTokens, IServicioE
                 CreatedAt = t.CreadoEn
             }).ToList()
         };
+    }
+
+    public async Task<ResultadoCanjePremioDto> CanjearPremioAsync(
+        Guid usuarioId,
+        string codigoPremio,
+        CancellationToken ct = default)
+    {
+        var premio = CatalogoPremiosEco.Buscar(codigoPremio)
+            ?? throw ExcepcionEcoTokens.Validacion(
+                "Unknown prize code.",
+                "unknown_prize");
+
+        var usuario = await db.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId, ct)
+            ?? throw ExcepcionEcoTokens.NoEncontrado("User not found.");
+
+        if (usuario.UniversidadId is null)
+        {
+            throw ExcepcionEcoTokens.Prohibido(
+                "User has no university.",
+                "missing_university");
+        }
+
+        var universidadId = usuario.UniversidadId.Value;
+        var config = await ObtenerConfigAsync(universidadId, ct);
+        if (config is null || !config.GamificacionHabilitada)
+        {
+            throw ExcepcionEcoTokens.Prohibido(
+                "Gamification is disabled.",
+                "gamification_disabled");
+        }
+
+        if (usuario.BalanceEco < premio.Costo)
+        {
+            throw ExcepcionEcoTokens.Validacion(
+                "Insufficient EcoTokensUTN balance.",
+                "insufficient_balance");
+        }
+
+        var idFuente = $"{premio.Codigo}:{Guid.NewGuid():N}";
+        var acreditado = await IntentarAcreditarAsync(
+            universidadId,
+            usuarioId,
+            TipoTransaccionEcoToken.CanjePremio,
+            -premio.Costo,
+            idFuente,
+            afectaVitalicio: false,
+            ct);
+
+        if (!acreditado)
+        {
+            throw ExcepcionEcoTokens.Conflicto(
+                "Could not complete prize redemption.",
+                "redemption_failed");
+        }
+
+        await db.Entry(usuario).ReloadAsync(ct);
+
+        return new ResultadoCanjePremioDto
+        {
+            CodigoPremio = premio.Codigo,
+            NombrePremio = premio.Nombre,
+            Costo = premio.Costo,
+            Balance = usuario.BalanceEco,
+            Mensaje =
+                $"Canjeaste {premio.Nombre} por {premio.Costo} EcoTokensUTN. " +
+                "Retíralo con el coordinador de tu campus."
+        };
+    }
+
+    public async Task<IReadOnlyList<CanjeAdminDto>> ListarCanjesAdminAsync(
+        int limite = 50,
+        CancellationToken ct = default)
+    {
+        if (limite < 1)
+        {
+            limite = 50;
+        }
+
+        if (limite > 200)
+        {
+            limite = 200;
+        }
+
+        var filas = await db.TransaccionesEcoToken.AsNoTracking()
+            .Where(t => t.Tipo == TipoTransaccionEcoToken.CanjePremio)
+            .OrderByDescending(t => t.CreadoEn)
+            .Take(limite)
+            .ToListAsync(ct);
+
+        if (filas.Count == 0)
+        {
+            return [];
+        }
+
+        var usuarioIds = filas.Select(t => t.UsuarioId).Distinct().ToList();
+        var nombres = await db.Usuarios.AsNoTracking()
+            .Where(u => usuarioIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Nombre, ct);
+
+        return filas.Select(t =>
+        {
+            var codigo = t.IdFuente.Split(':')[0];
+            var premio = CatalogoPremiosEco.Buscar(codigo);
+            nombres.TryGetValue(t.UsuarioId, out var nombreUsuario);
+            return new CanjeAdminDto
+            {
+                Id = t.Id,
+                UsuarioId = t.UsuarioId,
+                NombreUsuario = string.IsNullOrWhiteSpace(nombreUsuario)
+                    ? "Usuario"
+                    : nombreUsuario,
+                CodigoPremio = premio?.Codigo ?? codigo,
+                NombrePremio = premio?.Nombre ?? codigo,
+                Costo = Math.Abs(t.Monto),
+                CreadoEn = t.CreadoEn
+            };
+        }).ToList();
     }
 
     private async Task EvaluarRachaSemanalAsync(

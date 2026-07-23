@@ -81,7 +81,7 @@ export function UniversidadesPage() {
     <div>
       <PageHeader
         title="Universidades"
-        description="Provisiona tenants, campuses y coordinadores."
+        description="Provisiona universidades, campus y coordinadores."
         actions={<PrimaryButton onClick={openCreate}>Nueva universidad</PrimaryButton>}
       />
 
@@ -100,8 +100,8 @@ export function UniversidadesPage() {
             <thead className="border-b bg-slate-50 text-slate-600">
               <tr>
                 <th className="px-4 py-3 font-medium">Nombre</th>
-                <th className="px-4 py-3 font-medium">Slug</th>
-                <th className="px-4 py-3 font-medium">Campuses</th>
+                <th className="px-4 py-3 font-medium">Identificador</th>
+                <th className="px-4 py-3 font-medium">Campus</th>
                 <th className="px-4 py-3 font-medium">Usuarios</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium">Acciones</th>
@@ -190,7 +190,7 @@ export function UniversidadesPage() {
         >
           <p className="text-sm text-slate-600">
             ¿Suspender <span className="font-medium text-slate-900">{suspending.name}</span>?
-            Los usuarios de este tenant no podrán iniciar sesión.
+            Los usuarios de esta universidad no podrán iniciar sesión.
           </p>
           {suspendMutation.isError && (
             <p className="mt-3 text-sm text-red-600" role="alert">

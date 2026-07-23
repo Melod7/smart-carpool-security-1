@@ -221,6 +221,34 @@ public sealed class ControladorYo(
         }
     }
 
+    [HttpPost("eco/redeem")]
+    [Authorize(Policy = NombresPoliticas.UsuarioMobile)]
+    [ProducesResponseType(typeof(ResultadoCanjePremioDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CanjearPremio(
+        [FromBody] SolicitudCanjePremio solicitud,
+        CancellationToken ct)
+    {
+        try
+        {
+            var resultado = await ecoTokens.CanjearPremioAsync(
+                ObtenerUsuarioId(),
+                solicitud.CodigoPremio,
+                ct);
+            return Ok(resultado);
+        }
+        catch (ExcepcionEcoTokens ex)
+        {
+            return ProblemEco(ex);
+        }
+        catch (ExcepcionAutenticacion ex)
+        {
+            return ProblemAuth(ex);
+        }
+    }
+
     [HttpGet("vehicle")]
     [Authorize(Policy = NombresPoliticas.SoloConductor)]
     [ProducesResponseType(typeof(VehiculoDto), StatusCodes.Status200OK)]

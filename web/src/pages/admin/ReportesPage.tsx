@@ -83,7 +83,8 @@ function tripStatusLabel(status: string) {
     case 'in_progress':
       return 'En curso'
     case 'published':
-      return 'Publicado'
+    case 'scheduled':
+      return 'Programado'
     case 'full':
       return 'Lleno'
     default:
@@ -154,7 +155,7 @@ export function ReportesPage() {
     <div className="space-y-8">
       <PageHeader
         title="Reportes de Viajes"
-        description="KPIs del periodo, detalle de viajes y exportación CSV / XLSX / PDF."
+        description="Indicadores del periodo, detalle de viajes y exportación CSV / XLSX / PDF."
         actions={
           <div className="flex flex-wrap gap-2">
             {(['csv', 'xlsx', 'pdf'] as ReportExportFormat[]).map((format) => (
@@ -263,7 +264,7 @@ function WeeklyChartSection({ points }: { points: WeeklyChartPoint[] }) {
       <div className="mb-3">
         <h2 className="text-lg font-semibold text-slate-900">Actividad semanal</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Viajes por bucket dentro del periodo seleccionado.
+          Viajes por intervalo dentro del periodo seleccionado.
         </p>
       </div>
 

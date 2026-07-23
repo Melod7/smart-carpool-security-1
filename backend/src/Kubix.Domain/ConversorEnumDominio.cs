@@ -96,7 +96,8 @@ public static class ConversorEnumDominio
         [TipoTransaccionEcoToken.ViajeCompletadoPasajero] = "trip_completed_passenger",
         [TipoTransaccionEcoToken.CalificacionEnviada] = "rating_submitted",
         [TipoTransaccionEcoToken.RachaSemanal] = "weekly_streak",
-        [TipoTransaccionEcoToken.PenalizacionCancelacionTardia] = "late_cancel_penalty"
+        [TipoTransaccionEcoToken.PenalizacionCancelacionTardia] = "late_cancel_penalty",
+        [TipoTransaccionEcoToken.CanjePremio] = "prize_redemption"
     };
 
     public static string ACadenaDb<TEnum>(TEnum valor) where TEnum : struct, Enum

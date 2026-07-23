@@ -37,7 +37,7 @@ function tripSummary(trip: TrackingViajeDto) {
   const driver = trip.participants.find((p) => p.role === 'driver')
   const passengers = trip.participants.filter((p) => p.role === 'passenger')
   return {
-    driverName: driver?.name?.trim() || 'Conductor sin nombre',
+    driverName: driver?.name?.trim() || 'Conductor',
     passengerCount: passengers.length,
   }
 }
@@ -72,14 +72,14 @@ export function TrackingPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Tracking en vivo"
+        title="Seguimiento en vivo"
         description="Viajes activos con ruta y ubicación de participantes. Se actualiza cada 10 segundos."
       />
 
       {tracking.isLoading && <LoadingState />}
       {tracking.isError && (
         <ErrorBanner
-          message={apiErrorMessage(tracking.error, 'No se pudo cargar el tracking activo.')}
+          message={apiErrorMessage(tracking.error, 'No se pudo cargar el seguimiento activo.')}
         />
       )}
 
@@ -137,7 +137,7 @@ export function TrackingPage() {
                         </div>
                         {!trip.polyline && (
                           <p className="mt-1 text-[11px] text-amber-700">
-                            Sin polyline — línea recta aproximada
+                            Sin ruta detallada — línea recta aproximada
                           </p>
                         )}
                       </button>

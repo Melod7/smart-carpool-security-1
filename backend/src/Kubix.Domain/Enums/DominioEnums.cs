@@ -88,5 +88,6 @@ public enum TipoTransaccionEcoToken
     ViajeCompletadoPasajero,
     CalificacionEnviada,
     RachaSemanal,
-    PenalizacionCancelacionTardia
+    PenalizacionCancelacionTardia,
+    CanjePremio
 }

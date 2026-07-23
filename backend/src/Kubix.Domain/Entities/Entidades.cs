@@ -39,7 +39,7 @@ public class ConfiguracionUniversidad
     public string CorreoSoporte { get; set; } = "soporte@kubix.local";
     public int MaxViajesDiariosPorConductor { get; set; } = 6;
     public decimal CalificacionMinimaConductor { get; set; } = 3.5m;
-    public decimal FactorCo2KgKm { get; set; } = 0.21m;
+    public decimal FactorCo2KgKm { get; set; } = 0.17m;
     public bool GamificacionHabilitada { get; set; } = true;
     public bool SeguimientoCo2Habilitado { get; set; } = true;
     public bool NotificarSos { get; set; } = true;

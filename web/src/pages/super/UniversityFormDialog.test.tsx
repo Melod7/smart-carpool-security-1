@@ -36,7 +36,7 @@ describe('UniversityFormDialog', () => {
     )
 
     await user.type(screen.getByLabelText('Nombre'), 'Universidad Técnica')
-    await user.type(screen.getByLabelText('Slug'), 'utn')
+    await user.type(screen.getByLabelText('Identificador'), 'utn')
     await user.click(screen.getByRole('button', { name: 'Crear' }))
 
     expect(onSubmit).toHaveBeenCalledWith({

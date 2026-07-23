@@ -137,7 +137,7 @@ class DrvHomePage extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Completar viaje'),
         content: const Text(
-          '¿Confirmas que el viaje terminó? Se acreditarán EcoTokens.',
+          '¿Confirmas que el viaje terminó? Se acreditarán EcoTokensUTN.',
         ),
         actions: [
           TextButton(

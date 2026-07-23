@@ -268,13 +268,16 @@ public sealed class ServicioTracking(
             aceptadas ??= [];
 
             var participantes = new List<ParticipanteTrackingDto>();
+            // Siempre incluir al conductor con nombre: ping en vivo o, si aún no
+            // hay GPS, el origen del viaje (evita "Conductor sin nombre").
             AgregarSiHayUbicacion(
                 participantes,
                 viaje.ConductorId,
                 "driver",
                 nombres,
                 ultimos,
-                pickup: null);
+                pickup: (viaje.OrigenLat, viaje.OrigenLng),
+                fuentePickup: "origin");
 
             foreach (var solicitud in aceptadas)
             {
@@ -365,7 +368,10 @@ public sealed class ServicioTracking(
         (double Lat, double Lng)? pickup,
         string fuentePickup = "pickup")
     {
-        nombres.TryGetValue(usuarioId, out var nombre);
+        nombres.TryGetValue(usuarioId, out var nombreRaw);
+        var nombre = string.IsNullOrWhiteSpace(nombreRaw)
+            ? (rol == "driver" ? "Conductor" : "Pasajero")
+            : nombreRaw.Trim();
 
         if (ultimosPings.TryGetValue(usuarioId, out var ping))
         {
@@ -389,7 +395,7 @@ public sealed class ServicioTracking(
                 {
                     UsuarioId = usuarioId,
                     Rol = "boarding_point",
-                    Nombre = nombre is null ? "Abordaje" : $"{nombre} · abordaje",
+                    Nombre = $"{nombre} · abordaje",
                     Lat = abordaje.Lat,
                     Lng = abordaje.Lng,
                     RegistradoEn = null,
@@ -409,7 +415,7 @@ public sealed class ServicioTracking(
                 {
                     UsuarioId = usuarioId,
                     Rol = "boarding_point",
-                    Nombre = nombre is null ? "Abordaje" : $"{nombre} · abordaje",
+                    Nombre = $"{nombre} · abordaje",
                     Lat = punto.Lat,
                     Lng = punto.Lng,
                     RegistradoEn = null,

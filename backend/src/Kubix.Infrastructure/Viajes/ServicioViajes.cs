@@ -473,12 +473,17 @@ public sealed class ServicioViajes(
         var configuracion = await db.ConfiguracionesUniversidad.AsNoTracking()
             .FirstOrDefaultAsync(c => c.UniversidadId == viaje.UniversidadId, ct);
 
+        var pasajerosAceptados = await db.SolicitudesViaje.CountAsync(
+            s => s.ViajeId == viaje.Id && s.Estado == EstadoSolicitudViaje.Aceptada,
+            ct);
+
         var ahora = DateTimeOffset.UtcNow;
         viaje.Estado = EstadoViaje.Completado;
         viaje.CompletadoEn = ahora;
         viaje.ActualizadoEn = ahora;
-        viaje.Co2AhorradoKg = configuracion is { SeguimientoCo2Habilitado: true }
-            ? decimal.Round(viaje.DistanciaKm * configuracion.FactorCo2KgKm, 3)
+        // CO₂ = pasajeros aceptados × distancia × factor (cada pasajero evita un auto solo).
+        viaje.Co2AhorradoKg = configuracion is { SeguimientoCo2Habilitado: true } && pasajerosAceptados > 0
+            ? decimal.Round(pasajerosAceptados * viaje.DistanciaKm * configuracion.FactorCo2KgKm, 3)
             : 0m;
 
         await db.SaveChangesAsync(ct);

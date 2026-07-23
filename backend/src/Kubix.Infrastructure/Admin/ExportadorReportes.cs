@@ -37,11 +37,11 @@ public static class ExportadorReportes
     private static ArchivoExportacion GenerarCsv(ReporteAdminDto reporte)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("id,status,originText,departureAt,completedAt,distanceKm,co2SavedKg,driverName");
+        sb.AppendLine("id,estado,origen,salida,completado,km,co2AhorradoKg,conductor");
         foreach (var v in reporte.Viajes)
         {
             sb.Append(EscaparCsv(v.Id.ToString())).Append(',');
-            sb.Append(EscaparCsv(v.Estado)).Append(',');
+            sb.Append(EscaparCsv(EtiquetaEstadoViaje(v.Estado))).Append(',');
             sb.Append(EscaparCsv(v.OrigenTexto)).Append(',');
             sb.Append(EscaparCsv(v.SaleEn.ToString("o", CultureInfo.InvariantCulture))).Append(',');
             sb.Append(EscaparCsv(v.CompletadoEn?.ToString("o", CultureInfo.InvariantCulture) ?? "")).Append(',');
@@ -63,19 +63,19 @@ public static class ExportadorReportes
         using var workbook = new XLWorkbook();
         var hoja = workbook.Worksheets.Add("Viajes");
         hoja.Cell(1, 1).Value = "id";
-        hoja.Cell(1, 2).Value = "status";
-        hoja.Cell(1, 3).Value = "originText";
-        hoja.Cell(1, 4).Value = "departureAt";
-        hoja.Cell(1, 5).Value = "completedAt";
-        hoja.Cell(1, 6).Value = "distanceKm";
-        hoja.Cell(1, 7).Value = "co2SavedKg";
-        hoja.Cell(1, 8).Value = "driverName";
+        hoja.Cell(1, 2).Value = "estado";
+        hoja.Cell(1, 3).Value = "origen";
+        hoja.Cell(1, 4).Value = "salida";
+        hoja.Cell(1, 5).Value = "completado";
+        hoja.Cell(1, 6).Value = "km";
+        hoja.Cell(1, 7).Value = "co2AhorradoKg";
+        hoja.Cell(1, 8).Value = "conductor";
 
         var fila = 2;
         foreach (var v in reporte.Viajes)
         {
             hoja.Cell(fila, 1).Value = v.Id.ToString();
-            hoja.Cell(fila, 2).Value = v.Estado;
+            hoja.Cell(fila, 2).Value = EtiquetaEstadoViaje(v.Estado);
             hoja.Cell(fila, 3).Value = v.OrigenTexto;
             hoja.Cell(fila, 4).Value = v.SaleEn.ToString("o", CultureInfo.InvariantCulture);
             hoja.Cell(fila, 5).Value = v.CompletadoEn?.ToString("o", CultureInfo.InvariantCulture) ?? "";
@@ -86,19 +86,19 @@ public static class ExportadorReportes
         }
 
         var kpis = workbook.Worksheets.Add("KPIs");
-        kpis.Cell(1, 1).Value = "metric";
-        kpis.Cell(1, 2).Value = "value";
-        kpis.Cell(2, 1).Value = "period";
+        kpis.Cell(1, 1).Value = "métrica";
+        kpis.Cell(1, 2).Value = "valor";
+        kpis.Cell(2, 1).Value = "periodo";
         kpis.Cell(2, 2).Value = reporte.Periodo;
-        kpis.Cell(3, 1).Value = "trips";
+        kpis.Cell(3, 1).Value = "viajes";
         kpis.Cell(3, 2).Value = reporte.Kpis.Viajes;
         kpis.Cell(4, 1).Value = "km";
         kpis.Cell(4, 2).Value = (double)reporte.Kpis.Km;
-        kpis.Cell(5, 1).Value = "co2Saved";
+        kpis.Cell(5, 1).Value = "co2Ahorrado";
         kpis.Cell(5, 2).Value = (double)reporte.Kpis.Co2Ahorrado;
-        kpis.Cell(6, 1).Value = "blockedUsers";
+        kpis.Cell(6, 1).Value = "usuariosBloqueados";
         kpis.Cell(6, 2).Value = reporte.Kpis.UsuariosBloqueados;
-        kpis.Cell(7, 1).Value = "adoptionRate";
+        kpis.Cell(7, 1).Value = "tasaAdopcion";
         kpis.Cell(7, 2).Value = (double)reporte.Kpis.TasaAdopcion;
 
         using var ms = new MemoryStream();
@@ -147,7 +147,7 @@ public static class ExportadorReportes
                             tabla.Cell().Text(v.OrigenTexto);
                             tabla.Cell().Text(v.NombreConductor);
                             tabla.Cell().Text(v.DistanciaKm.ToString(CultureInfo.InvariantCulture));
-                            tabla.Cell().Text(v.Estado);
+                            tabla.Cell().Text(EtiquetaEstadoViaje(v.Estado));
                         }
                     });
                 });
@@ -162,6 +162,17 @@ public static class ExportadorReportes
             NombreArchivo = $"kubix_report_{reporte.Periodo}.pdf"
         };
     }
+
+    private static string EtiquetaEstadoViaje(string estado) =>
+        estado.Trim().ToLowerInvariant() switch
+        {
+            "completed" => "Completado",
+            "cancelled" => "Cancelado",
+            "in_progress" => "En curso",
+            "published" or "scheduled" => "Programado",
+            "full" => "Lleno",
+            _ => estado
+        };
 
     private static string EscaparCsv(string valor)
     {

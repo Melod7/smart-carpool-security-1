@@ -278,6 +278,16 @@ export type AuditLogPage = {
   pageSize: number
 }
 
+export type PrizeRedemption = {
+  id: string
+  userId: string
+  userName: string
+  prizeCode: string
+  prizeName: string
+  cost: number
+  createdAt: string
+}
+
 export type AdminSettings = {
   timezone: string
   supportEmail: string

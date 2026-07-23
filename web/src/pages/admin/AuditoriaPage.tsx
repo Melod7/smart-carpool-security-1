@@ -11,6 +11,7 @@ import {
   apiErrorMessage,
   inputClassName,
 } from '../super/ui'
+import { auditActionLabel } from './auditLabels'
 
 const PAGE_SIZE = 20
 
@@ -18,7 +19,7 @@ const TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Todos' },
   { value: 'sos', label: 'SOS' },
   { value: 'auth', label: 'Autenticación' },
-  { value: 'admin', label: 'Admin' },
+  { value: 'admin', label: 'Administración' },
   { value: 'system', label: 'Sistema' },
 ]
 
@@ -43,7 +44,7 @@ function typeLabel(type: string) {
     case 'auth':
       return 'Autenticación'
     case 'admin':
-      return 'Admin'
+      return 'Administración'
     case 'system':
       return 'Sistema'
     default:
@@ -253,7 +254,9 @@ export function AuditoriaPage() {
                         <td className="px-4 py-3 whitespace-nowrap text-slate-700">
                           {formatDateTime(event.createdAt)}
                         </td>
-                        <td className="px-4 py-3 font-medium text-slate-900">{event.action}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          {auditActionLabel(event.action)}
+                        </td>
                         <td className="px-4 py-3 text-slate-700">{typeLabel(event.type)}</td>
                         <td className="px-4 py-3">
                           <span

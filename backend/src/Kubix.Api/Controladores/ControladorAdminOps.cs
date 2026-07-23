@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Kubix.Application.Admin;
 using Kubix.Application.Auth;
+using Kubix.Application.EcoTokens;
 using Kubix.Application.Tenancy;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,9 @@ namespace Kubix.Api.Controladores;
 [ApiController]
 [Authorize(Policy = NombresPoliticas.SoloCoordinador)]
 [Route("admin")]
-public sealed class ControladorAdminOps(IServicioAdminOps admin) : ControllerBase
+public sealed class ControladorAdminOps(
+    IServicioAdminOps admin,
+    IServicioEcoTokens ecoTokens) : ControllerBase
 {
     [HttpGet("dashboard")]
     [ProducesResponseType(typeof(DashboardAdminDto), StatusCodes.Status200OK)]
@@ -166,6 +169,27 @@ public sealed class ControladorAdminOps(IServicioAdminOps admin) : ControllerBas
         catch (ExcepcionAutenticacion ex)
         {
             return ProblemAuth(ex);
+        }
+    }
+
+    [HttpGet("eco/redemptions")]
+    [ProducesResponseType(typeof(IReadOnlyList<CanjeAdminDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarCanjes(
+        [FromQuery(Name = "limit")] int limite = 50,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            return Ok(await ecoTokens.ListarCanjesAdminAsync(limite, ct));
+        }
+        catch (ExcepcionEcoTokens ex)
+        {
+            return Problem(
+                detail: ex.Message,
+                statusCode: ex.CodigoEstado,
+                title: ex.Titulo,
+                type: $"https://httpstatuses.com/{ex.CodigoEstado}",
+                extensions: new Dictionary<string, object?> { ["code"] = ex.Codigo });
         }
     }
 

@@ -113,7 +113,7 @@ public class PruebasCicloViaje
         var campus = await db.Sedes.FirstAsync(c => c.Id == conductor.CampusId);
         var config = await db.ConfiguracionesUniversidad.SingleAsync(c => c.UniversidadId == conductor.UniversidadId);
         config.SeguimientoCo2Habilitado = true;
-        config.FactorCo2KgKm = 0.21m;
+        config.FactorCo2KgKm = 0.17m;
         await db.SaveChangesAsync();
 
         var viaje = NuevoViaje(
@@ -124,18 +124,31 @@ public class PruebasCicloViaje
             distanciaKm: 10m,
             iniciadoEn: DateTimeOffset.UtcNow.AddMinutes(-25));
         db.Viajes.Add(viaje);
+        var pax = await db.Usuarios.FirstAsync(u =>
+            u.UniversidadId == conductor.UniversidadId && u.Rol == RolUsuario.Pasajero);
+        db.SolicitudesViaje.Add(new SolicitudViaje
+        {
+            UniversidadId = conductor.UniversidadId!.Value,
+            ViajeId = viaje.Id,
+            PasajeroId = pax.Id,
+            RecogidaTexto = "Parada CO2",
+            RecogidaLat = -0.35,
+            RecogidaLng = -78.12,
+            Estado = EstadoSolicitudViaje.Aceptada
+        });
         await db.SaveChangesAsync();
 
         var servicio = CrearServicio(db, conductor);
         var completado = await servicio.CompletarViajeAsync(conductor.Id, viaje.Id);
 
         Assert.Equal("completed", completado.Estado);
-        Assert.Equal(2.1m, completado.Co2AhorradoKg);
+        // 1 pasajero × 10 km × 0.17 = 1.7
+        Assert.Equal(1.7m, completado.Co2AhorradoKg);
 
         var enDb = await db.Viajes.SingleAsync(v => v.Id == viaje.Id);
         Assert.Equal(EstadoViaje.Completado, enDb.Estado);
         Assert.NotNull(enDb.CompletadoEn);
-        Assert.Equal(2.1m, enDb.Co2AhorradoKg);
+        Assert.Equal(1.7m, enDb.Co2AhorradoKg);
     }
 
     [Fact]

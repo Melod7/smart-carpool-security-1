@@ -37,7 +37,7 @@ class TrackingApi {
       );
       return TripTracking.fromJson(res.data!);
     } on DioException catch (e) {
-      throw mapDioError(e, fallback: 'No se pudo cargar el tracking.');
+      throw mapDioError(e, fallback: 'No se pudo cargar el seguimiento.');
     }
   }
 }

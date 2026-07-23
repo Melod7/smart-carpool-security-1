@@ -387,15 +387,15 @@ export function ConfiguracionPage() {
         <Section title="Funciones y notificaciones">
           <ToggleField
             id="settings-gamification"
-            label="Gamificación (EcoTokens)"
-            description="Si se desactiva, no se acumulan EcoTokens."
+            label="Gamificación (EcoTokensUTN)"
+            description="Si se desactiva, no se acumulan EcoTokensUTN."
             checked={form.gamificationEnabled}
             onChange={(v) => updateField('gamificationEnabled', v)}
           />
           <ToggleField
             id="settings-co2-tracking"
             label="Seguimiento de CO₂"
-            description="Calcula CO₂ ahorrado al completar viajes."
+            description="CO₂ = pasajeros aceptados × km × factor (kg/km)."
             checked={form.co2TrackingEnabled}
             onChange={(v) => updateField('co2TrackingEnabled', v)}
           />

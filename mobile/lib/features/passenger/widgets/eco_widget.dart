@@ -3,11 +3,16 @@ import 'package:flutter/material.dart';
 import '../../../api/models.dart';
 import '../../../theme/kubix_theme.dart';
 
-/// Widget de EcoTokens (ocultar si [eco.gamificationEnabled] es false).
+/// Widget de EcoTokensUTN (ocultar si [eco.gamificationEnabled] es false).
 class EcoWidget extends StatelessWidget {
-  const EcoWidget({super.key, required this.eco});
+  const EcoWidget({
+    super.key,
+    required this.eco,
+    this.onRedeem,
+  });
 
   final EcoSummary eco;
+  final Future<void> Function(EcoPrize prize)? onRedeem;
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +40,7 @@ class EcoWidget extends StatelessWidget {
               const Icon(Icons.eco, color: KubixColors.eco),
               const SizedBox(width: 8),
               Text(
-                'EcoTokens',
+                'EcoTokensUTN',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: KubixColors.eco,
@@ -88,6 +93,46 @@ class EcoWidget extends StatelessWidget {
               'Progreso al siguiente nivel: ${(progress * 100).round()}%',
               style: const TextStyle(fontSize: 12, color: KubixColors.muted),
             ),
+          ],
+          if (onRedeem != null && eco.prizes.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Canjear premios UTN',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            for (final prize in eco.prizes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            prize.name,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            '${prize.cost} ECT',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: KubixColors.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    FilledButton(
+                      onPressed: eco.balance < prize.cost
+                          ? null
+                          : () => onRedeem!(prize),
+                      child: const Text('Canjear'),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ],
       ),

@@ -103,7 +103,7 @@ void main() {
         const MaterialApp(home: Scaffold(body: EcoWidget(eco: eco))),
       );
 
-      expect(find.text('EcoTokens'), findsOneWidget);
+      expect(find.text('EcoTokensUTN'), findsOneWidget);
       expect(find.text('120 ECT'), findsOneWidget);
       expect(find.text('Plata'), findsOneWidget);
       expect(find.textContaining('40%'), findsOneWidget);

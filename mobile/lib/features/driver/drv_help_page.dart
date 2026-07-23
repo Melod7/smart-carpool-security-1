@@ -25,7 +25,7 @@ const driverFaqs = <FaqItem>[
     answer:
         'Cuando los pasajeros aceptados estén listos, toca «Iniciar viaje». '
         'Al llegar al campus, «Completar viaje» cierra la ruta y acredita '
-        'EcoTokens (+8 ECT por viaje completado si la gamificación está activa).',
+        'EcoTokensUTN (+8 ECT por viaje completado si la gamificación está activa).',
   ),
   FaqItem(
     question: '¿Qué pasa si alcanzo el límite diario?',

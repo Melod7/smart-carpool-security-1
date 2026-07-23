@@ -31,6 +31,7 @@ abstract final class TripLabels {
       'rating_submitted' => 'Calificación enviada',
       'weekly_streak' => 'Racha semanal',
       'late_cancel_penalty' => 'Penalización cancelación',
+      'prize_redemption' => 'Canje de premio',
       _ => type,
     };
   }

@@ -84,7 +84,7 @@ public sealed class ServicioSuperAdmin(
             CorreoSoporte = dominio is null ? "soporte@kubix.local" : $"soporte@{dominio}",
             MaxViajesDiariosPorConductor = 6,
             CalificacionMinimaConductor = 3.5m,
-            FactorCo2KgKm = 0.21m,
+            FactorCo2KgKm = 0.17m,
             GamificacionHabilitada = true,
             SeguimientoCo2Habilitado = true,
             NotificarSos = true,

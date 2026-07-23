@@ -30,11 +30,12 @@ const passengerFaqs = <FaqItem>[
         'si el conductor cancela, lo verás reflejado en el estado del viaje.',
   ),
   FaqItem(
-    question: '¿Qué son los EcoTokens?',
+    question: '¿Qué son los EcoTokensUTN?',
     answer:
-        'Son puntos por viajar compartido y calificar. Subes de nivel '
-        '(Bronce, Plata, Oro, Platino) según tu acumulado. El canje en '
-        'cafetería o librería estará disponible próximamente.',
+        'Son puntos (ECT) por viajar compartido y calificar. Subes de nivel '
+        '(Bronce, Plata, Oro, Platino) según tu acumulado. Puedes canjearlos '
+        'por premios UTN (gorra, camiseta o mochila) y retirarlos con el '
+        'coordinador del campus.',
   ),
   FaqItem(
     question: '¿Cómo funciona el SOS?',

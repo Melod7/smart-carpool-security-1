@@ -13,7 +13,10 @@ namespace Kubix.Infrastructure.Admin;
 public sealed class ServicioAdminOps(ContextoApp db, IContextoInquilino inquilino) : IServicioAdminOps
 {
     private const string NotaXpDeshabilitado =
-        "Gamification is disabled for this university; xpByCareer is empty.";
+        "La gamificación está desactivada para esta universidad; no hay EcoTokensUTN por carrera.";
+
+    private static readonly string[] DiasCortosEs =
+        ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
     public async Task<DashboardAdminDto> ObtenerDashboardAsync(CancellationToken ct = default)
     {
@@ -672,7 +675,7 @@ public sealed class ServicioAdminOps(ContextoApp db, IContextoInquilino inquilin
                 var local = TimeZoneInfo.ConvertTime(cursor, tz);
                 puntos.Add(new PuntoChartSemanalDto
                 {
-                    Etiqueta = local.ToString("ddd dd/MM"),
+                    Etiqueta = EtiquetaDiaEs(local),
                     Viajes = delDia.Count,
                     Km = decimal.Round(delDia.Sum(v => v.DistanciaKm), 2)
                 });
@@ -689,7 +692,7 @@ public sealed class ServicioAdminOps(ContextoApp db, IContextoInquilino inquilin
                 var local = TimeZoneInfo.ConvertTime(cursor, tz);
                 puntos.Add(new PuntoChartSemanalDto
                 {
-                    Etiqueta = $"W{ISOWeek.GetWeekOfYear(local.DateTime)} {local:yyyy}",
+                    Etiqueta = $"Sem {ISOWeek.GetWeekOfYear(local.DateTime)} {local:yyyy}",
                     Viajes = delBucket.Count,
                     Km = decimal.Round(delBucket.Sum(v => v.DistanciaKm), 2)
                 });
@@ -713,6 +716,9 @@ public sealed class ServicioAdminOps(ContextoApp db, IContextoInquilino inquilin
             new DateTimeOffset(inicioUtc, TimeSpan.Zero),
             new DateTimeOffset(finUtc, TimeSpan.Zero));
     }
+
+    private static string EtiquetaDiaEs(DateTimeOffset local) =>
+        $"{DiasCortosEs[(int)local.DayOfWeek]} {local:dd/MM}";
 
     private static DateTime ConvertirLocalAUtc(DateTime localUnspecified, TimeZoneInfo tz)
     {

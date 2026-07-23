@@ -9,7 +9,8 @@ const adminNav: NavItem[] = [
   { to: '/admin/reportes', label: 'Reportes' },
   { to: '/admin/auditoria', label: 'Auditoría' },
   { to: '/admin/configuracion', label: 'Configuración' },
-  { to: '/admin/tracking', label: 'Tracking' },
+  { to: '/admin/tracking', label: 'Seguimiento' },
+  { to: '/admin/canjes', label: 'Canjes' },
 ]
 
 const superNav: NavItem[] = [
@@ -47,7 +48,7 @@ export function AppShell() {
           <div className="text-lg font-bold tracking-tight">Kubix UTN 2.0</div>
         </div>
         <div className="text-xs text-slate-400 mt-1">
-          {isCoordinador ? 'Consola Coordinador' : 'Consola Super Admin'}
+          {isCoordinador ? 'Consola Coordinador' : 'Consola superadministrador'}
         </div>
 
         <nav className="mt-8 space-y-1" aria-label="Navegación principal">

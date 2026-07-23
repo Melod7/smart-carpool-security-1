@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 import { ChangePasswordPage } from './pages/ChangePasswordPage'
 import { RoleHomeRedirect } from './pages/RoleHomeRedirect'
 import { AuditoriaPage } from './pages/admin/AuditoriaPage'
+import { CanjesPage } from './pages/admin/CanjesPage'
 import { ConfiguracionPage } from './pages/admin/ConfiguracionPage'
 import { DashboardPage } from './pages/admin/DashboardPage'
 import { ReportesPage } from './pages/admin/ReportesPage'
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="usuarios" element={<UsuariosPage />} />
               <Route path="reportes" element={<ReportesPage />} />
               <Route path="auditoria" element={<AuditoriaPage />} />
+              <Route path="canjes" element={<CanjesPage />} />
               <Route path="configuracion" element={<ConfiguracionPage />} />
               <Route path="tracking" element={<TrackingPage />} />
             </Route>

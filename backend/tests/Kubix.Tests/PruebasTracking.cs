@@ -195,6 +195,31 @@ public class PruebasTracking
     }
 
     [Fact]
+    public async Task Admin_incluye_conductor_con_nombre_sin_ping()
+    {
+        await using var db = await CrearDbConSeedAsync();
+        var conductor = await db.Usuarios.SingleAsync(u => u.Correo == "driver2@utn.local");
+        var coord = await db.Usuarios.SingleAsync(u => u.Correo == "coordinador@utn.local");
+        var viaje = await db.Viajes.SingleAsync(v =>
+            v.Estado == EstadoViaje.EnCurso && v.UniversidadId == conductor.UniversidadId);
+
+        var pingsConductor = await db.PingsUbicacion
+            .Where(p => p.ViajeId == viaje.Id && p.UsuarioId == conductor.Id)
+            .ToListAsync();
+        db.PingsUbicacion.RemoveRange(pingsConductor);
+        await db.SaveChangesAsync();
+
+        var activos = await CrearTracking(db, coord).ListarActivosAdminAsync();
+        var item = Assert.Single(activos.Viajes, t => t.ViajeId == viaje.Id);
+        var driver = Assert.Single(item.Participantes, p => p.Rol == "driver");
+
+        Assert.Equal(conductor.Id, driver.UsuarioId);
+        Assert.False(string.IsNullOrWhiteSpace(driver.Nombre));
+        Assert.Equal(conductor.Nombre, driver.Nombre);
+        Assert.Equal("origin", driver.Fuente);
+    }
+
+    [Fact]
     public async Task Coordinador_en_tracking_mobile_devuelve_403()
     {
         await using var db = await CrearDbConSeedAsync();

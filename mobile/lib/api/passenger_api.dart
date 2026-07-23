@@ -105,7 +105,31 @@ class PassengerApi {
       final res = await _dio.get<Map<String, dynamic>>('/me/eco');
       return EcoSummary.fromJson(res.data ?? const {});
     } on DioException catch (e) {
-      throw mapDioError(e, fallback: 'No se pudo cargar EcoTokens.');
+      throw mapDioError(e, fallback: 'No se pudieron cargar los EcoTokensUTN.');
+    }
+  }
+
+  Future<PrizeRedemptionResult> redeemPrize(String prizeCode) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/me/eco/redeem',
+        data: {'prizeCode': prizeCode},
+      );
+      return PrizeRedemptionResult.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      final error = mapDioError(e, fallback: 'No se pudo canjear el premio.');
+      throw ApiException(
+        switch (error.code) {
+          'insufficient_balance' =>
+            'No tienes suficientes EcoTokensUTN para este premio.',
+          'unknown_prize' => 'Premio no válido.',
+          'gamification_disabled' =>
+            'La gamificación está desactivada en tu universidad.',
+          _ => error.message,
+        },
+        statusCode: error.statusCode,
+        code: error.code,
+      );
     }
   }
 

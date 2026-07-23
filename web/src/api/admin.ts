@@ -8,6 +8,7 @@ import type {
   AlertaSosAdmin,
   AuditLogFilter,
   AuditLogPage,
+  PrizeRedemption,
   PublicUniversity,
   RegistrationRequest,
   ReportExportFormat,
@@ -169,6 +170,13 @@ export const adminApi = {
 
   getActiveTracking: async () => {
     const { data } = await api.get<TrackingActiveResponse>('/admin/tracking/active')
+    return data
+  },
+
+  listPrizeRedemptions: async (limit = 50): Promise<PrizeRedemption[]> => {
+    const { data } = await api.get<PrizeRedemption[]>('/admin/eco/redemptions', {
+      params: { limit },
+    })
     return data
   },
 }

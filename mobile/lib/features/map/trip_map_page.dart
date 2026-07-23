@@ -465,7 +465,7 @@ class _TripMapPageState extends ConsumerState<TripMapPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      'Tracking: $trackingError',
+                      'Seguimiento: $trackingError',
                       style: const TextStyle(
                         fontSize: 12,
                         color: KubixColors.emergency,

@@ -59,7 +59,7 @@ export function DashboardPage() {
     <div className="space-y-8">
       <PageHeader
         title="Panel de Control"
-        description="KPIs del día, monitoreo SOS y EcoTokens por carrera."
+        description="Indicadores del día, monitoreo SOS y EcoTokensUTN por carrera."
       />
 
       {dashboard.isLoading && <LoadingState />}
@@ -217,7 +217,7 @@ function XpByCareerSection({
           Puntos por carrera · semana actual
         </h2>
         <p className="mt-1 text-sm text-slate-600">
-          EcoTokens positivos acumulados en la semana (timezone de la universidad).
+          EcoTokensUTN positivos acumulados en la semana (zona horaria de la universidad).
         </p>
       </div>
 
@@ -227,7 +227,7 @@ function XpByCareerSection({
             <p className="font-medium">Gamificación deshabilitada</p>
             <p className="mt-1 text-amber-800">
               {note ??
-                'La gamificación está desactivada para esta universidad; no hay datos de XP por carrera.'}
+                'La gamificación está desactivada para esta universidad; no hay datos de EcoTokensUTN por carrera.'}
             </p>
           </div>
         ) : items.length === 0 ? (
@@ -240,7 +240,7 @@ function XpByCareerSection({
                 <li key={item.career}>
                   <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
                     <span className="font-medium text-slate-800">{item.career}</span>
-                    <span className="tabular-nums text-slate-600">{item.xp} XP</span>
+                    <span className="tabular-nums text-slate-600">{item.xp} ECT</span>
                   </div>
                   <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
                     <div
@@ -250,7 +250,7 @@ function XpByCareerSection({
                       aria-valuenow={item.xp}
                       aria-valuemin={0}
                       aria-valuemax={maxXp}
-                      aria-label={`${item.career}: ${item.xp} XP`}
+                      aria-label={`${item.career}: ${item.xp} EcoTokensUTN`}
                     />
                   </div>
                 </li>

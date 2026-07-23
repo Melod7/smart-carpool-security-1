@@ -184,7 +184,7 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
           data: (eco) {
             if (!eco.gamificationEnabled) {
               return const _SectionCard(
-                title: 'Gamificación',
+                title: 'EcoTokensUTN',
                 child: Text(
                   'La gamificación está desactivada en tu universidad.',
                   style: TextStyle(color: KubixColors.muted),
@@ -192,11 +192,14 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
               );
             }
             return _SectionCard(
-              title: 'Gamificación',
+              title: 'EcoTokensUTN',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  EcoWidget(eco: eco),
+                  EcoWidget(
+                    eco: eco,
+                    onRedeem: (prize) => _redeemPrize(prize),
+                  ),
                   const SizedBox(height: 12),
                   if (eco.transactions.isNotEmpty) ...[
                     const Text(
@@ -242,7 +245,7 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Canje en cafetería y librería: próximamente.',
+                            'Tras canjear, retira tu premio con el coordinador del campus.',
                             style: TextStyle(color: KubixColors.muted),
                           ),
                         ),
@@ -328,6 +331,42 @@ class _PaxProfilePageState extends ConsumerState<PaxProfilePage> {
       _snack(e.toString());
     } finally {
       if (mounted) setState(() => _savingProfile = false);
+    }
+  }
+
+  Future<void> _redeemPrize(EcoPrize prize) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Canjear premio'),
+        content: Text(
+          '¿Canjear ${prize.name} por ${prize.cost} EcoTokensUTN?\n'
+          'Luego retíralo con el coordinador.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Canjear'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      final result =
+          await ref.read(passengerApiProvider).redeemPrize(prize.code);
+      ref.invalidate(ecoSummaryProvider);
+      if (!mounted) return;
+      _snack(result.message.isNotEmpty
+          ? result.message
+          : 'Canje realizado. Nuevo saldo: ${result.balance} ECT.');
+    } catch (e) {
+      if (!mounted) return;
+      _snack(e.toString());
     }
   }
 

@@ -249,6 +249,28 @@ public class PruebasEcoTokens
         return viaje;
     }
 
+    [Fact]
+    public async Task Canje_premio_descuenta_balance_y_queda_registrado()
+    {
+        await using var db = await CrearDbConSeedAsync();
+        var pax = await db.Usuarios.SingleAsync(u => u.Correo == "pax4@utn.local");
+        await ResetearEcoAsync(db, pax);
+        pax.BalanceEco = 100;
+        await db.SaveChangesAsync();
+
+        var motor = new MotorEcoTokens(db);
+        var resultado = await motor.CanjearPremioAsync(pax.Id, "gorra");
+
+        await db.Entry(pax).ReloadAsync();
+        Assert.Equal(60, pax.BalanceEco);
+        Assert.Equal(40, resultado.Costo);
+        Assert.Equal("gorra", resultado.CodigoPremio);
+        Assert.Contains("Gorra", resultado.NombrePremio);
+
+        Assert.Equal(1, await db.TransaccionesEcoToken.CountAsync(t =>
+            t.UsuarioId == pax.Id && t.Tipo == TipoTransaccionEcoToken.CanjePremio));
+    }
+
     private static async Task<ContextoApp> CrearDbConSeedAsync()
     {
         var db = CrearDb();

@@ -96,7 +96,7 @@ export function UniversityFormDialog({
           />
         </Field>
 
-        <Field label="Slug" htmlFor="university-slug" error={errors.slug}>
+        <Field label="Identificador" htmlFor="university-slug" error={errors.slug}>
           <input
             id="university-slug"
             name="slug"

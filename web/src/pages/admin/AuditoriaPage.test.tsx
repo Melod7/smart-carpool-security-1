@@ -91,8 +91,8 @@ describe('AuditoriaPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect(await screen.findByText('sos.fired')).toBeInTheDocument()
-    expect(screen.getByText('user.blocked')).toBeInTheDocument()
+    expect(await screen.findByText('Alerta SOS activada')).toBeInTheDocument()
+    expect(screen.getByText('Usuario bloqueado')).toBeInTheDocument()
     expect(screen.getByText('Sofía Pasajera')).toBeInTheDocument()
     expect(getAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ page: 1, pageSize: 20 }),
@@ -100,8 +100,8 @@ describe('AuditoriaPage', () => {
 
     await user.selectOptions(screen.getByLabelText('Filtrar por severidad'), 'high')
 
-    expect(await screen.findByText('sos.fired')).toBeInTheDocument()
-    expect(screen.queryByText('user.blocked')).not.toBeInTheDocument()
+    expect(await screen.findByText('Alerta SOS activada')).toBeInTheDocument()
+    expect(screen.queryByText('Usuario bloqueado')).not.toBeInTheDocument()
     expect(getAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ severity: 'high', page: 1, pageSize: 20 }),
     )
@@ -111,7 +111,7 @@ describe('AuditoriaPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    expect(await screen.findByText('sos.fired')).toBeInTheDocument()
+    expect(await screen.findByText('Alerta SOS activada')).toBeInTheDocument()
     await user.selectOptions(screen.getByLabelText('Filtrar por severidad'), 'high')
     await user.click(screen.getByRole('button', { name: 'Exportar PDF' }))
 
