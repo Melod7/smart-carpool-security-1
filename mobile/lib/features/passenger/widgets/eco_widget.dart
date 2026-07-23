@@ -105,17 +105,23 @@ class EcoWidget extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
                             prize.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           Text(
                             '${prize.cost} ECT',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 12,
                               color: KubixColors.muted,
@@ -124,7 +130,15 @@ class EcoWidget extends StatelessWidget {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    // El tema usa Size.fromHeight(48) (= ancho infinito); hay que
+                    // acotar el botón o aplasta el texto a 1 carácter de ancho.
                     FilledButton(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(96, 40),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
                       onPressed: eco.balance < prize.cost
                           ? null
                           : () => onRedeem!(prize),
