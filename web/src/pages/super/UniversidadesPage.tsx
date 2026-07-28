@@ -1,203 +1,140 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { superAdminApi } from '../../api/superAdmin'
-import type { CreateUniversityPayload, UniversitySummary } from '../../api/types'
+import type { UniversitySummary } from '../../api/types'
+import { ErrorBanner, LoadingState, PageHeader, StatusBadge } from './ui'
 import { UniversityFormDialog } from './UniversityFormDialog'
-import {
-  DangerButton,
-  EmptyState,
-  ErrorBanner,
-  LoadingState,
-  PageHeader,
-  PrimaryButton,
-  SecondaryButton,
-  StatusBadge,
-  apiErrorMessage,
-  Dialog,
-} from './ui'
 
 export function UniversidadesPage() {
   const queryClient = useQueryClient()
-  const [dialog, setDialog] = useState<'create' | 'edit' | null>(null)
-  const [editing, setEditing] = useState<UniversitySummary | null>(null)
-  const [suspending, setSuspending] = useState<UniversitySummary | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
+  const [editingUni, setEditingUni] = useState<UniversitySummary | null>(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
 
-  const universities = useQuery({
+  const unisQuery = useQuery({
     queryKey: ['super', 'universities'],
     queryFn: superAdminApi.listUniversities,
   })
 
-  const createMutation = useMutation({
-    mutationFn: superAdminApi.createUniversity,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['super', 'universities'] })
-      await queryClient.invalidateQueries({ queryKey: ['super', 'stats'] })
-      setDialog(null)
-      setFormError(null)
-    },
-    onError: (err) => {
-      setFormError(apiErrorMessage(err, 'No se pudo crear la universidad.'))
-    },
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: CreateUniversityPayload }) =>
-      superAdminApi.updateUniversity(id, { name: payload.name, slug: payload.slug }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['super', 'universities'] })
-      setDialog(null)
-      setEditing(null)
-      setFormError(null)
-    },
-    onError: (err) => {
-      setFormError(apiErrorMessage(err, 'No se pudo actualizar la universidad.'))
-    },
-  })
-
   const suspendMutation = useMutation({
     mutationFn: (id: string) => superAdminApi.suspendUniversity(id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['super', 'universities'] })
-      await queryClient.invalidateQueries({ queryKey: ['super', 'stats'] })
-      setSuspending(null)
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['super', 'universities'] })
     },
   })
 
-  function openCreate() {
-    setEditing(null)
-    setFormError(null)
-    setDialog('create')
+  const handleCreate = () => {
+    setEditingUni(null)
+    setIsFormOpen(true)
   }
 
-  function openEdit(uni: UniversitySummary) {
-    setEditing(uni)
-    setFormError(null)
-    setDialog('edit')
+  const handleEdit = (uni: UniversitySummary) => {
+    setEditingUni(uni)
+    setIsFormOpen(true)
+  }
+
+  const handleToggleStatus = (uni: UniversitySummary) => {
+    const isActiva = uni.status.toLowerCase() === 'activa'
+    const action = isActiva ? 'suspender' : 'activar'
+    if (confirm(`¿Deseas ${action} la universidad "${uni.name}"?`)) {
+      suspendMutation.mutate(uni.id)
+    }
+  }
+
+  const handleSaved = () => {
+    setIsFormOpen(false)
+    queryClient.invalidateQueries({ queryKey: ['super', 'universities'] })
   }
 
   return (
     <div>
-      <PageHeader
-        title="Universidades"
-        description="Provisiona universidades, campus y coordinadores."
-        actions={<PrimaryButton onClick={openCreate}>Nueva universidad</PrimaryButton>}
-      />
+      <div className="flex items-center justify-between">
+        <PageHeader
+          title="Universidades"
+          description="Provisiona universidades, campus y coordinadores."
+        />
+        <button
+          onClick={handleCreate}
+          className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-red-700 transition-colors"
+        >
+          Nueva universidad
+        </button>
+      </div>
 
-      {universities.isLoading && <LoadingState />}
-      {universities.isError && (
+      {unisQuery.isLoading && <LoadingState />}
+      {unisQuery.isError && (
         <ErrorBanner message="No se pudieron cargar las universidades." />
       )}
 
-      {universities.data && universities.data.length === 0 && (
-        <EmptyState label="Aún no hay universidades registradas." />
-      )}
-
-      {universities.data && universities.data.length > 0 && (
-        <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b bg-slate-50 text-slate-600">
+      {unisQuery.data && (
+        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase text-slate-500 border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3 font-medium">Nombre</th>
-                <th className="px-4 py-3 font-medium">Identificador</th>
-                <th className="px-4 py-3 font-medium">Campus</th>
-                <th className="px-4 py-3 font-medium">Usuarios</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
-                <th className="px-4 py-3 font-medium">Acciones</th>
+                <th className="px-6 py-3">Nombre</th>
+                <th className="px-6 py-3">Identificador</th>
+                <th className="px-6 py-3">Campus</th>
+                <th className="px-6 py-3">Usuarios</th>
+                <th className="px-6 py-3">Estado</th>
+                <th className="px-6 py-3 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody>
-              {universities.data.map((uni) => (
-                <tr key={uni.id} className="border-b last:border-0">
-                  <td className="px-4 py-3">
-                    <Link
-                      to={`/super/universidades/${uni.id}`}
-                      className="font-medium text-[var(--kubix-blue)] hover:underline"
-                    >
-                      {uni.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-slate-600">{uni.slug}</td>
-                  <td className="px-4 py-3">{uni.campusesCount}</td>
-                  <td className="px-4 py-3">{uni.usersCount}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={uni.status} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <SecondaryButton onClick={() => openEdit(uni)}>Editar</SecondaryButton>
-                      {uni.status.toLowerCase() !== 'suspended' && (
-                        <DangerButton onClick={() => setSuspending(uni)}>
-                          Suspender
-                        </DangerButton>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-slate-100">
+              {unisQuery.data.map((u) => {
+                const isActiva = u.status.toLowerCase() === 'activa'
+                return (
+                  <tr key={u.id} className="hover:bg-slate-50/80">
+                    <td className="px-6 py-4 font-medium text-red-700">{u.name}</td>
+                    <td className="px-6 py-4 text-slate-500">{u.slug}</td>
+                    <td className="px-6 py-4">{u.campusesCount ?? 0}</td>
+                    <td className="px-6 py-4">{u.usersCount ?? 0}</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={u.status} />
+                    </td>
+                    <td className="px-6 py-4 text-right space-x-2">
+                      <button
+                        onClick={() => handleEdit(u)}
+                        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleToggleStatus(u)}
+                        disabled={suspendMutation.isPending}
+                        className={`rounded-md px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-50 ${
+                          isActiva
+                            ? 'bg-red-600 hover:bg-red-700'
+                            : 'bg-emerald-600 hover:bg-emerald-700'
+                        }`}
+                      >
+                        {isActiva ? 'Suspender' : 'Activar'}
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      {dialog === 'create' && (
+      {isFormOpen && (
         <UniversityFormDialog
-          mode="create"
-          submitting={createMutation.isPending}
-          error={formError}
-          onClose={() => setDialog(null)}
-          onSubmit={(payload) => createMutation.mutateAsync(payload)}
-        />
-      )}
-
-      {dialog === 'edit' && editing && (
-        <UniversityFormDialog
-          mode="edit"
-          initial={editing}
-          submitting={updateMutation.isPending}
-          error={formError}
-          onClose={() => {
-            setDialog(null)
-            setEditing(null)
+          mode={editingUni ? 'edit' : 'create'}
+          initial={
+            editingUni
+              ? { name: editingUni.name, slug: editingUni.slug }
+              : undefined
+          }
+          onClose={() => setIsFormOpen(false)}
+          onSubmit={async (payload) => {
+            if (editingUni) {
+              await superAdminApi.updateUniversity(editingUni.id, payload)
+            } else {
+              await superAdminApi.createUniversity(payload)
+            }
+            handleSaved()
           }}
-          onSubmit={(payload) =>
-            updateMutation.mutateAsync({ id: editing.id, payload })
-          }
         />
-      )}
-
-      {suspending && (
-        <Dialog
-          title="Suspender universidad"
-          onClose={() => setSuspending(null)}
-          footer={
-            <>
-              <SecondaryButton
-                onClick={() => setSuspending(null)}
-                disabled={suspendMutation.isPending}
-              >
-                Cancelar
-              </SecondaryButton>
-              <DangerButton
-                disabled={suspendMutation.isPending}
-                onClick={() => suspendMutation.mutate(suspending.id)}
-              >
-                {suspendMutation.isPending ? 'Suspendiendo…' : 'Confirmar suspensión'}
-              </DangerButton>
-            </>
-          }
-        >
-          <p className="text-sm text-slate-600">
-            ¿Suspender <span className="font-medium text-slate-900">{suspending.name}</span>?
-            Los usuarios de esta universidad no podrán iniciar sesión.
-          </p>
-          {suspendMutation.isError && (
-            <p className="mt-3 text-sm text-red-600" role="alert">
-              {apiErrorMessage(suspendMutation.error, 'No se pudo suspender la universidad.')}
-            </p>
-          )}
-        </Dialog>
       )}
     </div>
   )
