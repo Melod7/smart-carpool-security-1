@@ -190,6 +190,12 @@ public sealed class StatsSuperAdminDto
     [JsonPropertyName("totalUsers")]
     public int TotalUsuarios { get; set; }
 
+    [JsonPropertyName("driversCount")]
+    public int CantidadConductores { get; set; }
+
+    [JsonPropertyName("passengersCount")]
+    public int CantidadPasajeros { get; set; }
+
     [JsonPropertyName("tripsToday")]
     public int ViajesHoy { get; set; }
 
