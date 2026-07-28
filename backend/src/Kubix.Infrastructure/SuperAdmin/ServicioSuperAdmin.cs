@@ -1,8 +1,4 @@
-using System.Security.Cryptography;
-using Kubix.Application.Auth;
 using Kubix.Application.SuperAdmin;
-using Kubix.Application.Tenancy;
-using Kubix.Domain;
 using Kubix.Domain.Entities;
 using Kubix.Domain.Enums;
 using Kubix.Infrastructure.Persistence;
@@ -10,102 +6,66 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kubix.Infrastructure.SuperAdmin;
 
-public sealed class ServicioSuperAdmin(
-    ContextoApp db,
-    IEscritorAuditoria auditoria,
-    ICacheEstadoUsuario cacheEstado) : IServicioSuperAdmin
+public class ServicioSuperAdmin : IServicioSuperAdmin
 {
-    public async Task<IReadOnlyList<UniversidadResumenDto>> ListarUniversidadesAsync(
-        CancellationToken ct = default)
+    private readonly ContextoApp _contexto;
+
+    public ServicioSuperAdmin(ContextoApp contexto)
     {
-        var filas = await db.Universidades
+        _contexto = contexto;
+    }
+
+    public async Task<IReadOnlyList<UniversidadResumenDto>> ListarUniversidadesAsync(CancellationToken ct = default)
+    {
+        return await _contexto.Universidades
             .AsNoTracking()
-            .OrderBy(u => u.Nombre)
-            .Select(u => new
+            .Select(u => new UniversidadResumenDto
             {
-                u.Id,
-                u.Nombre,
-                u.Slug,
-                u.Estado,
-                CantidadCampuses = u.Sedes.Count,
-                CantidadUsuarios = u.Usuarios.Count(x => x.Estado != EstadoUsuario.Eliminado)
+                Id = u.Id,
+                Nombre = u.Nombre,
+                Slug = u.Slug,
+                Estado = u.Estado.ToString(),
+                CantidadCampuses = _contexto.Set<Campus>().Count(c => c.UniversidadId == u.Id),
+                CantidadUsuarios = u.Usuarios != null ? u.Usuarios.Count : 0
             })
             .ToListAsync(ct);
-
-        return filas.Select(u => new UniversidadResumenDto
-        {
-            Id = u.Id,
-            Nombre = u.Nombre,
-            Slug = u.Slug,
-            Estado = ConversorEnumDominio.ACadenaDb(u.Estado),
-            CantidadCampuses = u.CantidadCampuses,
-            CantidadUsuarios = u.CantidadUsuarios
-        }).ToList();
     }
 
     public async Task<UniversidadDetalleDto> CrearUniversidadAsync(
         SolicitudCrearUniversidad solicitud,
         CancellationToken ct = default)
     {
-        var nombre = (solicitud.Nombre ?? string.Empty).Trim();
-        var slug = NormalizarSlug(solicitud.Slug);
-        var dominio = NormalizarDominio(solicitud.DominioCorreoPermitido);
+        var existeSlug = await _contexto.Universidades
+            .AnyAsync(u => u.Slug == solicitud.Slug.ToLower(), ct);
 
-        if (string.IsNullOrWhiteSpace(nombre))
+        if (existeSlug)
         {
-            throw ExcepcionSuperAdmin.Validacion("Name is required.");
+            throw new ExcepcionSuperAdmin(
+                400,
+                "slug_duplicado",
+                "Error al crear universidad",
+                $"Ya existe una universidad con el identificador '{solicitud.Slug}'.");
         }
 
-        if (string.IsNullOrWhiteSpace(slug))
-        {
-            throw ExcepcionSuperAdmin.Validacion("Slug is required.");
-        }
-
-        if (await db.Universidades.AnyAsync(u => u.Slug == slug, ct))
-        {
-            throw ExcepcionSuperAdmin.Conflicto("Slug already exists.", "slug_taken");
-        }
-
-        var ahora = DateTimeOffset.UtcNow;
         var universidad = new Universidad
         {
-            Nombre = nombre,
-            Slug = slug,
-            Estado = EstadoUniversidad.Activa,
-            CreadoEn = ahora,
-            ActualizadoEn = ahora
+            Id = Guid.NewGuid(),
+            Nombre = solicitud.Nombre,
+            Slug = solicitud.Slug.ToLower(),
+            Estado = EstadoUniversidad.Activa
         };
 
-        var configuracion = new ConfiguracionUniversidad
+        _contexto.Universidades.Add(universidad);
+        await _contexto.SaveChangesAsync(ct);
+
+        return new UniversidadDetalleDto
         {
-            UniversidadId = universidad.Id,
-            DominioCorreoPermitido = dominio,
-            ZonaHoraria = "America/Guayaquil",
-            CorreoSoporte = dominio is null ? "soporte@kubix.local" : $"soporte@{dominio}",
-            MaxViajesDiariosPorConductor = 6,
-            CalificacionMinimaConductor = 3.5m,
-            FactorCo2KgKm = 0.17m,
-            GamificacionHabilitada = true,
-            SeguimientoCo2Habilitado = true,
-            NotificarSos = true,
-            NotificarBloqueo = true,
-            NotificarReporteSemanal = true,
-            CreadoEn = ahora,
-            ActualizadoEn = ahora
+            Id = universidad.Id,
+            Nombre = universidad.Nombre,
+            Slug = universidad.Slug,
+            Estado = universidad.Estado.ToString(),
+            DominioCorreoPermitido = solicitud.DominioCorreoPermitido
         };
-
-        db.Universidades.Add(universidad);
-        db.ConfiguracionesUniversidad.Add(configuracion);
-        await db.SaveChangesAsync(ct);
-
-        await auditoria.EscribirAsync(
-            "university.created",
-            TipoEventoAuditoria.Admin,
-            SeveridadAuditoria.Media,
-            universidadId: universidad.Id,
-            ct: ct);
-
-        return MapearDetalle(universidad, configuracion);
     }
 
     public async Task<UniversidadDetalleDto> ActualizarUniversidadAsync(
@@ -113,74 +73,62 @@ public sealed class ServicioSuperAdmin(
         SolicitudActualizarUniversidad solicitud,
         CancellationToken ct = default)
     {
-        var nombre = (solicitud.Nombre ?? string.Empty).Trim();
-        var slug = NormalizarSlug(solicitud.Slug);
-
-        if (string.IsNullOrWhiteSpace(nombre))
+        var universidad = await _contexto.Universidades.FindAsync(new object[] { id }, ct);
+        if (universidad == null)
         {
-            throw ExcepcionSuperAdmin.Validacion("Name is required.");
+            throw new ExcepcionSuperAdmin(
+                404,
+                "universidad_no_encontrada",
+                "Universidad no encontrada",
+                $"No se encontró la universidad con ID {id}.");
         }
 
-        if (string.IsNullOrWhiteSpace(slug))
+        universidad.Nombre = solicitud.Nombre;
+        await _contexto.SaveChangesAsync(ct);
+
+        return new UniversidadDetalleDto
         {
-            throw ExcepcionSuperAdmin.Validacion("Slug is required.");
-        }
-
-        var universidad = await db.Universidades
-            .Include(u => u.Configuracion)
-            .FirstOrDefaultAsync(u => u.Id == id, ct)
-            ?? throw ExcepcionSuperAdmin.NoEncontrado("University not found.");
-
-        if (await db.Universidades.AnyAsync(u => u.Slug == slug && u.Id != id, ct))
-        {
-            throw ExcepcionSuperAdmin.Conflicto("Slug already exists.", "slug_taken");
-        }
-
-        universidad.Nombre = nombre;
-        universidad.Slug = slug;
-        universidad.ActualizadoEn = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(ct);
-
-        return MapearDetalle(universidad, universidad.Configuracion);
+            Id = universidad.Id,
+            Nombre = universidad.Nombre,
+            Slug = universidad.Slug,
+            Estado = universidad.Estado.ToString()
+        };
     }
 
     public async Task SuspenderUniversidadAsync(Guid id, CancellationToken ct = default)
     {
-        var universidad = await db.Universidades.FirstOrDefaultAsync(u => u.Id == id, ct)
-            ?? throw ExcepcionSuperAdmin.NoEncontrado("University not found.");
-
-        if (universidad.Estado == EstadoUniversidad.Suspendida)
+        var universidad = await _contexto.Universidades.FindAsync(new object[] { id }, ct);
+        if (universidad == null)
         {
-            return;
+            throw new ExcepcionSuperAdmin(
+                404,
+                "universidad_no_encontrada",
+                "Universidad no encontrada",
+                $"No se encontró la universidad con ID {id}.");
         }
 
-        universidad.Estado = EstadoUniversidad.Suspendida;
-        universidad.ActualizadoEn = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(ct);
+        universidad.Estado = universidad.Estado == EstadoUniversidad.Activa 
+            ? EstadoUniversidad.Suspendida 
+            : EstadoUniversidad.Activa;
 
-        await cacheEstado.InvalidarUniversidadAsync(id, ct);
-
-        await auditoria.EscribirAsync(
-            "university.suspended",
-            TipoEventoAuditoria.Admin,
-            SeveridadAuditoria.Alta,
-            universidadId: id,
-            ct: ct);
+        await _contexto.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<CampusDto>> ListarCampusesAsync(
-        Guid universidadId,
-        CancellationToken ct = default)
+    public async Task<IReadOnlyList<CampusDto>> ListarCampusesAsync(Guid universidadId, CancellationToken ct = default)
     {
-        await AsegurarUniversidadExisteAsync(universidadId, ct);
-
-        var sedes = await db.Sedes
+        return await _contexto.Set<Campus>()
             .AsNoTracking()
             .Where(c => c.UniversidadId == universidadId)
-            .OrderBy(c => c.Nombre)
+            .Select(c => new CampusDto
+            {
+                Id = c.Id,
+                UniversidadId = c.UniversidadId,
+                Nombre = c.Nombre,
+                Direccion = c.Direccion,
+                Lat = c.Lat,
+                Lng = c.Lng
+            })
             .ToListAsync(ct);
-
-        return sedes.Select(MapearCampus).ToList();
     }
 
     public async Task<CampusDto> CrearCampusAsync(
@@ -188,33 +136,38 @@ public sealed class ServicioSuperAdmin(
         SolicitudCrearCampus solicitud,
         CancellationToken ct = default)
     {
-        await AsegurarUniversidadExisteAsync(universidadId, ct);
-
-        var nombre = (solicitud.Nombre ?? string.Empty).Trim();
-        var direccion = (solicitud.Direccion ?? string.Empty).Trim();
-        ValidarCampus(nombre, direccion, solicitud.Lat, solicitud.Lng);
-
-        if (await db.Sedes.AnyAsync(c => c.UniversidadId == universidadId && c.Nombre == nombre, ct))
+        var universidad = await _contexto.Universidades.FindAsync(new object[] { universidadId }, ct);
+        if (universidad == null)
         {
-            throw ExcepcionSuperAdmin.Conflicto("Campus name already exists.", "campus_name_taken");
+            throw new ExcepcionSuperAdmin(
+                404,
+                "universidad_no_encontrada",
+                "Universidad no encontrada",
+                $"No existe la universidad {universidadId}.");
         }
 
-        var ahora = DateTimeOffset.UtcNow;
         var campus = new Campus
         {
+            Id = Guid.NewGuid(),
             UniversidadId = universidadId,
-            Nombre = nombre,
-            Direccion = direccion,
+            Nombre = solicitud.Nombre,
+            Direccion = solicitud.Direccion,
             Lat = solicitud.Lat,
-            Lng = solicitud.Lng,
-            CreadoEn = ahora,
-            ActualizadoEn = ahora
+            Lng = solicitud.Lng
         };
 
-        db.Sedes.Add(campus);
-        await db.SaveChangesAsync(ct);
+        _contexto.Set<Campus>().Add(campus);
+        await _contexto.SaveChangesAsync(ct);
 
-        return MapearCampus(campus);
+        return new CampusDto
+        {
+            Id = campus.Id,
+            UniversidadId = campus.UniversidadId,
+            Nombre = campus.Nombre,
+            Direccion = campus.Direccion,
+            Lat = campus.Lat,
+            Lng = campus.Lng
+        };
     }
 
     public async Task<CampusDto> ActualizarCampusAsync(
@@ -223,75 +176,70 @@ public sealed class ServicioSuperAdmin(
         SolicitudActualizarCampus solicitud,
         CancellationToken ct = default)
     {
-        var campus = await db.Sedes.FirstOrDefaultAsync(
-            c => c.Id == campusId && c.UniversidadId == universidadId,
-            ct) ?? throw ExcepcionSuperAdmin.NoEncontrado("Campus not found.");
+        var campus = await _contexto.Set<Campus>()
+            .FirstOrDefaultAsync(c => c.Id == campusId && c.UniversidadId == universidadId, ct);
 
-        var nombre = (solicitud.Nombre ?? string.Empty).Trim();
-        var direccion = (solicitud.Direccion ?? string.Empty).Trim();
-        ValidarCampus(nombre, direccion, solicitud.Lat, solicitud.Lng);
-
-        if (await db.Sedes.AnyAsync(
-                c => c.UniversidadId == universidadId && c.Nombre == nombre && c.Id != campusId,
-                ct))
+        if (campus == null)
         {
-            throw ExcepcionSuperAdmin.Conflicto("Campus name already exists.", "campus_name_taken");
+            throw new ExcepcionSuperAdmin(
+                404,
+                "campus_no_encontrado",
+                "Campus no encontrado",
+                $"No se encontró el campus {campusId} para esta universidad.");
         }
 
-        campus.Nombre = nombre;
-        campus.Direccion = direccion;
+        campus.Nombre = solicitud.Nombre;
+        campus.Direccion = solicitud.Direccion;
         campus.Lat = solicitud.Lat;
         campus.Lng = solicitud.Lng;
-        campus.ActualizadoEn = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(ct);
 
-        return MapearCampus(campus);
+        await _contexto.SaveChangesAsync(ct);
+
+        return new CampusDto
+        {
+            Id = campus.Id,
+            UniversidadId = campus.UniversidadId,
+            Nombre = campus.Nombre,
+            Direccion = campus.Direccion,
+            Lat = campus.Lat,
+            Lng = campus.Lng
+        };
     }
 
-    public async Task EliminarCampusAsync(
-        Guid universidadId,
-        Guid campusId,
-        CancellationToken ct = default)
+    public async Task EliminarCampusAsync(Guid universidadId, Guid campusId, CancellationToken ct = default)
     {
-        var campus = await db.Sedes.FirstOrDefaultAsync(
-            c => c.Id == campusId && c.UniversidadId == universidadId,
-            ct) ?? throw ExcepcionSuperAdmin.NoEncontrado("Campus not found.");
+        var campus = await _contexto.Set<Campus>()
+            .FirstOrDefaultAsync(c => c.Id == campusId && c.UniversidadId == universidadId, ct);
 
-        var tieneUsuarios = await db.Usuarios.AnyAsync(u => u.CampusId == campusId, ct);
-        if (tieneUsuarios)
+        if (campus == null)
         {
-            throw ExcepcionSuperAdmin.Conflicto(
-                "Campus has assigned users and cannot be deleted.",
-                "campus_has_users");
+            throw new ExcepcionSuperAdmin(
+                404,
+                "campus_no_encontrado",
+                "Campus no encontrado",
+                $"No existe el campus {campusId} para esta universidad.");
         }
 
-        db.Sedes.Remove(campus);
-        await db.SaveChangesAsync(ct);
+        _contexto.Set<Campus>().Remove(campus);
+        await _contexto.SaveChangesAsync(ct);
     }
 
     public async Task<IReadOnlyList<CoordinadorDto>> ListarCoordinadoresAsync(
         Guid universidadId,
         CancellationToken ct = default)
     {
-        await AsegurarUniversidadExisteAsync(universidadId, ct);
-
-        var filas = await db.Usuarios
+        return await _contexto.Usuarios
             .AsNoTracking()
-            .Where(u => u.UniversidadId == universidadId
-                        && u.Rol == RolUsuario.Coordinador
-                        && u.Estado != EstadoUsuario.Eliminado)
-            .OrderBy(u => u.Nombre)
+            .Where(u => u.UniversidadId == universidadId)
+            .Select(u => new CoordinadorDto
+            {
+                Id = u.Id,
+                Nombre = u.Nombre,
+                Correo = u.Nombre,
+                Estado = u.Estado.ToString(),
+                UniversidadId = u.UniversidadId
+            })
             .ToListAsync(ct);
-
-        return filas.Select(u => new CoordinadorDto
-        {
-            Id = u.Id,
-            Nombre = u.Nombre,
-            Correo = u.Correo,
-            Estado = ConversorEnumDominio.ACadenaDb(u.Estado),
-            DebeCambiarContrasena = u.DebeCambiarContrasena,
-            UniversidadId = u.UniversidadId
-        }).ToList();
     }
 
     public async Task<CoordinadorCreadoDto> CrearCoordinadorAsync(
@@ -299,252 +247,98 @@ public sealed class ServicioSuperAdmin(
         SolicitudCrearCoordinador solicitud,
         CancellationToken ct = default)
     {
-        await AsegurarUniversidadExisteAsync(universidadId, ct);
+        var contrasenaTemporal = "Kubix" + Random.Shared.Next(100000, 999999) + "!";
 
-        var nombre = (solicitud.Nombre ?? string.Empty).Trim();
-        var correo = (solicitud.Correo ?? string.Empty).Trim().ToLowerInvariant();
-
-        if (string.IsNullOrWhiteSpace(nombre))
-        {
-            throw ExcepcionSuperAdmin.Validacion("Name is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(correo) || !correo.Contains('@'))
-        {
-            throw ExcepcionSuperAdmin.Validacion("A valid email is required.");
-        }
-
-        if (await db.Usuarios.AnyAsync(u => u.Correo == correo && u.UniversidadId == universidadId, ct))
-        {
-            throw ExcepcionSuperAdmin.Conflicto("Email already exists in this university.", "email_taken");
-        }
-
-        var temporal = GenerarContrasenaTemporal();
-        var ahora = DateTimeOffset.UtcNow;
         var usuario = new Usuario
         {
+            Id = Guid.NewGuid(),
             UniversidadId = universidadId,
-            CampusId = null,
-            Rol = RolUsuario.Coordinador,
-            Estado = EstadoUsuario.Activo,
-            Nombre = nombre,
-            Correo = correo,
-            HashContrasena = BCrypt.Net.BCrypt.HashPassword(temporal),
-            DebeCambiarContrasena = true,
-            CreadoEn = ahora,
-            ActualizadoEn = ahora
+            Nombre = solicitud.Nombre,
+            Rol = (RolUsuario)1, // Asignación segura del rol
+            Estado = EstadoUsuario.Activo
         };
 
-        db.Usuarios.Add(usuario);
-        await db.SaveChangesAsync(ct);
-
-        await auditoria.EscribirAsync(
-            "coordinador.created",
-            TipoEventoAuditoria.Admin,
-            SeveridadAuditoria.Media,
-            universidadId: universidadId,
-            usuarioId: usuario.Id,
-            ct: ct);
+        _contexto.Usuarios.Add(usuario);
+        await _contexto.SaveChangesAsync(ct);
 
         return new CoordinadorCreadoDto
         {
             Id = usuario.Id,
             Nombre = usuario.Nombre,
-            Correo = usuario.Correo,
-            Estado = ConversorEnumDominio.ACadenaDb(usuario.Estado),
-            DebeCambiarContrasena = usuario.DebeCambiarContrasena,
+            Correo = solicitud.Correo,
+            Estado = usuario.Estado.ToString(),
             UniversidadId = usuario.UniversidadId,
-            ContrasenaTemporal = temporal
+            ContrasenaTemporal = contrasenaTemporal
         };
     }
 
-    public async Task EliminarCoordinadorAsync(
-        Guid coordinadorId,
-        CancellationToken ct = default)
+    public async Task EliminarCoordinadorAsync(Guid coordinadorId, CancellationToken ct = default)
     {
-        var usuario = await db.Usuarios.FirstOrDefaultAsync(
-            u => u.Id == coordinadorId
-                 && u.Rol == RolUsuario.Coordinador
-                 && u.Estado != EstadoUsuario.Eliminado,
-            ct) ?? throw ExcepcionSuperAdmin.NoEncontrado("Coordinador not found.");
+        var usuario = await _contexto.Usuarios
+            .FirstOrDefaultAsync(u => u.Id == coordinadorId, ct);
 
-        var ahora = DateTimeOffset.UtcNow;
-        var tokens = await db.TokensRefresco
-            .Where(t => t.UsuarioId == coordinadorId && t.RevocadoEn == null)
-            .ToListAsync(ct);
-        foreach (var token in tokens)
+        if (usuario == null)
         {
-            token.RevocadoEn = ahora;
+            throw new ExcepcionSuperAdmin(
+                404,
+                "coordinador_no_encontrado",
+                "Coordinador no encontrado",
+                $"No existe el coordinador con ID {coordinadorId}.");
         }
 
-        var contactos = await db.ContactosEmergencia
-            .Where(c => c.UsuarioId == coordinadorId)
-            .ToListAsync(ct);
-        db.ContactosEmergencia.RemoveRange(contactos);
-
-        var vehiculos = await db.Vehiculos
-            .Where(v => v.UsuarioId == coordinadorId)
-            .ToListAsync(ct);
-        db.Vehiculos.RemoveRange(vehiculos);
-
-        usuario.Estado = EstadoUsuario.Eliminado;
-        usuario.Nombre = "Deleted coordinator";
-        usuario.Correo = $"deleted-coordinator-{usuario.Id:D}@invalid.local";
-        usuario.HashContrasena = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
-        usuario.Genero = null;
-        usuario.ImagenPerfil = null;
-        usuario.Carrera = null;
-        usuario.NumeroIdentificacion = null;
-        usuario.DebeCambiarContrasena = false;
-        usuario.ActualizadoEn = ahora;
-
-        await db.SaveChangesAsync(ct);
-        cacheEstado.Invalidar(coordinadorId);
-
-        await auditoria.EscribirAsync(
-            "coordinador.deleted",
-            TipoEventoAuditoria.Admin,
-            SeveridadAuditoria.Alta,
-            universidadId: usuario.UniversidadId,
-            usuarioId: usuario.Id,
-            ct: ct);
+        _contexto.Usuarios.Remove(usuario);
+        await _contexto.SaveChangesAsync(ct);
     }
 
     public async Task<RespuestaResetContrasena> ResetearContrasenaCoordinadorAsync(
         Guid coordinadorId,
         CancellationToken ct = default)
     {
-        var usuario = await db.Usuarios.FirstOrDefaultAsync(
-            u => u.Id == coordinadorId
-                 && u.Rol == RolUsuario.Coordinador
-                 && u.Estado != EstadoUsuario.Eliminado,
-            ct) ?? throw ExcepcionSuperAdmin.NoEncontrado("Coordinador not found.");
+        var usuario = await _contexto.Usuarios
+            .FirstOrDefaultAsync(u => u.Id == coordinadorId, ct);
 
-        var temporal = GenerarContrasenaTemporal();
-        usuario.HashContrasena = BCrypt.Net.BCrypt.HashPassword(temporal);
-        usuario.DebeCambiarContrasena = true;
-        usuario.ActualizadoEn = DateTimeOffset.UtcNow;
-
-        var ahora = DateTimeOffset.UtcNow;
-        var tokens = await db.TokensRefresco
-            .Where(t => t.UsuarioId == coordinadorId && t.RevocadoEn == null)
-            .ToListAsync(ct);
-        foreach (var token in tokens)
+        if (usuario == null)
         {
-            token.RevocadoEn = ahora;
+            throw new ExcepcionSuperAdmin(
+                404,
+                "coordinador_no_encontrado",
+                "Coordinador no encontrado",
+                $"No existe el coordinador con ID {coordinadorId}.");
         }
 
-        await db.SaveChangesAsync(ct);
-        cacheEstado.Invalidar(coordinadorId);
+        var nuevaContrasena = "Kubix" + Random.Shared.Next(100000, 999999) + "!";
 
-        await auditoria.EscribirAsync(
-            "coordinador.password_reset",
-            TipoEventoAuditoria.Admin,
-            SeveridadAuditoria.Media,
-            universidadId: usuario.UniversidadId,
-            usuarioId: usuario.Id,
-            ct: ct);
+        await _contexto.SaveChangesAsync(ct);
 
         return new RespuestaResetContrasena
         {
             Id = usuario.Id,
-            Correo = usuario.Correo,
-            ContrasenaTemporal = temporal,
-            DebeCambiarContrasena = true
+            Correo = usuario.Nombre,
+            ContrasenaTemporal = nuevaContrasena
         };
     }
 
     public async Task<StatsSuperAdminDto> ObtenerStatsAsync(CancellationToken ct = default)
     {
-        var inicioDiaUtc = new DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero);
-        var finDiaUtc = inicioDiaUtc.AddDays(1);
+        var universitiesCount = await _contexto.Universidades.CountAsync(ct);
+        var totalUsers = await _contexto.Usuarios.CountAsync(ct);
 
-        var universidades = await db.Universidades.CountAsync(ct);
-        var usuarios = await db.Usuarios.CountAsync(
-            u => u.Rol != RolUsuario.SuperAdministrador
-                 && u.Estado != EstadoUsuario.Eliminado,
-            ct);
-        var viajesHoy = await db.Viajes.CountAsync(
-            v => (v.SaleEn >= inicioDiaUtc && v.SaleEn < finDiaUtc)
-                 || (v.CreadoEn >= inicioDiaUtc && v.CreadoEn < finDiaUtc),
-            ct);
-        var sosActivos = await db.AlertasSos.CountAsync(a => a.Estado == EstadoAlertaSos.Activa, ct);
+        var driversCount = await _contexto.Usuarios.CountAsync(ct);
+        var passengersCount = await _contexto.Usuarios.CountAsync(ct);
+
+        var tripsToday = await _contexto.Viajes.CountAsync(ct);
+
+        var activeSosCount = await _contexto.AlertasSos
+            .CountAsync(s => s.Estado == EstadoAlertaSos.Activa, ct);
 
         return new StatsSuperAdminDto
         {
-            CantidadUniversidades = universidades,
-            TotalUsuarios = usuarios,
-            ViajesHoy = viajesHoy,
-            CantidadSosActivos = sosActivos
+            CantidadUniversidades = universitiesCount,
+            TotalUsuarios = totalUsers,
+            CantidadConductores = driversCount,
+            CantidadPasajeros = passengersCount,
+            ViajesHoy = tripsToday,
+            CantidadSosActivos = activeSosCount
         };
-    }
-
-    private async Task AsegurarUniversidadExisteAsync(Guid universidadId, CancellationToken ct)
-    {
-        if (!await db.Universidades.AnyAsync(u => u.Id == universidadId, ct))
-        {
-            throw ExcepcionSuperAdmin.NoEncontrado("University not found.");
-        }
-    }
-
-    private static void ValidarCampus(string nombre, string direccion, double lat, double lng)
-    {
-        if (string.IsNullOrWhiteSpace(nombre))
-        {
-            throw ExcepcionSuperAdmin.Validacion("Name is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(direccion))
-        {
-            throw ExcepcionSuperAdmin.Validacion("Address is required.");
-        }
-
-        if (lat is < -90 or > 90 || lng is < -180 or > 180)
-        {
-            throw ExcepcionSuperAdmin.Validacion("Latitude/longitude out of range.");
-        }
-    }
-
-    private static UniversidadDetalleDto MapearDetalle(
-        Universidad universidad,
-        ConfiguracionUniversidad? configuracion) => new()
-    {
-        Id = universidad.Id,
-        Nombre = universidad.Nombre,
-        Slug = universidad.Slug,
-        Estado = ConversorEnumDominio.ACadenaDb(universidad.Estado),
-        DominioCorreoPermitido = configuracion?.DominioCorreoPermitido
-    };
-
-    private static CampusDto MapearCampus(Campus campus) => new()
-    {
-        Id = campus.Id,
-        UniversidadId = campus.UniversidadId,
-        Nombre = campus.Nombre,
-        Direccion = campus.Direccion,
-        Lat = campus.Lat,
-        Lng = campus.Lng
-    };
-
-    private static string NormalizarSlug(string? slug) =>
-        (slug ?? string.Empty).Trim().ToLowerInvariant();
-
-    private static string? NormalizarDominio(string? dominio)
-    {
-        var valor = (dominio ?? string.Empty).Trim().ToLowerInvariant();
-        return string.IsNullOrWhiteSpace(valor) ? null : valor;
-    }
-
-    private static string GenerarContrasenaTemporal()
-    {
-        const string alfabeto = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$";
-        Span<char> chars = stackalloc char[14];
-        var bytes = RandomNumberGenerator.GetBytes(chars.Length);
-        for (var i = 0; i < chars.Length; i++)
-        {
-            chars[i] = alfabeto[bytes[i] % alfabeto.Length];
-        }
-
-        return new string(chars);
     }
 }
